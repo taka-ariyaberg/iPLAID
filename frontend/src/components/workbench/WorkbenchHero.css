@@ -1,0 +1,57 @@
+.workbench-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.9fr) minmax(300px, 0.9fr);
+  gap: 1rem;
+  padding: 1.4rem;
+}
+
+.workbench-hero-copy {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.workbench-hero h2 {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.6rem, 2vw, 2.5rem);
+}
+
+.workbench-hero p:not(.section-kicker) {
+  margin: 0;
+  color: var(--icell-text-muted);
+  max-width: 70ch;
+}
+
+.hero-status-card {
+  display: grid;
+  gap: 0.45rem;
+  padding: 1rem;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: #14141c;
+  align-content: start;
+}
+
+.hero-status-label {
+  color: var(--icell-text-dim);
+  font-size: 0.76rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.hero-status-value {
+  font-size: clamp(1.4rem, 2vw, 2rem);
+}
+
+.hero-status-value.is-ready {
+  color: var(--icell-success);
+}
+
+.hero-status-value.is-missing-files {
+  color: #ff3b55;
+}
+
+@media (max-width: 1120px) {
+  .workbench-hero {
+    grid-template-columns: 1fr;
+  }
+}

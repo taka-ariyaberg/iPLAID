@@ -1,0 +1,1228 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   PlateViewer.css — styles for the plate visualization panel (PlateGrid.tsx)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Well hover tooltip panel ────────────────────────────────────────────── */
+
+.well-tooltip-panel {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  background: var(--surface-raised, #1e2130);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 0.6rem 0.85rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35), 0 1px 4px rgba(0, 0, 0, 0.25);
+  max-width: 260px;
+  min-width: 120px;
+}
+
+.well-tt-name {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--icell-text-dim, #94a3b8);
+  margin-bottom: 0.15rem;
+}
+
+.well-tt-compound {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--icell-text, #e2e8f0);
+  line-height: 1.2;
+}
+
+.well-tt-stock {
+  font-size: 0.78rem;
+  color: var(--icell-text-dim, #94a3b8);
+  margin-top: 0.1rem;
+}
+
+.well-tt-targets {
+  margin-top: 0.55rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.well-tt-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--icell-text-dim, #94a3b8);
+  margin-bottom: 0.25rem;
+}
+
+.well-tt-wells {
+  font-size: 0.75rem;
+  color: var(--icell-text, #e2e8f0);
+  font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+/* ── Outer wrapper ───────────────────────────────────────────────────────── */
+
+.plate-grid-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.plate-viewer-card {
+  padding: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ── Header row ──────────────────────────────────────────────────────────── */
+
+.plate-grid-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.plate-grid-header h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.plate-grid-summary {
+  display: flex;
+  gap: 0.85rem;
+  color: var(--icell-text-muted);
+  font-size: 0.92rem;
+}
+
+/* ── Main grid: plate column + details sidebar ───────────────────────────── */
+
+.plate-grid-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 310px;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.plate-viewer-column {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.plate-grid-stack {
+  display: grid;
+  gap: 1rem;
+}
+
+/* ── Stage meta bar (plate type pill + counts) ───────────────────────────── */
+
+.plate-stage-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--icell-text-muted);
+  font-size: 0.86rem;
+}
+
+.plate-stage-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.38rem 0.72rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: #13131b;
+  font-size: 0.82rem;
+}
+
+/* ── Plate card ──────────────────────────────────────────────────────────── */
+
+.plate-card {
+  padding: 1rem;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #1c1c2a;
+}
+
+.plate-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.plate-card-header h3 {
+  margin: 0;
+}
+
+.plate-card-header span {
+  color: var(--icell-text-muted);
+  font-size: 0.9rem;
+}
+
+/* ── Well grid ───────────────────────────────────────────────────────────── */
+
+.plate-grid-scroll {
+  overflow-x: auto;
+  overflow-y: visible;
+  padding-bottom: 0.2rem;
+}
+
+.plate-grid {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+}
+
+.plate-grid-label,
+.plate-grid-corner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  height: 20px;
+  color: rgba(34, 211, 238, 0.75);
+  font-size: 0.6rem;
+  font-weight: 700;
+}
+
+.plate-well {
+  aspect-ratio: 1;
+  min-height: 0;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(14, 14, 22, 0.5);
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+  appearance: none;
+  text-align: center;
+  color: inherit;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.plate-well.is-filled:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.32);
+}
+
+.plate-well.is-selected {
+  border-color: rgba(34, 211, 238, 0.9);
+  box-shadow:
+    0 0 0 2px rgba(34, 211, 238, 0.35),
+    0 0 14px rgba(34, 211, 238, 0.3),
+    0 0 4px rgba(34, 211, 238, 0.55);
+  z-index: 1;
+  position: relative;
+}
+
+.plate-well.is-selected:hover {
+  transform: translateY(-1px);
+  border-color: rgba(34, 211, 238, 0.9);
+  box-shadow:
+    0 0 0 2px rgba(34, 211, 238, 0.35),
+    0 0 14px rgba(34, 211, 238, 0.3),
+    0 0 4px rgba(34, 211, 238, 0.55),
+    0 6px 16px rgba(0, 0, 0, 0.32);
+}
+
+/* ── Concentration / single-well hover (from info panel) ─────────────── */
+
+/* All wells in the hovered concentration subgroup grow and glow */
+.plate-well.is-conc-hovered {
+  transform: scale(1.18);
+  border-color: rgba(34, 211, 238, 0.6);
+  box-shadow:
+    0 0 0 2px rgba(34, 211, 238, 0.2),
+    0 0 10px rgba(34, 211, 238, 0.25);
+  z-index: 2;
+  position: relative;
+}
+
+.plate-well.is-conc-hovered.is-selected {
+  border-color: rgba(34, 211, 238, 0.9);
+  box-shadow:
+    0 0 0 2px rgba(34, 211, 238, 0.35),
+    0 0 14px rgba(34, 211, 238, 0.3),
+    0 0 4px rgba(34, 211, 238, 0.55);
+}
+
+/* Single well hovered via its pill in the info panel — slightly larger */
+.plate-well.is-well-hovered {
+  transform: scale(1.28);
+  border-color: rgba(34, 211, 238, 0.9);
+  box-shadow:
+    0 0 0 2px rgba(34, 211, 238, 0.4),
+    0 0 16px rgba(34, 211, 238, 0.38),
+    0 0 5px rgba(34, 211, 238, 0.6);
+  z-index: 3;
+  position: relative;
+}
+
+.plate-well.is-empty {
+  opacity: 0.7;
+}
+
+/* Empty wells should glow but not scale on hover/highlight — scaling hundreds of them causes overlap */
+.plate-well.is-empty.is-conc-hovered,
+.plate-well.is-empty.is-highlighted,
+.plate-well.is-empty.is-well-hovered {
+  transform: none;
+  opacity: 1;
+  border-color: rgba(34, 211, 238, 0.6);
+  box-shadow:
+    0 0 0 2px rgba(34, 211, 238, 0.2),
+    0 0 10px rgba(34, 211, 238, 0.25);
+  z-index: 2;
+  position: relative;
+}
+
+/* Dim overlay: when a highlight is active, non-highlighted wells get darkened */
+.plate-well.is-dimmed {
+  filter: brightness(0.22) saturate(0.3);
+  border-color: rgba(255, 255, 255, 0.03);
+  transition: filter 180ms ease, border-color 180ms ease, transform 120ms ease, box-shadow 120ms ease;
+}
+
+.plate-well-content {
+  display: grid;
+  gap: 0.06rem;
+  justify-items: center;
+}
+
+.plate-well-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.plate-well-tag {
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  font-size: 0.52rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.plate-well-concentration {
+  color: rgba(255, 255, 255, 0.72);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  font-size: 0.4rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* ── Details sidebar ─────────────────────────────────────────────────────── */
+
+.legend-panel {
+  padding: 0.75rem 0.9rem 0.9rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  flex-shrink: 0;
+  overflow-y: auto;
+  max-height: 42vh;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+}
+
+.plate-details-column {
+  position: sticky;
+  top: 1.25rem;
+  max-height: calc(100vh - 3.5rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: #16161e;
+}
+
+/* ── Compound group cards (right sidebar) ────────────────────────────────── */
+
+.details-panel-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  padding: 0.9rem;
+  padding-right: 0.75rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.10) transparent;
+}
+
+.info-group-card {
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: #13131b;
+  overflow: hidden;
+  transition: border-color 150ms ease;
+  flex-shrink: 0;
+}
+
+.info-group-card:hover {
+  border-color: rgba(255, 255, 255, 0.13);
+}
+
+.info-group-bar {
+  height: 5px;
+  width: 100%;
+  opacity: 0.85;
+}
+
+.info-group-body {
+  padding: 0.85rem 0.85rem 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.info-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.info-group-header-btns {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.info-group-tally {
+  font-size: 0.72rem;
+  color: var(--icell-text-dim);
+  font-family: "IBM Plex Mono", monospace;
+  white-space: nowrap;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  padding: 0.18rem 0.52rem;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.info-group-name {
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--icell-text);
+}
+
+.info-conc-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  padding-left: 0.45rem;
+  border-left: 2px solid rgba(255, 255, 255, 0.06);
+}
+
+.info-conc-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.info-conc-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.info-conc-label {
+  flex: 1;
+  font-size: 0.8rem;
+  color: var(--icell-text-muted);
+}
+
+.info-conc-tally {
+  font-size: 0.72rem;
+  color: var(--icell-text-dim);
+  font-family: "IBM Plex Mono", monospace;
+  white-space: nowrap;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  padding: 0.18rem 0.52rem;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.info-action-btn {
+  appearance: none;
+  border: 1px solid rgba(34, 211, 238, 0.20);
+  background: rgba(34, 211, 238, 0.06);
+  color: rgba(34, 211, 238, 0.80);
+  border-radius: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.3rem 0.7rem;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+  margin-left: auto;
+}
+
+.info-action-btn:hover {
+  background: rgba(34, 211, 238, 0.14);
+  border-color: rgba(34, 211, 238, 0.42);
+  color: rgba(34, 211, 238, 1);
+}
+
+.info-wells-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+}
+
+.info-conc-extras {
+  font-size: 0.72rem;
+  color: var(--icell-text-dim);
+  line-height: 1.5;
+  padding-left: 0.1rem;
+}
+
+.info-conc-extras-wells {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.71rem;
+  color: var(--icell-text-muted);
+  word-break: break-word;
+}
+
+.info-well-pill {
+  --pill-color: rgba(200, 200, 200, 0.5);
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(14, 14, 22, 0.6);
+  color: var(--icell-text-muted);
+  font-size: 0.68rem;
+  font-family: "IBM Plex Mono", monospace;
+  padding: 0.18rem 0.52rem;
+  border-radius: 5px;
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease, box-shadow 140ms ease;
+}
+
+.info-well-pill:hover {
+  border-color: var(--pill-color);
+  background: color-mix(in srgb, var(--pill-color) 14%, transparent);
+  color: var(--pill-color);
+  box-shadow: 0 0 7px color-mix(in srgb, var(--pill-color) 40%, transparent);
+}
+
+.info-well-pill:active {
+  background: color-mix(in srgb, var(--pill-color) 26%, transparent);
+  box-shadow: 0 0 11px color-mix(in srgb, var(--pill-color) 60%, transparent);
+}
+
+/* ── Legend section ──────────────────────────────────────────────────────── */
+
+.legend-section {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.legend-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 0.85rem;
+}
+
+.legend-heading h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--icell-text-muted);
+}
+
+.legend-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.legend-compound-card {
+  flex: 1 1 130px;
+  max-width: 200px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: #13131b;
+  overflow: hidden;
+  transition: border-color 150ms ease;
+}
+
+.legend-compound-card:hover {
+  border-color: rgba(255, 255, 255, 0.13);
+}
+
+.legend-compound-bar {
+  height: 4px;
+  width: 100%;
+  opacity: 0.9;
+}
+
+.legend-compound-body {
+  padding: 0.6rem 0.75rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.legend-compound-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.legend-compound-name {
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: var(--icell-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legend-compound-count {
+  font-size: 0.68rem;
+  color: var(--icell-text-dim);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  font-family: "IBM Plex Mono", monospace;
+  flex-shrink: 0;
+  letter-spacing: 0.04em;
+}
+
+.legend-doses {
+  display: flex;
+  flex-direction: column;
+  gap: 0.26rem;
+  max-height: 120px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.06) transparent;
+}
+
+.legend-dose {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.legend-dose-swatch {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.legend-dose-label {
+  flex: 1;
+  font-size: 0.72rem;
+  color: var(--icell-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.legend-dose-count {
+  font-size: 0.68rem;
+  color: var(--icell-text-dim);
+  font-family: "IBM Plex Mono", monospace;
+  letter-spacing: 0.04em;
+}
+
+/* ── Edit mode \u2014 plate highlight ───────────────────────────────────────────── */
+
+.plate-card.is-edit-mode {
+  outline: 2px solid rgba(167, 139, 250, 0.45);
+  outline-offset: -2px;
+}
+
+/* ── Edit mode toolbar ───────────────────────────────────────────────────── */
+
+.edit-mode-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid rgba(167, 139, 250, 0.20);
+  background: rgba(167, 139, 250, 0.05);
+}
+
+.edit-toolbar-left,
+.edit-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.toolbar-btn {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--icell-text-muted);
+  border-radius: 8px;
+  padding: 0.38rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.toolbar-btn kbd {
+  display: inline-block;
+  margin-left: 0.3em;
+  font-family: inherit;
+  font-size: 0.7em;
+  font-weight: 500;
+  opacity: 0.55;
+  letter-spacing: 0.01em;
+}
+
+.toolbar-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: var(--icell-text);
+}
+
+.toolbar-btn:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
+
+.toolbar-btn.is-active {
+  background: rgba(34, 211, 238, 0.10);
+  border-color: rgba(34, 211, 238, 0.35);
+  color: rgba(34, 211, 238, 0.90);
+}
+
+.toolbar-btn.is-save {
+  border-color: rgba(74, 222, 128, 0.35);
+  background: rgba(74, 222, 128, 0.08);
+  color: rgba(74, 222, 128, 0.85);
+}
+
+.toolbar-btn.is-save:hover {
+  background: rgba(74, 222, 128, 0.16);
+  border-color: rgba(74, 222, 128, 0.55);
+  color: #4ade80;
+}
+
+.toolbar-btn.is-revert {
+  border-color: rgba(255, 59, 85, 0.28);
+  background: rgba(255, 59, 85, 0.06);
+  color: rgba(255, 59, 85, 0.75);
+}
+
+.toolbar-btn.is-revert:hover {
+  background: rgba(255, 59, 85, 0.14);
+  border-color: rgba(255, 59, 85, 0.50);
+  color: #ff3b55;
+}
+
+/* ── Edit actions sidebar panel ─────────────────────────────────────────── */
+
+.edit-actions-panel {
+  border-radius: 14px;
+  border: 1px solid rgba(167, 139, 250, 0.22);
+  background: rgba(167, 139, 250, 0.04);
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  flex-shrink: 0;
+}
+
+.edit-actions-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.edit-actions-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(167, 139, 250, 0.90);
+}
+
+.edit-sel-count {
+  font-size: 0.72rem;
+  font-family: "IBM Plex Mono", monospace;
+  color: var(--icell-text-muted);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 6px;
+  padding: 0.15rem 0.5rem;
+}
+
+.edit-actions-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--icell-text-dim);
+  line-height: 1.55;
+}
+
+/* ── Empty-state shortcut reference ─────────────────────────────────────── */
+
+.edit-empty-state {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.edit-shortcut-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.7rem 0;
+}
+
+.edit-shortcut-section + .edit-shortcut-section {
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.edit-shortcut-section-label {
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: rgba(167, 139, 250, 0.55);
+  margin-bottom: 0.1rem;
+}
+
+.edit-shortcut-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.edit-shortcut-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.76rem;
+  color: var(--icell-text-muted);
+}
+
+.edit-shortcut-row span {
+  color: var(--icell-text-dim);
+  font-size: 0.74rem;
+}
+
+.edit-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.6rem;
+  padding: 0.12rem 0.42rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 5px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.67rem;
+  font-weight: 600;
+  color: var(--icell-text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.edit-clipboard-hint {
+  color: rgba(129, 140, 248, 0.7);
+}
+
+.edit-actions-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.edit-clear-btn {
+  appearance: none;
+  width: 100%;
+  border: 1px solid rgba(255, 59, 85, 0.28);
+  background: rgba(255, 59, 85, 0.06);
+  color: rgba(255, 59, 85, 0.80);
+  border-radius: 8px;
+  padding: 0.42rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.edit-clear-btn:hover {
+  background: rgba(255, 59, 85, 0.14);
+  border-color: rgba(255, 59, 85, 0.50);
+  color: #ff3b55;
+}
+
+.edit-assign-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.edit-assign-select {
+  width: 100%;
+  padding: 0.42rem 0.65rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  background: #13131b;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  color: var(--icell-text-muted);
+}
+
+.edit-assign-btn {
+  appearance: none;
+  border: 1px solid rgba(129, 140, 248, 0.30);
+  background: rgba(129, 140, 248, 0.08);
+  color: rgba(129, 140, 248, 0.85);
+  border-radius: 8px;
+  padding: 0.42rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.edit-assign-btn:hover:not(:disabled) {
+  background: rgba(129, 140, 248, 0.16);
+  border-color: rgba(129, 140, 248, 0.50);
+  color: #a5b4fc;
+}
+
+.edit-assign-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.edit-shift-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.edit-shift-label {
+  font-size: 0.75rem;
+  color: var(--icell-text-dim);
+  flex-shrink: 0;
+}
+
+.edit-shift-btns {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.edit-shift-btn {
+  appearance: none;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--icell-text-muted);
+  border-radius: 7px;
+  font-size: 0.88rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.edit-shift-btn:hover {
+  background: rgba(255, 255, 255, 0.10);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: var(--icell-text);
+}
+
+.edit-shift-warning {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--icell-danger, #ff3b55);
+  line-height: 1.5;
+}
+
+.edit-assign-input {
+  width: 100%;
+  padding: 0.42rem 0.65rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  background: #13131b;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  color: var(--icell-text-muted);
+}
+
+.edit-assign-input::placeholder {
+  color: var(--icell-text-dim);
+}
+
+.edit-assign-input:focus {
+  outline: none;
+  border-color: rgba(129, 140, 248, 0.40);
+}
+
+/* ── Assign field groups ─────────────────────────────────────────────────── */
+
+.edit-assign-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.edit-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.edit-field-label {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--icell-text-dim);
+}
+
+.edit-field-unit {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: rgba(129, 140, 248, 0.75);
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
+/* ── Custom combobox (EditCombobox) ─────────────────────────────────────── */
+
+.edit-combobox {
+  position: relative;
+}
+
+.edit-combobox-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+
+.edit-combobox-input {
+  flex: 1;
+  min-width: 0;
+  border-radius: 8px 0 0 8px;
+  border: 1px solid rgba(129, 140, 248, 0.2);
+  border-right: none;
+  background: rgba(129, 140, 248, 0.06);
+  color: inherit;
+  font-family: inherit;
+  font-size: 0.82rem;
+  padding: 0.32rem 0.5rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.edit-combobox-input:focus {
+  border-color: rgba(129, 140, 248, 0.5);
+  background: rgba(129, 140, 248, 0.1);
+}
+
+.edit-combobox-clear {
+  appearance: none;
+  border: 1px solid rgba(129, 140, 248, 0.2);
+  border-right: none;
+  background: rgba(129, 140, 248, 0.06);
+  color: var(--icell-text-dim);
+  font-size: 0.75rem;
+  padding: 0 0.4rem;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.edit-combobox-clear:hover {
+  color: #ff3b55;
+  background: rgba(255, 59, 85, 0.08);
+}
+
+.edit-combobox-toggle {
+  appearance: none;
+  border: 1px solid rgba(129, 140, 248, 0.2);
+  border-radius: 0 8px 8px 0;
+  background: rgba(129, 140, 248, 0.06);
+  color: var(--icell-text-dim);
+  font-size: 0.7rem;
+  padding: 0 0.45rem;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+  user-select: none;
+}
+.edit-combobox-toggle:hover {
+  color: rgba(129, 140, 248, 0.9);
+  background: rgba(129, 140, 248, 0.12);
+}
+.edit-combobox-toggle.is-open {
+  color: rgba(129, 140, 248, 0.9);
+  transform: none;
+}
+.edit-combobox-toggle.is-open::after {
+  display: inline-block;
+  transform: rotate(180deg);
+}
+
+.edit-combobox-list {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 3px);
+  left: 0;
+  right: 0;
+  background: #1e1e2e;
+  border: 1px solid rgba(129, 140, 248, 0.25);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.edit-combobox-option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: 0.82rem;
+  padding: 0.38rem 0.65rem;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.edit-combobox-option:hover,
+.edit-combobox-option.is-selected {
+  background: rgba(129, 140, 248, 0.15);
+  color: rgba(129, 140, 248, 0.95);
+}
+
+.edit-combobox-empty {
+  padding: 0.4rem 0.65rem;
+  font-size: 0.78rem;
+  font-style: italic;
+  color: var(--icell-text-dim);
+}
+
+/* ── Overwrite conflict panel ────────────────────────────────────────────── */
+
+.edit-conflict-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid rgba(167, 139, 250, 0.22);
+  background: rgba(167, 139, 250, 0.05);
+}
+
+.edit-conflict-msg {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #a78bfa;
+  line-height: 1.5;
+}
+
+.edit-conflict-btns {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.edit-conflict-btn {
+  appearance: none;
+  border-radius: 7px;
+  padding: 0.32rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.edit-conflict-btn.is-skip {
+  border-color: rgba(129, 140, 248, 0.30);
+  background: rgba(129, 140, 248, 0.08);
+  color: rgba(129, 140, 248, 0.85);
+}
+
+.edit-conflict-btn.is-skip:hover {
+  background: rgba(129, 140, 248, 0.18);
+  color: #a5b4fc;
+}
+
+.edit-conflict-btn.is-overwrite {
+  border-color: rgba(255, 59, 85, 0.28);
+  background: rgba(255, 59, 85, 0.07);
+  color: rgba(255, 59, 85, 0.80);
+}
+
+.edit-conflict-btn.is-overwrite:hover {
+  background: rgba(255, 59, 85, 0.16);
+  color: #ff3b55;
+}
+
+.edit-conflict-btn.is-cancel {
+  border-color: rgba(255, 255, 255, 0.10);
+  background: transparent;
+  color: var(--icell-text-dim);
+}
+
+.edit-conflict-btn.is-cancel:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--icell-text-muted);
+}
+
+/* ── Edit mode: cursor cue on wells ─────────────────────────────────────── */
+
+.plate-well.is-editable {
+  cursor: cell;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 720px) {
+  .plate-grid-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 1020px) {
+  .plate-grid-main {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .plate-details-column {
+    max-height: 480px;
+  }
+}

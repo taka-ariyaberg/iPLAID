@@ -1,0 +1,115 @@
+/* ── Plate type selector ─────────────────────────────────────────────────── */
+
+.plate-type-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.65rem 0.9rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: #13131b;
+}
+
+.plate-type-selector-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--icell-text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.plate-type-selector-select {
+  width: auto;
+  flex: 0 1 220px;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  font-size: 0.88rem;
+}
+
+.plate-type-custom {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.plate-type-custom label {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.84rem;
+  color: var(--icell-text-muted);
+}
+
+.plate-type-custom input {
+  width: 72px;
+  padding: 0.45rem 0.65rem;
+  border-radius: 8px;
+  font-size: 0.88rem;
+}
+
+/* ── Edit layout button ──────────────────────────────────────────────────── */
+
+.edit-mode-btn {
+  appearance: none;
+  margin-left: auto;
+  border: 1px solid rgba(251, 191, 36, 0.28);
+  background: rgba(251, 191, 36, 0.06);
+  color: rgba(251, 191, 36, 0.75);
+  border-radius: 9px;
+  padding: 0.45rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.edit-mode-btn:hover {
+  background: rgba(251, 191, 36, 0.13);
+  border-color: rgba(251, 191, 36, 0.50);
+  color: #fbbf24;
+}
+
+.edit-mode-btn.is-active {
+  background: rgba(251, 191, 36, 0.16);
+  border-color: rgba(251, 191, 36, 0.55);
+  color: #fbbf24;
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.18);
+}
+
+/* ── Plate-too-small warning ─────────────────────────────────────────────── */
+
+.plate-type-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 59, 85, 0.26);
+  background: rgba(255, 59, 85, 0.1);
+  color: #ff3b55;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.plate-type-warning-icon {
+  flex-shrink: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 720px) {
+  .plate-type-selector {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .plate-type-selector-select {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+}

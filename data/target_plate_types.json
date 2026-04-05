@@ -1,0 +1,51 @@
+[
+  {
+    "id": "MWP 6",
+    "label": "6-well plate",
+    "rows": 2,
+    "cols": 3,
+    "wells": 6
+  },
+  {
+    "id": "MWP 12",
+    "label": "12-well plate",
+    "rows": 3,
+    "cols": 4,
+    "wells": 12
+  },
+  {
+    "id": "MWP 24",
+    "label": "24-well plate",
+    "rows": 4,
+    "cols": 6,
+    "wells": 24
+  },
+  {
+    "id": "MWP 48",
+    "label": "48-well plate",
+    "rows": 6,
+    "cols": 8,
+    "wells": 48
+  },
+  {
+    "id": "MWP 96",
+    "label": "96-well plate",
+    "rows": 8,
+    "cols": 12,
+    "wells": 96
+  },
+  {
+    "id": "MWP 384",
+    "label": "384-well plate",
+    "rows": 16,
+    "cols": 24,
+    "wells": 384
+  },
+  {
+    "id": "MWP 1536",
+    "label": "1536-well plate",
+    "rows": 32,
+    "cols": 48,
+    "wells": 1536
+  }
+]

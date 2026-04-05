@@ -1,0 +1,13 @@
+.data-table-panel {
+  padding: 1.2rem;
+}
+
+.table-wrap {
+  overflow: auto;
+  margin-top: 1rem;
+}
+
+td.mono {
+  font-family: var(--icell-font-mono, ui-monospace, monospace);
+  font-size: 0.88em;
+}

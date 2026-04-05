@@ -1,0 +1,11 @@
+.workbench-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.workbench-columns {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}

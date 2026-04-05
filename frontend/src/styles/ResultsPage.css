@@ -1,0 +1,13 @@
+.results-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.results-error-block {
+  padding: 1.2rem;
+}
+
+.results-error-block h3 {
+  margin-top: 0;
+}

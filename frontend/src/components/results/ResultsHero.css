@@ -1,0 +1,48 @@
+.results-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.35rem;
+}
+
+.results-hero-copy {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.results-hero h2 {
+  margin: 0 0 0.3rem;
+  font-size: clamp(1.5rem, 2vw, 2.3rem);
+}
+
+.results-hero-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.results-hero-timestamp {
+  font-size: 0.8rem;
+  color: var(--icell-text-dim);
+}
+
+.results-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+@media (max-width: 720px) {
+  .results-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .results-hero-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}

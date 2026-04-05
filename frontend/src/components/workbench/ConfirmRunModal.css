@@ -1,0 +1,108 @@
+/* ── Confirmation modal ──────────────────────────────────────────────────── */
+
+.confirm-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.confirm-modal {
+  background: #1a1a26;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  padding: 1.75rem;
+  min-width: 360px;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+
+.confirm-modal-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--icell-text);
+}
+
+.confirm-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.confirm-modal-warning {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  background: rgba(251, 191, 36, 0.08);
+  color: #fbbf24;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.confirm-modal-info {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--icell-text-muted);
+  line-height: 1.5;
+}
+
+.confirm-modal-info strong {
+  color: var(--icell-text);
+}
+
+.confirm-modal-footer {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: flex-end;
+}
+
+.confirm-modal-cancel {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  color: var(--icell-text-muted);
+  padding: 0.55rem 1.1rem;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 140ms ease, color 140ms ease;
+}
+
+.confirm-modal-cancel:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+  color: var(--icell-text);
+}
+
+.confirm-modal-confirm {
+  appearance: none;
+  border: 1px solid rgba(129, 140, 248, 0.35);
+  background: rgba(129, 140, 248, 0.12);
+  color: #818cf8;
+  padding: 0.55rem 1.25rem;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.confirm-modal-confirm:hover:not(:disabled) {
+  background: rgba(129, 140, 248, 0.22);
+  border-color: rgba(129, 140, 248, 0.55);
+  color: #a5b4fc;
+}
+
+.confirm-modal-confirm:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
