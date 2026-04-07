@@ -1,5 +1,73 @@
 export type RunStatus = "queued" | "running" | "completed" | "failed";
 
+// ---------------------------------------------------------------------------
+// Design (PLAID_Core) types
+// ---------------------------------------------------------------------------
+
+/** One concentration entry: a µM value plus how many replicates to place */
+export type ConcEntry = {
+  value_um: number;
+  replicates: number;
+};
+
+export type CompoundDef = {
+  name: string;
+  conc_entries: ConcEntry[];
+};
+
+export type ControlDef = {
+  name: string;
+  conc_entries: ConcEntry[];
+};
+
+export type DesignConfig = {
+  plate_rows: number;
+  plate_cols: number;
+  empty_edge: number;
+  compounds: CompoundDef[];
+  controls: ControlDef[];
+  concentrations_on_different_rows: boolean;
+  concentrations_on_different_columns: boolean;
+  replicates_on_same_plate: boolean;
+  replicates_on_different_plates: boolean;
+  allow_empty_wells: boolean;
+  balance_controls_inside_plate: boolean;
+  interconnected_plates: boolean;
+  control_slack: number;
+  force_spread_controls: boolean;
+  force_spread_concentrations: boolean;
+  horizontal_cell_lines: number;
+  vertical_cell_lines: number;
+  timeout_seconds: number;
+  num_threads: number;
+  random_seed: number | null;
+};
+
+export type ValidationResult = {
+  ok: boolean;
+  errors: string[];
+};
+
+export type DesignJob = {
+  jobId: string;
+  jobType: "design";
+  status: RunStatus;
+  createdAt: string;
+  updatedAt: string;
+  startedAt?: string;
+  finishedAt?: string;
+  designConfig: DesignConfig;
+  layoutPreview: LayoutPreview | null;
+  artifacts: ArtifactInfo[];
+  numPlates?: number;
+  numWells?: number;
+  error: { message: string; details: string } | null;
+};
+
+// ---------------------------------------------------------------------------
+// Existing pipeline types (unchanged)
+// ---------------------------------------------------------------------------
+
 export type RunConfig = {
   user_name: string;
   protocol_name: string;

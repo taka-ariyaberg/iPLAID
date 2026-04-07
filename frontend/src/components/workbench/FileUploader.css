@@ -9,6 +9,33 @@
   margin-top: 1rem;
 }
 
+/* Each column stacks its zone + action button */
+.upload-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Thin "or" divider between the upload zone and its action button */
+.upload-col-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0.5rem 0 0.4rem;
+  color: var(--icell-text-dim);
+  font-size: 0.65rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.upload-col-divider::before,
+.upload-col-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--icell-border);
+}
+
 /* ── Upload zone ─────────────────────────────────────────────────────────── */
 
 .upload-zone {
@@ -178,5 +205,196 @@
 
   .uploader-panel {
     padding: 1rem;
+  }
+}
+
+/* ── Action section (Create Meta + Design with PLAID) ─────── */
+
+/* (divider is now .upload-col-divider inside each column) */
+
+/* 2-column grid for the two action buttons — kept for responsive fallback */
+.uploader-action-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem;
+}
+
+/* ── Base action button (shared structure) ───────────────── */
+
+.uploader-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.85rem 0.9rem;
+  border-radius: 18px;
+  border: 1.5px dashed rgba(255, 255, 255, 0.1);
+  background: #111118;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease,
+    transform 140ms ease;
+}
+
+/* Icon box */
+.uploader-action-icon-box {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--icell-text-muted);
+  transition: color 180ms ease, background 180ms ease, border-color 180ms ease;
+}
+
+.uploader-action-icon-box svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Text body */
+.uploader-action-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  min-width: 0;
+}
+
+.uploader-action-title {
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: var(--icell-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.uploader-action-hint {
+  font-size: 0.7rem;
+  color: var(--icell-text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+/* Right badge */
+.uploader-action-right {
+  flex-shrink: 0;
+}
+
+.uploader-action-badge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.03);
+  white-space: nowrap;
+  transition: color 180ms ease, background 180ms ease, border-color 180ms ease;
+}
+
+/* ── Teal variant: Create Meta File ──────────────────────── */
+
+.uploader-action-btn--meta:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.04);
+  transform: translateY(-1px);
+}
+
+.uploader-action-btn--meta:hover .uploader-action-icon-box {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.uploader-action-btn--meta.is-active {
+  border-style: solid;
+  border-color: rgba(52, 211, 153, 0.38);
+  background: rgba(52, 211, 153, 0.04);
+}
+
+.uploader-action-btn--meta.is-active .uploader-action-icon-box {
+  border-color: rgba(52, 211, 153, 0.3);
+  background: rgba(52, 211, 153, 0.10);
+  color: #34d399;
+}
+
+.uploader-action-badge.is-active-meta {
+  color: #34d399;
+  border-color: rgba(52, 211, 153, 0.3);
+  background: rgba(52, 211, 153, 0.08);
+}
+
+/* ── Purple variant: Design with PLAID ──────────────────── */
+
+.uploader-action-btn--design:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.04);
+  transform: translateY(-1px);
+}
+
+.uploader-action-btn--design:hover .uploader-action-icon-box {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.uploader-action-btn--design.is-active {
+  border-style: solid;
+  border-color: rgba(129, 140, 248, 0.38);
+  background: rgba(129, 140, 248, 0.05);
+}
+
+.uploader-action-btn--design.is-active .uploader-action-icon-box {
+  border-color: rgba(129, 140, 248, 0.3);
+  background: rgba(129, 140, 248, 0.10);
+  color: var(--icell-accent);
+}
+
+.uploader-action-badge.is-active-design {
+  color: var(--icell-accent);
+  border-color: rgba(129, 140, 248, 0.3);
+  background: rgba(129, 140, 248, 0.08);
+}
+
+/* ── Loaded state: file produced by this action is active ── */
+
+.uploader-action-btn.is-loaded {
+  border-style: solid;
+  border-color: rgba(52, 211, 153, 0.38);
+  background: rgba(52, 211, 153, 0.04);
+}
+
+.uploader-action-btn.is-loaded .uploader-action-icon-box {
+  border-color: rgba(52, 211, 153, 0.3);
+  background: rgba(52, 211, 153, 0.10);
+  color: #34d399;
+}
+
+.uploader-action-badge.is-loaded-action {
+  color: #34d399;
+  border-color: rgba(52, 211, 153, 0.3);
+  background: rgba(52, 211, 153, 0.08);
+}
+
+@media (max-width: 520px) {
+  .uploader-action-grid {
+    grid-template-columns: 1fr;
+  }
+  .uploader-action-right {
+    display: none;
   }
 }

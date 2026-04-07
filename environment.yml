@@ -1,4 +1,4 @@
-name: iplaid
+name: PLAID
 channels:
   - conda-forge
 dependencies:

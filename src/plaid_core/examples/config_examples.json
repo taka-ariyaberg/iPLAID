@@ -1,0 +1,170 @@
+{
+  "simple_96well": {
+    "description": "Simple 96-well design: 4 compounds (3 conc, 3 reps) + 1 control",
+    "plate_rows": 8,
+    "plate_cols": 12,
+    "empty_edge": 1,
+    "compounds": [
+      {
+        "name": "Compound_A",
+        "concentrations": 3,
+        "replicates": 3,
+        "concentration_names": ["Low", "Medium", "High"]
+      },
+      {
+        "name": "Compound_B",
+        "concentrations": 3,
+        "replicates": 3,
+        "concentration_names": ["Low", "Medium", "High"]
+      },
+      {
+        "name": "Compound_C",
+        "concentrations": 3,
+        "replicates": 3,
+        "concentration_names": ["Low", "Medium", "High"]
+      },
+      {
+        "name": "Compound_D",
+        "concentrations": 3,
+        "replicates": 3,
+        "concentration_names": ["Low", "Medium", "High"]
+      }
+    ],
+    "controls": [
+      {
+        "name": "Positive_Control",
+        "concentration_levels": 1,
+        "replicates": 3,
+        "concentration_names": ["100"]
+      }
+    ],
+    "concentrations_on_different_rows": true,
+    "concentrations_on_different_columns": true,
+    "replicates_on_same_plate": true,
+    "timeout_seconds": 10
+  },
+
+  "dose_response_384well": {
+    "description": "Dose-response on 384-well: 10 compounds (8 conc, 3 reps) + controls",
+    "plate_rows": 16,
+    "plate_cols": 24,
+    "empty_edge": 1,
+    "compounds": [
+      {
+        "name": "Drug_1",
+        "concentrations": 8,
+        "replicates": 3,
+        "concentration_names": ["0.001", "0.01", "0.1", "1", "10", "100", "1000", "10000"]
+      },
+      {
+        "name": "Drug_2",
+        "concentrations": 8,
+        "replicates": 3,
+        "concentration_names": ["0.001", "0.01", "0.1", "1", "10", "100", "1000", "10000"]
+      },
+      {
+        "name": "Drug_3",
+        "concentrations": 8,
+        "replicates": 3,
+        "concentration_names": ["0.001", "0.01", "0.1", "1", "10", "100", "1000", "10000"]
+      },
+      {
+        "name": "Drug_4",
+        "concentrations": 8,
+        "replicates": 3,
+        "concentration_names": ["0.001", "0.01", "0.1", "1", "10", "100", "1000", "10000"]
+      },
+      {
+        "name": "Drug_5",
+        "concentrations": 8,
+        "replicates": 3,
+        "concentration_names": ["0.001", "0.01", "0.1", "1", "10", "100", "1000", "10000"]
+      },
+      {
+        "name": "Drug_6",
+        "concentrations": 8,
+        "replicates": 3,
+        "concentration_names": ["0.001", "0.01", "0.1", "1", "10", "100", "1000", "10000"]
+      },
+      {
+        "name": "Drug_7",
+        "concentrations": 8,
+        "replicates": 3,
+        "concentration_names": ["0.001", "0.01", "0.1", "1", "10", "100", "1000", "10000"]
+      },
+      {
+        "name": "Drug_8",
+        "concentrations": 8,
+        "replicates": 3,
+        "concentration_names": ["0.001", "0.01", "0.1", "1", "10", "100", "1000", "10000"]
+      },
+      {
+        "name": "Drug_9",
+        "concentrations": 8,
+        "replicates": 3,
+        "concentration_names": ["0.001", "0.01", "0.1", "1", "10", "100", "1000", "10000"]
+      },
+      {
+        "name": "Drug_10",
+        "concentrations": 8,
+        "replicates": 3,
+        "concentration_names": ["0.001", "0.01", "0.1", "1", "10", "100", "1000", "10000"]
+      }
+    ],
+    "controls": [
+      {
+        "name": "Positive_Control",
+        "concentration_levels": 1,
+        "replicates": 8,
+        "concentration_names": ["Max_effect"]
+      },
+      {
+        "name": "Negative_Control",
+        "concentration_levels": 1,
+        "replicates": 8,
+        "concentration_names": ["No_effect"]
+      },
+      {
+        "name": "DMSO",
+        "concentration_levels": 1,
+        "replicates": 4,
+        "concentration_names": ["Vehicle"]
+      }
+    ],
+    "replicates_on_different_plates": true,
+    "timeout_seconds": 30,
+    "num_threads": 8
+  },
+
+  "screening_minimal": {
+    "description": "Minimal screening: 1 compound (1 conc, 2 reps) + controls",
+    "plate_rows": 8,
+    "plate_cols": 12,
+    "empty_edge": 1,
+    "compounds": [
+      {
+        "name": "Test_Compound",
+        "concentrations": 1,
+        "replicates": 2,
+        "concentration_names": ["Standard"]
+      }
+    ],
+    "controls": [
+      {
+        "name": "Positive",
+        "concentration_levels": 1,
+        "replicates": 5,
+        "concentration_names": ["100"]
+      },
+      {
+        "name": "Negative",
+        "concentration_levels": 1,
+        "replicates": 5,
+        "concentration_names": ["0"]
+      }
+    ],
+    "concentrations_on_different_rows": false,
+    "concentrations_on_different_columns": false,
+    "timeout_seconds": 5
+  }
+}

@@ -1,4 +1,4 @@
-import type { BootstrapResponse, JobRecord, RunConfig, LayoutPreview } from "../types";
+import type { BootstrapResponse, DesignConfig, DesignJob, JobRecord, LayoutPreview, RunConfig, ValidationResult } from "../types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
@@ -51,5 +51,33 @@ export const apiClient = {
 
   artifactUrl(jobId: string, artifactName: string): string {
     return `${API_BASE_URL}/api/runs/${jobId}/artifacts/${encodeURIComponent(artifactName)}`;
+  },
+
+  // -------------------------------------------------------------------------
+  // Design (PLAID_Core) API
+  // -------------------------------------------------------------------------
+
+  async validateDesign(config: DesignConfig): Promise<ValidationResult> {
+    return request<ValidationResult>("/api/design/validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(config),
+    });
+  },
+
+  async solveDesign(config: DesignConfig): Promise<DesignJob> {
+    return request<DesignJob>("/api/design/solve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(config),
+    });
+  },
+
+  async getDesignJob(jobId: string): Promise<DesignJob> {
+    return request<DesignJob>(`/api/design/jobs/${jobId}`);
+  },
+
+  designArtifactUrl(jobId: string, artifactName: string): string {
+    return `${API_BASE_URL}/api/design/jobs/${jobId}/artifacts/${encodeURIComponent(artifactName)}`;
   },
 };

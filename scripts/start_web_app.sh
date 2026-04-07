@@ -10,6 +10,7 @@ FRONTEND_LOG="${LOG_DIR}/frontend-dev.log"
 BACKEND_URL="http://127.0.0.1:8000/api/health"
 FRONTEND_URL="http://127.0.0.1:5173"
 OPEN_BROWSER=0
+CONDA_ENV_NAME="PLAID"
 
 for arg in "$@"; do
   case "$arg" in
@@ -27,16 +28,30 @@ done
 mkdir -p "$LOG_DIR"
 
 pick_python() {
+  # 1. Prefer the named conda environment
+  if command -v conda >/dev/null 2>&1; then
+    local conda_base
+    conda_base="$(conda info --base 2>/dev/null || true)"
+    local conda_candidate="${conda_base}/envs/${CONDA_ENV_NAME}/bin/python"
+    if [[ -x "$conda_candidate" ]]; then
+      echo "$conda_candidate"
+      return
+    fi
+  fi
+
+  # 2. Active virtual environment
   if [[ -n "${VIRTUAL_ENV:-}" && -x "${VIRTUAL_ENV}/bin/python" ]]; then
     echo "${VIRTUAL_ENV}/bin/python"
     return
   fi
 
+  # 3. Project-local .venv
   if [[ -x "${ROOT_DIR}/.venv/bin/python" ]]; then
     echo "${ROOT_DIR}/.venv/bin/python"
     return
   fi
 
+  # 4. System python3 / python
   if command -v python3 >/dev/null 2>&1; then
     command -v python3
     return
@@ -47,7 +62,7 @@ pick_python() {
     return
   fi
 
-  echo "No Python interpreter found. Create .venv or activate an environment first." >&2
+  echo "No Python interpreter found. Activate a conda/virtual environment first." >&2
   exit 1
 }
 
@@ -112,9 +127,12 @@ trap cleanup INT TERM EXIT
 require_command npm "npm is required. Install Node.js and npm first."
 require_command curl "curl is required to verify service startup."
 
-if ! python_module_installed fastapi || ! python_module_installed uvicorn; then
-  echo "Installing backend dependencies into ${PYTHON_BIN}..."
+if ! python_module_installed fastapi || ! python_module_installed uvicorn \
+   || ! python_module_installed iplaid || ! python_module_installed plaid_core; then
+  echo "Installing backend dependencies..."
   "$PYTHON_BIN" -m pip install -r "${ROOT_DIR}/backend/requirements.txt"
+  echo "Installing iPLAID + PLAID_Core packages (editable)..."
+  "$PYTHON_BIN" -m pip install -e "${ROOT_DIR}" --quiet
 fi
 
 if [[ ! -d "${FRONTEND_DIR}/node_modules" ]]; then

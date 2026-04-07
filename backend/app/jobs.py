@@ -10,6 +10,7 @@ from pathlib import Path
 from src.iplaid.pipeline import run_pipeline_with_inputs
 
 from .preview import build_layout_preview_from_dataframe, build_layout_preview_from_path, dataframe_to_records
+from .designer import run_design, validate_design_config, layout_to_csv_bytes
 
 
 class JobStore:
@@ -212,6 +213,95 @@ class JobStore:
                     },
                 },
             )
+
+    # ------------------------------------------------------------------
+    # Design jobs (PLAID_Core solver)
+    # ------------------------------------------------------------------
+
+    def create_design_job(self, *, design_config: dict) -> dict:
+        """
+        Start a PLAID_Core solver job in a background thread.
+        Returns the initial job status dict.
+        """
+        from .models import DesignConfigModel
+        cfg = DesignConfigModel.model_validate(design_config)
+
+        job_id = uuid.uuid4().hex[:12]
+        job_dir = self.jobs_root / ("design_" + job_id)
+        outputs_dir = job_dir / "outputs"
+        outputs_dir.mkdir(parents=True, exist_ok=True)
+
+        payload = {
+            "jobId": job_id,
+            "jobType": "design",
+            "status": "queued",
+            "createdAt": self._now(),
+            "updatedAt": self._now(),
+            "designConfig": design_config,
+            "layoutPreview": None,
+            "error": None,
+        }
+        self._write_status(job_dir, payload)
+
+        worker = threading.Thread(
+            target=self._run_design_job,
+            kwargs={"job_id": job_id, "job_dir": job_dir, "outputs_dir": outputs_dir, "cfg": cfg},
+            daemon=True,
+        )
+        worker.start()
+        return self.get_design_job(job_id)
+
+    def get_design_job(self, job_id: str) -> dict:
+        job_dir = self.jobs_root / ("design_" + job_id)
+        status_path = job_dir / "status.json"
+        if not status_path.exists():
+            raise FileNotFoundError(job_id)
+        return json.loads(status_path.read_text(encoding="utf-8"))
+
+    def resolve_design_artifact(self, job_id: str, artifact_name: str) -> Path:
+        job_dir = self.jobs_root / ("design_" + job_id)
+        candidate = (job_dir / "outputs" / Path(artifact_name).name).resolve()
+        outputs_dir = (job_dir / "outputs").resolve()
+        if outputs_dir not in candidate.parents or not candidate.exists():
+            raise FileNotFoundError(artifact_name)
+        return candidate
+
+    def _run_design_job(self, *, job_id: str, job_dir: Path, outputs_dir: Path, cfg) -> None:
+        self._update_status(job_dir, {"status": "running", "updatedAt": self._now(), "startedAt": self._now()})
+        try:
+            layout, plate_cfg = run_design(cfg)
+
+            layout_bytes = layout_to_csv_bytes(layout, cfg)
+
+            layout_path = outputs_dir / "designed_layout.csv"
+            layout_path.write_bytes(layout_bytes)
+
+            import pandas as pd, io as _io
+            df = pd.read_csv(_io.BytesIO(layout_bytes))
+            preview = build_layout_preview_from_dataframe(df)
+
+            self._update_status(job_dir, {
+                "status": "completed",
+                "updatedAt": self._now(),
+                "finishedAt": self._now(),
+                "layoutPreview": preview,
+                "artifacts": [
+                    {"name": "designed_layout.csv", "label": "Layout CSV"},
+                ],
+                "numPlates": layout.num_plates,
+                "numWells": len(layout.wells),
+                "error": None,
+            })
+        except Exception as exc:
+            self._update_status(job_dir, {
+                "status": "failed",
+                "updatedAt": self._now(),
+                "finishedAt": self._now(),
+                "error": {
+                    "message": str(exc),
+                    "details": traceback.format_exc(),
+                },
+            })
 
     def _write_status(self, job_dir: Path, payload: dict) -> None:
         with self._lock:

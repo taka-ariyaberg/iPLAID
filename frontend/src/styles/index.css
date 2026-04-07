@@ -21,7 +21,7 @@
   --icell-success: #4ade80;
   --icell-radius-panel: 24px;
   --icell-radius-control: 14px;
-  --icell-radius-tag: 999px;
+  --icell-radius-tag: 6px;
   --icell-shadow-panel: 0 8px 48px rgba(0, 0, 0, 0.55);
 }
 

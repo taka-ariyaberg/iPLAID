@@ -5,8 +5,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from .jobs import JobStore
-from .models import RunConfigModel
+from .models import DesignConfigModel, RunConfigModel
 from .preview import build_layout_preview_from_upload
+from .designer import validate_design_config
 
 
 app = FastAPI(title="PLAID iDOT API", version="0.1.0")
@@ -83,4 +84,51 @@ def download_artifact(job_id: str, artifact_name: str) -> FileResponse:
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=f"Artifact not found: {artifact_name}") from exc
 
+    return FileResponse(path=artifact_path, filename=artifact_path.name)
+
+
+# ---------------------------------------------------------------------------
+# Design (PLAID_Core) endpoints
+# ---------------------------------------------------------------------------
+
+@app.post("/api/design/validate")
+async def validate_design(body: DesignConfigModel) -> dict:
+    """
+    Fast pre-flight validation — no solver call.
+    Returns {"ok": true} or {"ok": false, "errors": [...]}
+    """
+    errors = validate_design_config(body)
+    if errors:
+        return {"ok": False, "errors": errors}
+    return {"ok": True, "errors": []}
+
+
+@app.post("/api/design/solve")
+async def solve_design(body: DesignConfigModel) -> dict:
+    """Start a PLAID_Core solver job. Returns initial job record."""
+    # Quick validation before queuing
+    errors = validate_design_config(body)
+    if errors:
+        raise HTTPException(status_code=422, detail={"errors": errors})
+    try:
+        return job_store.create_design_job(design_config=body.model_dump())
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/api/design/jobs/{job_id}")
+def get_design_job(job_id: str) -> dict:
+    """Poll a solver job status."""
+    try:
+        return job_store.get_design_job(job_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Design job not found: {job_id}") from exc
+
+
+@app.get("/api/design/jobs/{job_id}/artifacts/{artifact_name}")
+def download_design_artifact(job_id: str, artifact_name: str) -> FileResponse:
+    try:
+        artifact_path = job_store.resolve_design_artifact(job_id, artifact_name)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Artifact not found: {artifact_name}") from exc
     return FileResponse(path=artifact_path, filename=artifact_path.name)

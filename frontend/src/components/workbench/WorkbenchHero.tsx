@@ -11,7 +11,7 @@ export function WorkbenchHero({ isReady }: WorkbenchHeroProps) {
         <p className="section-kicker">iPLAID</p>
         <h2>Prepare your plate map and generate run files</h2>
         <p>
-          Upload a layout and metadata CSV, review the well assignments across the target plate,
+          Upload or design a layout and metadata CSV, review the well assignments across the target plate,
           then configure and submit your iPLAID run.
         </p>
       </div>

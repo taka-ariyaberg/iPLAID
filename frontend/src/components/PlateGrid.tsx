@@ -3,6 +3,7 @@ import { Fragment, ReactNode, useEffect, useMemo, useRef, useState } from "react
 import type { LayoutPreview, TargetPlateDefinition } from "../types";
 import "../styles/PlateViewer.css";
 import { DMSO_COLOR, EMPTY_COLOR, getConcColor, getCompoundColor } from "../utils/colorUtils";
+import { downloadPlatePng, downloadPlateSvg, downloadPlateCsv, buildExportFilename } from "../utils/plateExport";
 
 function buildRowLabels(count: number): string[] {
   return Array.from({ length: count }, (_, index) => {
@@ -1059,6 +1060,28 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
     setHighlightedWellIds(alreadyHighlighted ? new Set() : ids);
   }
 
+  // ── Export helpers ─────────────────────────────────────────────────────────
+
+  function buildExportSpec() {
+    return {
+      title,
+      plates: renderedPlates.map((p) => ({
+        plateId: p.plateId,
+        rowLabels: p.rowLabels,
+        columnLabels: p.columnLabels,
+        allWells: p.allWells,
+      })),
+      wellColorLookup,
+      compoundColorLookup,
+      legendGroups,
+      totalEmptyCount,
+      plateDef,
+      concentrationUnit: concentrationUnit ?? "µM",
+      totalWellCount: preview.wellCount,
+      plateCount: preview.plateCount,
+    };
+  }
+
   return (
     <section className="plate-grid-panel">
       <div className="plate-viewer-card panel-surface">
@@ -1225,6 +1248,7 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
               </article>
             ))}
           </div>
+
         </div>
 
         <aside className="plate-details-column">
@@ -1555,6 +1579,22 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
           </div>
         );
       })()}
+
+      <div className="plate-export-actions" data-export-ignore="true">
+        <p className="section-kicker">Export</p>
+        <div className="plate-export-btns">
+          <button type="button" className="plate-export-btn" onClick={() => downloadPlateCsv(preview, buildExportFilename(title, "csv"))} title="Download layout as CSV (re-uploadable format)">
+            <span className="plate-export-icon">⬇</span> CSV
+          </button>
+          <button type="button" className="plate-export-btn" onClick={() => downloadPlateSvg(buildExportSpec(), buildExportFilename(title, "svg"))} title="Download plate figure as SVG">
+            <span className="plate-export-icon">⬇</span> SVG
+          </button>
+          <button type="button" className="plate-export-btn" onClick={() => downloadPlatePng(buildExportSpec(), buildExportFilename(title, "png"))} title="Download plate figure as PNG (2×)">
+            <span className="plate-export-icon">⬇</span> PNG
+          </button>
+        </div>
+      </div>
+
       </div>
     </section>
   );

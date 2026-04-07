@@ -1,0 +1,323 @@
+/* ============================================================
+   MetaCreatorModal.css
+   Styles for the compound-info-file builder modal.
+   Visual language mirrors the DesignMode modal overlay.
+   ============================================================ */
+
+.mcm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.mcm-modal {
+  width: 100%;
+  max-width: 640px;
+  max-height: 88vh;
+  background: #16161e;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 22px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+/* ── Header ──────────────────────────────────────────────── */
+
+.mcm-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.4rem 1.5rem 1.1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  flex-shrink: 0;
+}
+
+.mcm-kicker {
+  margin: 0 0 0.2rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(52, 211, 153, 0.75);
+}
+
+.mcm-title {
+  margin: 0 0 0.3rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--icell-text);
+  line-height: 1.2;
+}
+
+.mcm-subtitle {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--icell-text-dim);
+  line-height: 1.5;
+}
+
+.mcm-close-btn {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent;
+  color: var(--icell-text-dim);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.mcm-close-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+.mcm-close-btn:hover {
+  background: rgba(255, 59, 85, 0.1);
+  border-color: rgba(255, 59, 85, 0.26);
+  color: #ff3b55;
+}
+
+/* ── Column headers ──────────────────────────────────────── */
+
+.mcm-col-headers {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 1.5rem 0.25rem;
+  flex-shrink: 0;
+}
+
+.mcm-dot-spacer {
+  width: 8px;
+  flex-shrink: 0;
+}
+
+.mcm-remove-spacer {
+  width: 28px;
+  flex-shrink: 0;
+}
+
+.mcm-col-lbl {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--icell-text-dim);
+}
+
+.mcm-col-name    { flex: 1; min-width: 0; }
+.mcm-col-stock   { width: 90px; text-align: right; }
+.mcm-col-solvent { width: 90px; }
+
+/* ── Scrollable rows area ────────────────────────────────── */
+
+.mcm-rows {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.3rem 1.5rem 0.3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+}
+
+/* ── Single compound row ─────────────────────────────────── */
+
+.mcm-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.02);
+  transition: border-color 140ms ease;
+}
+
+.mcm-row:hover {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.mcm-row-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.mcm-input {
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--icell-text);
+  font-size: 0.85rem;
+  font-family: inherit;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.mcm-input:focus {
+  outline: none;
+  border-color: rgba(52, 211, 153, 0.4);
+  background: rgba(52, 211, 153, 0.04);
+}
+
+.mcm-input-name    { flex: 1; min-width: 0; }
+.mcm-input-stock   { width: 90px; text-align: right; font-family: "IBM Plex Mono", monospace; }
+.mcm-input-solvent { width: 90px; }
+
+/* Remove button */
+.mcm-remove-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--icell-text-dim);
+  font-size: 17px;
+  cursor: pointer;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: color 0.12s, background 0.12s;
+}
+
+.mcm-remove-btn:hover:not(:disabled) {
+  color: var(--icell-danger);
+  background: rgba(255, 59, 85, 0.1);
+}
+
+.mcm-remove-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+/* ── DMSO read-only footer row ───────────────────────────── */
+
+.mcm-row-dmso {
+  border-color: rgba(251, 191, 36, 0.12);
+  background: rgba(251, 191, 36, 0.03);
+}
+
+.mcm-row-dmso:hover {
+  border-color: rgba(251, 191, 36, 0.18);
+}
+
+.mcm-dmso-cell {
+  color: rgba(251, 191, 36, 0.65);
+  border-color: transparent;
+  background: transparent;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.78rem;
+  display: flex;
+  align-items: center;
+  cursor: default;
+  user-select: none;
+}
+
+/* ── Add row button ──────────────────────────────────────── */
+
+.mcm-add-row-btn {
+  align-self: flex-start;
+  margin: 0.4rem 1.5rem 0.1rem;
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  color: rgba(52, 211, 153, 0.75);
+  background: transparent;
+  border: 1px dashed rgba(52, 211, 153, 0.25);
+  border-radius: 8px;
+  padding: 0.3rem 0.85rem;
+  cursor: pointer;
+  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+.mcm-add-row-btn:hover {
+  color: #34d399;
+  border-color: rgba(52, 211, 153, 0.45);
+  background: rgba(52, 211, 153, 0.05);
+}
+
+/* ── Footer ──────────────────────────────────────────────── */
+
+.mcm-footer {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1.5rem 1.2rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.mcm-compound-count {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--icell-text-muted);
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.mcm-count-note {
+  font-weight: 400;
+  color: var(--icell-text-dim);
+}
+
+.mcm-footer-actions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.mcm-btn {
+  padding: 0.5rem 1.1rem;
+  border-radius: 999px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: background 140ms ease, border-color 140ms ease, transform 120ms ease;
+}
+
+.mcm-btn-ghost {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  color: var(--icell-text-muted);
+}
+
+.mcm-btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.mcm-btn-primary {
+  border: none;
+  background: #34d399;
+  color: #0a1a11;
+}
+
+.mcm-btn-primary:hover:not(:disabled) {
+  background: #2ec98c;
+  transform: translateY(-1px);
+}
+
+.mcm-btn-primary:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}

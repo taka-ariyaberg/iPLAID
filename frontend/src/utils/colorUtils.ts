@@ -27,6 +27,16 @@ export function getCompoundColor(index: number, total: number): string {
 }
 
 /**
+ * Returns a vivid HSL colour for compound at insertion index `index`.
+ * Uses golden-angle spacing (137.508°) so that adding a new compound
+ * never shifts the colours already assigned to existing compounds.
+ */
+export function getStableCompoundColor(index: number): string {
+  const hue = (30 + index * 137.508) % 360;
+  return `hsl(${hue.toFixed(1)}, 88%, 62%)`;
+}
+
+/**
  * Returns the well fill colour for a concentration at a given rank within its group.
  * baseColor must be an hsl() string as returned by getCompoundColor.
  * Alpha: 0.60 (rank 0 = lowest conc) → 1.00 (rank total-1 = highest conc).

@@ -40,12 +40,5 @@
     "rows": 16,
     "cols": 24,
     "wells": 384
-  },
-  {
-    "id": "MWP 1536",
-    "label": "1536-well plate",
-    "rows": 32,
-    "cols": 48,
-    "wells": 1536
   }
 ]

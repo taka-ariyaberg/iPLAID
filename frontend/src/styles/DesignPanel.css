@@ -1,0 +1,213 @@
+/* ============================================================
+   DesignPanel.css
+   Styles for the unified PLAID_Core layout-designer panel.
+   Rendered in place of PlateViewerPanel when design is active.
+   ============================================================ */
+
+/* ── Outer panel ─────────────────────────────────────────── */
+
+.dp-panel {
+  padding: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* ── Header ──────────────────────────────────────────────── */
+
+.dp-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--icell-border);
+}
+
+.dp-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--icell-text);
+  line-height: 1.3;
+}
+
+.dp-cancel-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent;
+  color: var(--icell-text-dim);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.dp-cancel-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+.dp-cancel-btn:hover {
+  background: rgba(255, 59, 85, 0.10);
+  border-color: rgba(255, 59, 85, 0.26);
+  color: #ff3b55;
+}
+
+/* ── Three-column body ───────────────────────────────────── */
+
+.dp-body {
+  display: grid;
+  grid-template-columns: 240px 1fr 320px;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+/* Left column: plate geometry + solver settings */
+.dp-col-config {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 76vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+  padding-right: 2px;
+}
+
+.dp-col-config::-webkit-scrollbar {
+  width: 4px;
+}
+
+.dp-col-config::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dp-col-config::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.10);
+  border-radius: 4px;
+}
+
+/* Centre column: plate visualiser + status */
+.dp-col-viewer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+/* Right column: compounds + controls + generate */
+.dp-col-compounds {
+  height: 76vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Solver status bar ───────────────────────────────────── */
+
+.dp-solver-status {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.55rem 0.9rem;
+  border-radius: var(--icell-radius-control);
+  background: var(--icell-panel-soft);
+  border: 1px solid var(--icell-border);
+}
+
+/* Status pills */
+.dp-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 0.3rem 0.75rem;
+  border-radius: 6px;
+  letter-spacing: 0.03em;
+  border: 1px solid transparent;
+}
+
+.dp-pill-queued {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--icell-text-muted);
+  border-color: var(--icell-border);
+}
+
+.dp-pill-running {
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.25);
+}
+
+.dp-pill-done {
+  background: rgba(74, 222, 128, 0.10);
+  color: var(--icell-success);
+  border-color: rgba(74, 222, 128, 0.25);
+}
+
+.dp-pill-failed {
+  background: rgba(255, 59, 85, 0.10);
+  color: var(--icell-danger);
+  border-color: rgba(255, 59, 85, 0.25);
+}
+
+/* Animated spinner inside running pill */
+.dp-spinner {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid rgba(251, 191, 36, 0.3);
+  border-top-color: #fbbf24;
+  border-radius: 50%;
+  animation: dp-spin 0.75s linear infinite;
+}
+
+@keyframes dp-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* "Use this Layout" button */
+.dp-use-btn {
+  margin-left: auto;
+  padding: 0.55rem 1.3rem;
+  border-radius: 6px;
+  border: none;
+  background: var(--icell-accent);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: background 140ms ease, transform 120ms ease;
+}
+
+.dp-use-btn:hover {
+  background: #4f46e5;
+  transform: translateY(-1px);
+}
+
+/* ── Responsive ──────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+  .dp-body {
+    grid-template-columns: 220px 1fr 280px;
+  }
+}
+
+@media (max-width: 860px) {
+  .dp-body {
+    grid-template-columns: 1fr;
+  }
+
+  .dp-col-config,
+  .dp-col-compounds {
+    max-height: none;
+  }
+}
