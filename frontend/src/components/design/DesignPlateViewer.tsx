@@ -1,42 +1,22 @@
 /**
- * DesignPlateViewer — interactive well-region selector (Context 1).
+ * DesignPlateViewer — read-only well-region display (Context 1).
  *
- * Selection interactions:
- *   Click               — toggle single well (clears others unless Cmd held)
- *   Cmd+Click           — toggle single well without clearing others
- *   Shift+Click         — extend rectangular range from anchor
- *   Shift+Drag          — rubber-band ADD to usable region
- *   Opt+Click           — deselect single well
- *   Opt+Drag            — rubber-band REMOVE from usable region
- *   Cmd+A               — select all currently usable wells (respects empty_edge)
- *   Cmd+D               — deselect all selected wells
- *   Cmd+Shift+A         — select every well (full plate)
- *   Cmd+Shift+D         — deselect every well
- *
- * The selected set drives `empty_edge` (largest uniform symmetric edge that
- * fits inside the bounding box of the selection).  The value is reported via
- * `onEmptyEdgeChange`.  When a solved layout is provided it is displayed in
+ * The usable wells are determined entirely by `emptyEdge` (supplied from the
+ * external input field).  When a solved layout is provided it is displayed in
  * read-only mode using the existing colour system.
  */
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { LayoutPreview } from "../../types";
 import { getCompoundColor, getConcColor, DMSO_COLOR } from "../../utils/colorUtils";
 
 // Accent colour for selection glow (matches iCELL cyan)
 const ACCENT = "#00b8ff";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-type WellCoord = { row: number; col: number };
-
 interface DesignPlateViewerProps {
   rows: number;
   cols: number;
   emptyEdge: number;
-  onEmptyEdgeChange: (edge: number) => void;
   /** If provided, display solved layout (read-only) */
   solvedPreview?: LayoutPreview | null;
   /** Total wells needed (shown in badge) */
@@ -62,57 +42,7 @@ function wellName(r: number, c: number): string {
 }
 
 // ---------------------------------------------------------------------------
-// Geometry helpers
-// ---------------------------------------------------------------------------
-
-function rectWells(r1: number, c1: number, r2: number, c2: number): Set<string> {
-  const minR = Math.min(r1, r2);
-  const maxR = Math.max(r1, r2);
-  const minC = Math.min(c1, c2);
-  const maxC = Math.max(c1, c2);
-  const s = new Set<string>();
-  for (let r = minR; r <= maxR; r++) {
-    for (let c = minC; c <= maxC; c++) {
-      s.add(`${r},${c}`);
-    }
-  }
-  return s;
-}
-
-function edgeWells(rows: number, cols: number, edge: number): Set<string> {
-  if (edge <= 0) return new Set();
-  const s = new Set<string>();
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      if (r < edge || r >= rows - edge || c < edge || c >= cols - edge) {
-        s.add(`${r},${c}`);
-      }
-    }
-  }
-  return s;
-}
-
-/** Compute symmetric empty_edge from a set of selected wells. */
-function computeEdgeFromSelection(selected: Set<string>, rows: number, cols: number): number {
-  if (selected.size === 0) return 0;
-  let minR = rows, maxR = -1, minC = cols, maxC = -1;
-  selected.forEach((key) => {
-    const [r, c] = key.split(",").map(Number);
-    if (r < minR) minR = r;
-    if (r > maxR) maxR = r;
-    if (c < minC) minC = c;
-    if (c > maxC) maxC = c;
-  });
-  // edge = minimum distance from plate boundary
-  const topEdge = minR;
-  const botEdge = rows - 1 - maxR;
-  const leftEdge = minC;
-  const rightEdge = cols - 1 - maxC;
-  return Math.min(topEdge, botEdge, leftEdge, rightEdge);
-}
-
-// ---------------------------------------------------------------------------
-// Build initial selection from edge
+// Build selection from edge
 // ---------------------------------------------------------------------------
 
 function selectionFromEdge(rows: number, cols: number, edge: number): Set<string> {
@@ -173,7 +103,6 @@ export function DesignPlateViewer({
   rows,
   cols,
   emptyEdge,
-  onEmptyEdgeChange,
   solvedPreview,
   wellsNeeded,
 }: DesignPlateViewerProps) {
@@ -201,209 +130,15 @@ export function DesignPlateViewer({
   const [hoveredWell, setHoveredWell] = useState<string | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
-  // Keep a ref to the current emptyEdge so the dimension-change effect can
-  // read it without adding it to the dependency array (which would cause it
-  // to also fire when only the edge changes — that's handled separately below).
-  const emptyEdgeRef = useRef(emptyEdge);
-  emptyEdgeRef.current = emptyEdge;
-
-  // When the plate dimensions change (plate-type switch), rebuild the selection
-  // from whatever the current emptyEdge is.  This preserves the glow: if
-  // emptyEdge is 0, selectionFromEdge returns ALL wells so they all glow.
-  const lastComputedEdgeRef = useRef<number>(emptyEdge);
+  // Rebuild selection whenever dimensions or edge change.
   useEffect(() => {
-    const edge = emptyEdgeRef.current;
-    const next = selectionFromEdge(rows, cols, edge);
-    lastComputedEdgeRef.current = edge;
-    setSelected(next);
-    onEmptyEdgeChange(edge);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, cols]);
-
-  // Sync selection when emptyEdge is changed externally (user typed a value).
-  // We compare against the edge computed from the current selection to avoid
-  // a feedback loop when the selection itself drives an edge update.
-  useEffect(() => {
-    if (emptyEdge === lastComputedEdgeRef.current) return; // came from our own selection change
-    const next = selectionFromEdge(rows, cols, emptyEdge);
-    lastComputedEdgeRef.current = emptyEdge;
-    setSelected(next);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [emptyEdge]);
-
-  // Mirror selected in a ref so global event handlers always read fresh state
-  const selectedRef = useRef(selected);
-  selectedRef.current = selected;
-
-  // Drag state — hasMoved distinguishes a click from a drag
-  const dragRef = useRef<{
-    active: boolean;
-    mode: "add" | "remove";
-    anchor: WellCoord;
-    hasMoved: boolean;
-  } | null>(null);
-  const [dragOverlay, setDragOverlay] = useState<Set<string>>(new Set());
-  // Track current drag endpoint separately so pointer-capture works across cells
-  const dragCurrentRef = useRef<WellCoord | null>(null);
+    setSelected(selectionFromEdge(rows, cols, emptyEdge));
+  }, [rows, cols, emptyEdge]);
 
   // Solved layout colour map (memoised)
   const colorMap = useMemo(
     () => (solvedPreview ? buildCompoundColorMap(solvedPreview) : new Map()),
     [solvedPreview]
-  );
-
-  // ---------------------------------------------------------------------------
-  // Publish edge when selection changes
-  // ---------------------------------------------------------------------------
-
-  const publishEdge = useCallback(
-    (next: Set<string>) => {
-      const newEdge = computeEdgeFromSelection(next, rows, cols);
-      onEmptyEdgeChange(newEdge);
-    },
-    [rows, cols, onEmptyEdgeChange]
-  );
-
-  const updateSelected = useCallback(
-    (next: Set<string>) => {
-      setSelected(next);
-      const edge = computeEdgeFromSelection(next, rows, cols);
-      lastComputedEdgeRef.current = edge; // mark as our own change so the emptyEdge effect ignores it
-      publishEdge(next);
-    },
-    [publishEdge, rows, cols]
-  );
-
-  // ---------------------------------------------------------------------------
-  // Keyboard shortcuts
-  // ---------------------------------------------------------------------------
-
-  useEffect(() => {
-    if (solvedPreview) return;
-    function onKey(e: KeyboardEvent) {
-      // Let inputs handle their own Cmd+A / Cmd+D
-      const target = e.target as HTMLElement;
-      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return;
-      const cmd = e.metaKey || e.ctrlKey;
-      if (!cmd) return;
-
-      if (e.key === "a") {
-        // Cmd+A — select all wells
-        e.preventDefault();
-        updateSelected(rectWells(0, 0, rows - 1, cols - 1));
-      } else if (e.key === "d") {
-        // Cmd+D — deselect all
-        e.preventDefault();
-        updateSelected(new Set());
-      }
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [rows, cols, solvedPreview, updateSelected]);
-
-  // Global pointerup: commits the drag even when released outside the grid.
-  // The individual-well onPointerUp handles the normal case; this catches
-  // releases in gaps or outside the viewer entirely.
-  useEffect(() => {
-    if (solvedPreview) return;
-    function onWindowPointerUp() {
-      if (!dragRef.current?.active) return;
-      const drag = dragRef.current;
-      const last = dragCurrentRef.current ?? drag.anchor;
-      const current = selectedRef.current;
-      if (!drag.hasMoved) {
-        const key = `${drag.anchor.row},${drag.anchor.col}`;
-        const next = new Set(current);
-        if (next.has(key)) next.delete(key);
-        else next.add(key);
-        updateSelected(next);
-      } else {
-        const rect = rectWells(drag.anchor.row, drag.anchor.col, last.row, last.col);
-        const next = new Set(current);
-        if (drag.mode === "remove") {
-          rect.forEach((k) => next.delete(k));
-        } else {
-          rect.forEach((k) => next.add(k));
-        }
-        updateSelected(next);
-      }
-      dragRef.current = null;
-      dragCurrentRef.current = null;
-      setDragOverlay(new Set());
-    }
-    window.addEventListener("pointerup", onWindowPointerUp);
-    return () => window.removeEventListener("pointerup", onWindowPointerUp);
-  }, [solvedPreview, updateSelected]);
-
-  // ---------------------------------------------------------------------------
-  // Well interaction handlers
-  // ---------------------------------------------------------------------------
-  //
-  //   Click (no movement)   → toggle single well
-  //   Drag                  → ADD the dragged rectangle to existing selection
-  //   Opt+Drag              → REMOVE the dragged rectangle from existing selection
-  //   Cmd+A                 → select all wells
-  //   Cmd+D                 → deselect all wells
-
-  const handlePointerDown = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>, r: number, c: number) => {
-      if (solvedPreview) return;
-      e.preventDefault();
-      // NOTE: do NOT call setPointerCapture here — that would lock all pointer
-      // events to the first well and break drag-over-multiple-wells behaviour.
-      const mode: "add" | "remove" = e.altKey ? "remove" : "add";
-      dragRef.current = { active: true, mode, anchor: { row: r, col: c }, hasMoved: false };
-      dragCurrentRef.current = { row: r, col: c };
-      setDragOverlay(new Set([`${r},${c}`]));
-    },
-    [solvedPreview]
-  );
-
-  const handlePointerMove = useCallback(
-    (_e: React.PointerEvent<HTMLDivElement>, r: number, c: number) => {
-      if (!dragRef.current?.active) return;
-      const drag = dragRef.current;
-      const prev = dragCurrentRef.current;
-      // Mark as moved only when we enter a different cell
-      if (prev && (prev.row !== r || prev.col !== c)) {
-        drag.hasMoved = true;
-      }
-      dragCurrentRef.current = { row: r, col: c };
-      const rect = rectWells(drag.anchor.row, drag.anchor.col, r, c);
-      setDragOverlay(rect);
-    },
-    []
-  );
-
-  const handlePointerUp = useCallback(
-    (_e: React.PointerEvent<HTMLDivElement>, r: number, c: number) => {
-      if (!dragRef.current?.active) return;
-      const drag = dragRef.current;
-
-      if (!drag.hasMoved) {
-        // ── Click: toggle the single well ──────────────────────────────────
-        const key = `${drag.anchor.row},${drag.anchor.col}`;
-        const next = new Set(selected);
-        if (next.has(key)) next.delete(key);
-        else next.add(key);
-        updateSelected(next);
-      } else {
-        // ── Drag: operate on the bounding rectangle ─────────────────────
-        const rect = rectWells(drag.anchor.row, drag.anchor.col, r, c);
-        const next = new Set(selected);
-        if (drag.mode === "remove") {
-          rect.forEach((k) => next.delete(k));
-        } else {
-          rect.forEach((k) => next.add(k));
-        }
-        updateSelected(next);
-      }
-
-      dragRef.current = null;
-      dragCurrentRef.current = null;
-      setDragOverlay(new Set());
-    },
-    [selected, updateSelected]
   );
 
   // ---------------------------------------------------------------------------
@@ -492,9 +227,6 @@ export function DesignPlateViewer({
                 const key = `${r},${c}`;
                 // In solved mode there is no selection glow — the compound colours speak for themselves.
                 const isSelected = !solvedPreview && selected.has(key);
-                const inOverlay = dragOverlay.has(key);
-                const drag = dragRef.current;
-                const overlayMode = drag?.mode ?? "add";
 
                 // Colour in solved mode
                 let solvedColor: string | null = null;
@@ -506,10 +238,6 @@ export function DesignPlateViewer({
                 let bg = "rgba(255,255,255,0.04)";
                 if (solvedColor) {
                   bg = solvedColor;
-                } else if (inOverlay) {
-                  bg = overlayMode === "remove"
-                    ? "rgba(255,59,85,0.30)"
-                    : `${ACCENT}55`;
                 } else if (isSelected) {
                   bg = `${ACCENT}26`;
                 }
@@ -518,11 +246,7 @@ export function DesignPlateViewer({
                 let boxShadow = "none";
                 let borderColor = "rgba(255,255,255,0.12)";
                 let borderWidth = 1;
-                if (inOverlay) {
-                  const col = overlayMode === "remove" ? "#ff3b55" : ACCENT;
-                  boxShadow = `inset 0 0 6px ${col}66, 0 0 8px ${col}44`;
-                  borderColor = col;
-                } else if (isSelected) {
+                if (isSelected) {
                   if (solvedColor) {
                     boxShadow = `inset 0 0 8px ${solvedColor}, 0 0 12px ${solvedColor}`;
                     borderColor = solvedColor;
@@ -549,15 +273,9 @@ export function DesignPlateViewer({
                       border: `${borderWidth}px solid ${borderColor}`,
                       boxShadow,
                       transition: "box-shadow 0.1s ease-out, border-color 0.1s ease-out",
-                      cursor: solvedPreview ? "default" : "pointer",
+                      cursor: "default",
                       position: "relative",
                     }}
-                    onPointerDown={(e) => handlePointerDown(e, r, c)}
-                    onPointerMove={(e) => {
-                      handlePointerMove(e, r, c);
-                      setTooltipPos({ x: e.clientX + 16, y: e.clientY + 16 });
-                    }}
-                    onPointerUp={(e) => handlePointerUp(e, r, c)}
                     onMouseEnter={() => setHoveredWell(wn)}
                     onMouseMove={(e) => setTooltipPos({ x: e.clientX + 16, y: e.clientY + 16 })}
                     onMouseLeave={() => setHoveredWell(null)}

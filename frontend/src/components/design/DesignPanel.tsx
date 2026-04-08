@@ -7,7 +7,7 @@
  * can treat the result exactly like a manually-uploaded CSV pair.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CompoundPanel } from "./CompoundPanel";
 import { DesignPlateViewer } from "./DesignPlateViewer";
 import { PlateConfigPanel } from "./PlateConfigPanel";
@@ -119,11 +119,6 @@ export function DesignPanel({ bootstrap, onComplete, onCancel, onError }: Design
       (designConfig.plate_cols - 2 * designConfig.empty_edge)
   );
 
-  const handleEmptyEdgeChange = useCallback(
-    (edge: number) => setDesignConfig((dc) => ({ ...dc, empty_edge: edge })),
-    []
-  );
-
   async function handleGenerate() {
     if (!canGenerate) return;
     setIsGenerating(true);
@@ -203,7 +198,6 @@ export function DesignPanel({ bootstrap, onComplete, onCancel, onError }: Design
             rows={designConfig.plate_rows}
             cols={designConfig.plate_cols}
             emptyEdge={designConfig.empty_edge}
-            onEmptyEdgeChange={handleEmptyEdgeChange}
             solvedPreview={solvedPreview}
             wellsNeeded={totalWellsNeeded(designConfig.compounds, designConfig.controls)}
           />

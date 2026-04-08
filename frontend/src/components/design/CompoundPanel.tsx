@@ -250,8 +250,8 @@ export function CompoundPanel({
                   width: `${Math.min(100, pct)}%`,
                   background:
                     pct > 100 ? "var(--icell-danger)" :
-                    pct > 90  ? "var(--icell-warning)" :
-                                "var(--icell-accent)",
+                    pct > 90  ? "#facc15" :
+                                "var(--icell-success)",
                 }}
               />
             </div>
