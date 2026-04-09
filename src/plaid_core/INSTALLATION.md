@@ -1,122 +1,78 @@
-# Installation & Setup
+# PLAID_Core Installation
 
-## Prerequisites
+This file documents the solver-specific setup for the bundled `plaid_core` package.
 
-### 1. MiniZinc Installation (Required)
+If you are setting up the full iPLAID repository, use the root [README.md](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/README.md) as the primary guide.
 
-PLAID_Core requires MiniZinc compiler and Gecode solver.
+## In this repository
 
-#### macOS
+`plaid_core` is already included under `src/plaid_core/`. Install from the repo root:
+
 ```bash
-# Download from https://www.minizinc.org/
-# Or via Homebrew (if available)
+pip install -e /path/to/iPLAID
+```
+
+You do not need a separate clone or copy step.
+
+## Python requirement
+
+- Python 3.11+
+
+## MiniZinc requirement
+
+MiniZinc is required for solving layouts.
+
+### macOS
+
+```bash
 brew install minizinc
 ```
 
-**Verify installation:**
-```bash
-minizinc --version
-```
+or install from `https://www.minizinc.org/`.
 
-#### Linux (Ubuntu/Debian)
+### Ubuntu / Debian
+
 ```bash
 sudo apt-get install minizinc
 ```
 
-#### Windows
-Download installer from https://www.minizinc.org/
+### Windows
 
-**Add to PATH if needed:**
-- macOS: `/Applications/MiniZincIDE.app/Contents/Resources/minizinc`
-- Linux: Usually automatic via package manager
-- Windows: Usually automatic via installer
-
-### 2. Python Installation
-
-Requires Python 3.9 or later.
-
-### 3. Install PLAID_Core Package
-
-#### Option A: From Local Directory (Development)
-```bash
-cd path/to/PLAID_Core
-pip install -e .
-```
-
-#### Option B: Direct Requirements Installation
-```bash
-pip install -r requirements.txt
-```
-
-**Or individual packages:**
-```bash
-pip install pandas>=1.3.0
-pip install pydantic>=1.9.0
-```
+Install from `https://www.minizinc.org/`.
 
 ## Verification
 
-**Test MiniZinc:**
 ```bash
+python -c "import plaid_core; print('plaid_core import OK')"
 minizinc --version
-minizinc --solvers  # Should show 'Gecode' in list
+minizinc --solvers
 ```
 
-**Test Python package:**
-```python
-from plaid_core import PlateDesigner, PlateConfig
-print("PLAID_Core imported successfully")
+`minizinc --solvers` should list an available solver such as Gecode.
+
+## macOS PATH note
+
+If MiniZinc is installed through the app bundle and not on your shell `PATH`, the code also checks:
+
+```text
+/Applications/MiniZincIDE.app/Contents/Resources/minizinc
 ```
 
-**Run example:**
+If needed, add it manually:
+
 ```bash
-python examples/basic_usage.py
+export PATH="/Applications/MiniZincIDE.app/Contents/Resources:$PATH"
 ```
 
 ## Troubleshooting
 
-### "minizinc: command not found"
-- **macOS:** Add to `.zshrc` or `.bash_profile`:
-  ```bash
-  export PATH="/Applications/MiniZincIDE.app/Contents/Resources:$PATH"
-  ```
-  Then: `source ~/.zshrc`
+| Symptom | Fix |
+|---------|-----|
+| `minizinc: command not found` | Install MiniZinc and verify it is on `PATH` |
+| `MiniZinc not found` from Python | Verify `minizinc --version`; on macOS, check the app-bundle path |
+| `Gecode solver not found` | Reinstall MiniZinc with bundled solvers or choose another available solver |
+| `ModuleNotFoundError: plaid_core` | Reinstall from repo root with `pip install -e .` |
 
-- **Linux:** Reinstall: `sudo apt-get install --reinstall minizinc`
+## Historical note
 
-- **Windows:** Reinstall and ensure "Add to PATH" option is checked
-
-### "Gecode solver not found"
-- Ensure MiniZinc was installed with Gecode
-- Verify: `minizinc --solvers` shows Gecode
-
-### Import errors
-- Verify Python 3.9+: `python --version`
-- Reinstall package: `pip install -e . --force-reinstall`
-
-## Integration with iPLAID
-
-`plaid_core` is already bundled inside iPLAID at `src/plaid_core/` and declared as a package in the root `pyproject.toml`. No separate copy or install step is needed — running `pip install -e .` from the iPLAID project root installs both `iplaid` and `plaid_core` together.
-
-```bash
-conda activate PLAID           # the project conda env
-pip install -e .               # installs src/iplaid + src/plaid_core
-```
-
-**Import:**
-```python
-from plaid_core import PlateDesigner, PlateConfig
-```
-
-## Environment Variables (Optional)
-
-Set MiniZinc path explicitly if not in PATH:
-```bash
-export MINIZINC_PATH="/path/to/minizinc"
-```
-
-Or in Python:
-```python
-import os
-os.environ['MINIZINC_PATH'] = '/path/to/minizinc'
-```
+Older docs in this folder may refer to copying `PLAID_Core` into another project. That was part of an earlier integration workflow and is not the recommended setup for this repository.

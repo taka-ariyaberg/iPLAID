@@ -2,330 +2,354 @@
 
 **iDOT Protocol Layout & Assay Integration Dispatcher**
 
-Convert compound screening layouts into iDOT Assay Studio dispense protocols — with automated stock selection, DMSO normalization, source plate preparation recipes, and an interactive web workbench.
+iPLAID converts screening layouts into iDOT Assay Studio dispense outputs. It can:
 
----
+- use an existing target-layout CSV,
+- design a new layout with PLAID_Core,
+- match compounds to stock concentrations,
+- normalize DMSO volumes,
+- generate iDOT dispense and liquids CSVs,
+- generate source-plate preparation instructions.
 
-## What it does
+This README is the main operator guide for setting up and running the project on a new machine.
 
-| Step | Description |
-|------|-------------|
-| **Layout design** | Optionally auto-generate a balanced target-plate layout using the PLAID_Core constraint solver |
-| **Stock selection** | Matches each compound/concentration to the best available stock vial |
-| **DMSO normalisation** | Adjusts top-up volumes so every target well stays within `max_dmso_pct` |
-| **Protocol generation** | Writes iDOT-compatible dispense and liquids CSV files |
-| **Source plate prep** | Calculates dilution recipes for every stock well, including volumes and overage |
+## What is in this repo
 
-### Output files (per run)
+- `src/iplaid/`: the pipeline that turns a layout + metadata into iDOT outputs.
+- `src/plaid_core/`: the bundled plate-layout design engine used by the web designer.
+- `backend/`: FastAPI backend for the web workbench.
+- `frontend/`: React + Vite frontend for the web workbench.
 
-```
-outputs/results/
-  {User}_{Protocol}_protocol_{timestamp}.csv          ← iDOT dispense protocol
-  {User}_{Protocol}_liquids_{timestamp}.csv           ← compound → source well map
-  {User}_{Protocol}_source_plate_prep_{timestamp}.txt ← dilution recipes
-```
+## System requirements
 
----
+### Required for all usage modes
 
-## Quick start
+- Python 3.11+
+- `pip`
+- `pandas`, `numpy`, and other Python dependencies installed through this repo
 
-### 1. Environment setup (first time only)
+### Required for the web workbench
+
+- Node.js + npm
+
+### Required for "Design with PLAID"
+
+- MiniZinc 2.6+ with a working solver such as Gecode
+
+If MiniZinc is missing, the upload-based workflow still works, but the PLAID designer will fail.
+
+## Quick install
+
+### Option A: Conda
 
 ```bash
 conda env create -f environment.yml
 conda activate PLAID
-pip install -e .           # installs src/iplaid and src/plaid_core in editable mode
+pip install -e .
 ```
 
-### 2. Prepare inputs
+### Option B: Virtual environment
 
-| File | Required columns |
-|------|------------------|
-| `inputs/layouts/Layout_1.csv` | `Compound`, `Concentration`, `Target Plate`, `Target Well` |
-| `inputs/meta/cmpd_info.csv` | `cmpdname`, `highest_stock_mM`, `solvent` |
+```bash
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -e .
+pip install -r backend/requirements.txt
+```
 
-### 3. Configure
+### Frontend dependencies
 
-Edit `config/config.json`. At minimum set:
+```bash
+cd frontend
+npm install
+cd ..
+```
+
+### MiniZinc
+
+Install MiniZinc separately if you want to use the layout designer.
+
+- macOS: `brew install minizinc` or install from `https://www.minizinc.org/`
+- Ubuntu/Debian: `sudo apt-get install minizinc`
+- Windows: install from `https://www.minizinc.org/`
+
+Verify:
+
+```bash
+minizinc --version
+minizinc --solvers
+```
+
+On macOS, if MiniZinc was installed through the app bundle and is not on `PATH`, the code also checks `/Applications/MiniZincIDE.app/Contents/Resources/minizinc`.
+
+## First-run verification
+
+Run these checks before trying a real workflow:
+
+```bash
+python -c "import iplaid, plaid_core; print('Python packages OK')"
+cd frontend && npm run build && cd ..
+```
+
+If you want to use the designer:
+
+```bash
+minizinc --version
+```
+
+## Input files
+
+### Layout CSV
+
+The pipeline expects a target-layout CSV with these columns:
+
+| Column | Meaning |
+|--------|---------|
+| `plateID` or target-plate column | Target plate identifier |
+| `well` or target-well column | Target well identifier |
+| compound column | Compound name |
+| concentration column | Target concentration in µM |
+
+In practice, the loaders normalize common layout column names. The examples under `inputs/layouts/` show the accepted shape.
+
+### Metadata CSV
+
+The metadata CSV must contain:
+
+| Column | Meaning |
+|--------|---------|
+| `cmpdname` | Compound name; must match the layout compound names exactly |
+| `highest_stock_mM` | Highest available stock concentration in mM |
+| `solvent` | Solvent name, usually `DMSO` |
+
+DMSO must also exist as a row with `highest_stock_mM = 0`. The in-app metadata creator adds this automatically.
+
+## Configuration
+
+The root pipeline uses `config/config.json`. The full template is in [config/config.template.json](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/config/config.template.json).
+
+Minimal example:
 
 ```json
 {
   "user_name": "YourName",
   "protocol_name": "MyExperiment",
   "layout_file": "Layout_1.csv",
-  "meta_file": "cmpd_info.csv"
+  "meta_file": "cmpd_info.csv",
+  "sourceplate_type": "S.100 Plate",
+  "target_plate_type": "MWP 384",
+  "working_volume_ul": 40,
+  "max_dmso_pct": 0.1,
+  "source_prep_overage_pct": 0.3,
+  "min_pipette_volume_uL": 1.0,
+  "dilution_solvent": "DMSO",
+  "source_well_fill_pct": 0.7,
+  "standard_prep_volume_uL": 1000.0,
+  "output_timestamp_format": "%Y%m%d_%H%M%S"
 }
 ```
 
-See `config/config.template.json` for every available parameter.
+Important fields:
 
-### 4. Run
+| Key | Description |
+|-----|-------------|
+| `layout_file` | File name under `inputs/layouts/` for direct pipeline runs |
+| `meta_file` | File name under `inputs/meta/` for direct pipeline runs |
+| `sourceplate_type` | Must match a key in `data/source_plate_specs.json` |
+| `target_plate_type` | Must match an entry in `data/target_plate_types.json` |
+| `working_volume_ul` | Assay working volume in µL |
+| `max_dmso_pct` | Maximum allowed DMSO fraction |
 
-| Method | Command |
-|--------|---------|
-| Notebook (recommended) | `jupyter notebook notebooks/01_plaid_idot_pipeline.ipynb` |
-| Script | `python scripts/run_pipeline.py` |
-| Python API | `from src.iplaid.pipeline import run_pipeline; run_pipeline(project_root=".", include_source_prep=True)` |
+## Running iPLAID
 
----
+### 1. Direct Python pipeline
 
-## Web workbench
+This is the canonical non-web entrypoint:
 
-An interactive browser UI for designing or uploading layouts, building or uploading compound metadata, visualising plate maps, running the pipeline, and downloading results.
+```python
+from src.iplaid.pipeline import run_pipeline
 
-### Install dependencies (first time only)
-
-```bash
-conda activate PLAID      # or activate your venv
-pip install -e .           # installs src/iplaid + src/plaid_core
-pip install -r backend/requirements.txt
-cd frontend && npm install && cd ..
+run_pipeline(project_root=".", include_source_prep=True)
 ```
 
-### Launch
+This reads:
+
+- `config/config.json`
+- `inputs/layouts/<layout_file>`
+- `inputs/meta/<meta_file>`
+
+and writes outputs to:
+
+- `outputs/results/`
+
+### 2. Notebook
 
 ```bash
-bash scripts/start_web_app.sh           # starts backend + frontend
-bash scripts/start_web_app.sh --open    # same, also opens browser
+jupyter lab
 ```
 
-The script checks that all Python packages (`fastapi`, `uvicorn`, `iplaid`, `plaid_core`) and Node modules are installed, installs any that are missing, then starts both services. Press `Ctrl+C` to stop everything.
+Then open:
+
+- `notebooks/01_plaid_idot_pipeline.ipynb`
+
+### 3. Web workbench
+
+Launch both backend and frontend:
+
+```bash
+bash scripts/start_web_app.sh
+```
+
+On macOS you can also auto-open the browser:
+
+```bash
+bash scripts/start_web_app.sh --open
+```
+
+The launcher script:
+
+- finds a usable Python interpreter,
+- installs missing backend Python packages if needed,
+- installs the repo in editable mode if needed,
+- installs frontend dependencies if `frontend/node_modules` is missing,
+- starts backend on `127.0.0.1:8000`,
+- starts frontend on `127.0.0.1:5173`,
+- writes logs to `outputs/logs/`.
+
+Services:
 
 | Service | URL |
 |---------|-----|
-| Frontend | http://127.0.0.1:5173 |
-| Backend API | http://127.0.0.1:8000 |
-| Logs | `outputs/logs/backend-dev.log`, `outputs/logs/frontend-dev.log` |
+| Frontend | `http://127.0.0.1:5173` |
+| Backend API | `http://127.0.0.1:8000` |
+| Backend health | `http://127.0.0.1:8000/api/health` |
 
-### Workbench workflow
+Logs:
 
-#### Option A — Upload existing files
-1. Drop a **layout CSV** into the Layout upload zone (turns green when loaded)
-2. Drop or build a **metadata CSV** in the Metadata column (upload or use the built-in creator)
-3. Inspect the rendered plate map in the centre viewer
-4. Set pipeline parameters in the Run Configuration panel and click **Run**
-5. Review and download results on the Results page
+- `outputs/logs/backend-dev.log`
+- `outputs/logs/frontend-dev.log`
 
-#### Option B — Design with PLAID
-1. Click **Design with PLAID** in the Layout column to open the constraint-solver designer
-2. Add compounds and controls with their target concentrations (µM) and replicate counts
-3. Configure plate geometry and solver settings
-4. Click **Generate Layout** — the solver produces a balanced multi-plate assignment
-5. Click **Use this layout** to return to the workbench with the designed layout loaded
-6. The layout upload zone stays idle; the **Design with PLAID** button turns green to signal the active source
-7. Provide a **metadata CSV** separately (upload or use the creator) — it must contain stock concentrations (mM) and solvents, which cannot be inferred from the design step
+### Frontend API base URL override
 
-> **Visual cue system:** In the Input panel, exactly one control per column lights up green at a time — the upload zone if the file came from a CSV upload, or the action button (Design / Create Meta) if the file was produced in the UI. The hero status badge shows **Ready to run** as soon as both a layout and a metadata file are present, regardless of their source.
+The frontend uses `http://localhost:8000` by default. To point it at another backend, set:
 
----
-
-## Metadata CSV format
-
-The metadata CSV (`cmpd_info.csv`) is the same format whether uploaded directly or built with the in-app **Create Meta File** tool.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `cmpdname` | string | Compound name — must match names used in the layout CSV exactly |
-| `highest_stock_mM` | float ≥ 0 | Highest available stock concentration in mM |
-| `solvent` | string | Stock solvent (typically `DMSO`) |
-
-DMSO must always appear as its own row with `highest_stock_mM = 0`. The **Create Meta File** tool adds this row automatically.
-
----
-
-## Configuration reference
-
-### Core identifiers
-
-| Key | Type | Description |
-|-----|------|-------------|
-| `user_name` | string | Appears in output filenames |
-| `protocol_name` | string | Appears in output filenames |
-| `layout_file` | string | Layout CSV filename inside `inputs/layouts/` |
-| `meta_file` | string | Compound metadata CSV filename inside `inputs/meta/` |
-
-### Plate types
-
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `sourceplate_type` | string | `"S.100 Plate"` | Source plate model; must match a key in `data/source_plate_specs.json` |
-| `target_plate_type` | string | `"MWP 384"` | Target plate model |
-
-### Volume & DMSO
-
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `working_volume_ul` | number | `40` | Assay volume per target well (µL) |
-| `max_dmso_pct` | number | `0.1` | Maximum DMSO fraction in target well (0.0 – 1.0) |
-
-### Source plate preparation
-
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `source_prep_overage_pct` | number | `0.30` | Extra volume factor to account for pipetting loss |
-| `min_pipette_volume_uL` | number | `1.0` | Minimum pipettable volume; steps below this are flagged |
-| `dilution_solvent` | string | `"DMSO"` | Diluent used for stock dilutions |
-| `source_well_fill_pct` | number | `0.70` | Fraction of source well capacity to target |
-| `standard_prep_volume_uL` | number | `1000.0` | Total prep volume before overage is added |
-
-### Output
-
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `output_timestamp_format` | string | `"%Y%m%d_%H%M%S"` | Python `strftime` format for file timestamps |
-
----
-
-## Project structure
-
-```
-iPLAID/
-├── config/
-│   ├── config.json                    # Active configuration (edit this)
-│   └── config.template.json           # All parameters with descriptions
-├── data/
-│   ├── source_plate_specs.json        # Plate capacity & geometry definitions
-│   └── target_plate_types.json        # Target plate geometry definitions
-├── inputs/
-│   ├── layouts/                        # Layout CSVs go here
-│   └── meta/                          # Compound metadata CSVs go here
-├── notebooks/
-│   └── 01_plaid_idot_pipeline.ipynb   # Interactive notebook entry point
-├── outputs/
-│   ├── logs/                          # Runtime logs
-│   └── results/                       # Generated protocols & prep files
-├── scripts/
-│   ├── run_pipeline.py                # CLI entry point
-│   └── start_web_app.sh               # Web app launcher (backend + frontend)
-├── src/
-│   ├── iplaid/                        # iPLAID pipeline library
-│   │   ├── pipeline.py                # Main orchestrator
-│   │   ├── loaders.py                 # CSV ingestion & normalisation
-│   │   ├── calculations.py            # Stock selection & volume math
-│   │   ├── normalization.py           # DMSO normalisation logic
-│   │   ├── output.py                  # Protocol building & file writing
-│   │   ├── validators.py              # Post-run validation checks
-│   │   ├── validators_preflight.py    # Pre-run validation checks
-│   │   ├── source_plate_prep.py       # Source plate dilution recipes
-│   │   └── log_parser.py             # iDOT export log parsing
-│   └── plaid_core/                    # Constraint-solver layout designer
-│       ├── designer.py                # PlateDesigner entry point
-│       ├── solver.py                  # MiniZinc model interface
-│       ├── config.py                  # PlateConfig, Compound, Control dataclasses
-│       ├── validators.py              # Pre-solve constraint checks
-│       └── output.py                  # Layout → DataFrame / CSV
-├── backend/                           # FastAPI backend for the web app
-│   ├── app/
-│   │   ├── main.py                    # API routes (runs + design endpoints)
-│   │   ├── jobs.py                    # Background job runner (pipeline + solver)
-│   │   ├── designer.py                # DesignConfigModel → PLAID_Core bridge
-│   │   ├── models.py                  # Pydantic request/response models
-│   │   └── preview.py                 # Plate preview generation
-│   └── requirements.txt
-├── frontend/                          # React 19 + TypeScript + Vite web UI
-│   └── src/
-│       ├── components/
-│       │   ├── design/                # Design-mode panels (CompoundPanel, PlateConfigPanel, etc.)
-│       │   ├── workbench/             # Input panel, plate viewer, run config, modals
-│       │   └── results/               # Results viewer
-│       ├── pages/                     # WorkbenchPage, ResultsPage
-│       ├── services/                  # apiClient (typed fetch wrappers)
-│       ├── utils/                     # colorUtils, etc.
-│       └── styles/
-├── tests/                             # Pytest unit tests
-├── environment.yml                    # Conda environment
-├── pyproject.toml                     # Python package metadata (iplaid + plaid_core)
-└── README.md
+```bash
+VITE_API_BASE_URL=http://your-host:8000
 ```
 
----
+before running the frontend, or put it in a frontend `.env` file if you are managing the dev server manually.
+
+## Web workbench workflow
+
+### Upload workflow
+
+1. Upload a layout CSV.
+2. Upload a metadata CSV, or build one with the metadata creator.
+3. Inspect the previewed plate map.
+4. Adjust run settings.
+5. Submit the run.
+6. Review results and download artifacts.
+
+### Design workflow
+
+1. Open **Design with PLAID**.
+2. Add compounds and controls, with concentration entries and replicate counts.
+3. Configure plate geometry and solver options.
+4. Generate a layout.
+5. Accept the designed layout back into the workbench.
+6. Provide metadata separately, because the design step does not know stock concentrations or solvents.
+7. Run the pipeline.
+
+## Outputs
+
+### Direct pipeline outputs
+
+Direct pipeline runs write to `outputs/results/`:
+
+```text
+outputs/results/
+  {User}_{Protocol}_protocol_{timestamp}.csv
+  {User}_{Protocol}_liquids_{timestamp}.csv
+  {User}_{Protocol}_source_plate_prep_{timestamp}.txt
+```
+
+### Web-app outputs
+
+Web-app jobs are isolated under:
+
+```text
+backend/data/jobs/<job_id>/
+```
+
+with uploaded files, status JSON, and generated artifacts under that job directory.
+
+The UI downloads result files through the backend artifact endpoints rather than from `outputs/results/`.
 
 ## Backend API
 
-All endpoints are served at `http://127.0.0.1:8000`.
+All endpoints are served by the FastAPI app in [backend/app/main.py](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/backend/app/main.py).
 
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/api/health` | Liveness check |
-| `GET` | `/api/bootstrap` | Plate specs, config template, source plate definitions |
-| `POST` | `/api/layouts/preview` | Parse an uploaded layout CSV and return a well map |
-| `POST` | `/api/runs` | Submit a pipeline run (layout + metadata + config) |
-| `GET` | `/api/runs/{job_id}` | Poll run status and retrieve results |
-| `GET` | `/api/runs/{job_id}/artifacts/{name}` | Download a result file |
+| `GET` | `/api/bootstrap` | Config template, source plate specs, target plate definitions |
+| `POST` | `/api/layouts/preview` | Parse and preview an uploaded layout |
+| `POST` | `/api/runs` | Submit a pipeline run |
+| `GET` | `/api/runs/{job_id}` | Poll a pipeline run |
+| `GET` | `/api/runs/{job_id}/artifacts/{name}` | Download a pipeline artifact |
 | `POST` | `/api/design/validate` | Validate a design config without solving |
-| `POST` | `/api/design/solve` | Start a PLAID_Core solver job (async, returns job ID) |
-| `GET` | `/api/design/jobs/{job_id}` | Poll solver job status and layout preview |
-| `GET` | `/api/design/jobs/{job_id}/artifacts/{name}` | Download the designed layout CSV |
+| `POST` | `/api/design/solve` | Start a design solve job |
+| `GET` | `/api/design/jobs/{job_id}` | Poll a design job |
+| `GET` | `/api/design/jobs/{job_id}/artifacts/{name}` | Download a design artifact |
 
----
+## Project structure
 
-## Common workflows
-
-### New compound set
-
-1. Drop your layout CSV into `inputs/layouts/` and your metadata CSV into `inputs/meta/`
-2. Set `layout_file` and `meta_file` in `config/config.json`
-3. Run the notebook or script
-
-### Tighten DMSO budget
-
-```json
-{ "max_dmso_pct": 0.05 }
+```text
+iPLAID/
+├── backend/
+├── config/
+├── data/
+├── frontend/
+├── inputs/
+├── notebooks/
+├── outputs/
+├── scripts/
+├── src/
+│   ├── iplaid/
+│   └── plaid_core/
+├── tests/
+├── environment.yml
+├── pyproject.toml
+└── README.md
 ```
 
-### Change target plate geometry
+Key files:
 
-```json
-{ "target_plate_type": "MWP 96" }
-```
-
-Available plate types are listed in `data/source_plate_specs.json` and `data/target_plate_types.json`.
-
----
+- [src/iplaid/pipeline.py](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/src/iplaid/pipeline.py): direct pipeline entrypoint
+- [scripts/start_web_app.sh](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/scripts/start_web_app.sh): launch script for frontend + backend
+- [backend/app/main.py](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/backend/app/main.py): API routes
+- [frontend/src/services/apiClient.ts](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/frontend/src/services/apiClient.ts): frontend API wiring
 
 ## Troubleshooting
 
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `Liquid not found in stock` | Compound missing from metadata or name mismatch | Check `cmpdname` in `cmpd_info.csv` matches the layout CSV exactly |
-| DMSO % violation in output | Requested concentration exceeds solubility ceiling | Reduce target concentration or increase `max_dmso_pct` |
-| `outputs/results/` not found | Directory does not exist | `mkdir -p outputs/results` |
-| `config.json` parse error | Invalid JSON | Validate at [jsonlint.com](https://jsonlint.com) |
-| `plaid_core` import error | Package not installed | Run `pip install -e .` from project root |
-| Solver timeout | Design is too complex for the time budget | Increase `timeout_seconds` in the designer or reduce compound/replicate count |
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| `ModuleNotFoundError: iplaid` or `plaid_core` | Repo not installed in environment | Run `pip install -e .` from repo root |
+| `minizinc` not found | MiniZinc not installed or not on `PATH` | Install MiniZinc and verify `minizinc --version` |
+| Designer fails but upload workflow works | MiniZinc missing or solver unavailable | Install MiniZinc/Gecode; upload workflow does not require the solver |
+| Frontend loads but API calls fail | Backend not running or wrong API base URL | Check `http://127.0.0.1:8000/api/health`; verify `VITE_API_BASE_URL` |
+| Layout preview or run fails with missing compounds | Layout names do not match metadata names | Ensure `cmpdname` matches exactly |
+| Pre-flight validation fails | Requested concentrations are infeasible under the DMSO limit | Reduce target concentration or adjust config after reviewing feasibility |
+| Solver timeout | Design is too constrained or too large | Increase `timeout_seconds`, reduce replicate count, or relax constraints |
+| Port already in use | Another process is using 5173 or 8000 | Stop the conflicting process or launch the services manually on different ports |
 
----
+## Notes on bundled PLAID_Core docs
 
-## Modules
+`src/plaid_core/` is already bundled inside this repo. You do not need to copy it into iPLAID or install it as a separate standalone project when working from this repository.
 
-### src/iplaid
-
-| Module | Role |
-|--------|------|
-| `pipeline.py` | Top-level orchestrator; calls all modules in order |
-| `io.py` | Config loading, path resolution, plate spec lookup |
-| `loaders.py` | Layout & metadata CSV ingestion and column normalisation |
-| `calculations.py` | Stock selection heuristics, volume-from-stock math |
-| `normalization.py` | DMSO top-up calculation and volume cap enforcement |
-| `output.py` | Dispense row building, protocol CSV + liquids CSV writing |
-| `validators.py` | Post-generation validation (DMSO limits, export file integrity) |
-| `validators_preflight.py` | Pre-run checks (missing compounds, impossible concentrations) |
-| `source_plate_prep.py` | Dilution recipe generation for source plate setup |
-| `log_parser.py` | Parse iDOT export logs for dispense traceability |
-
-### src/plaid_core
-
-| Module | Role |
-|--------|------|
-| `designer.py` | `PlateDesigner` — public entry point; wraps solver and output |
-| `solver.py` | MiniZinc model interface; translates `PlateConfig` to constraints |
-| `config.py` | `PlateConfig`, `Compound`, `Control` dataclasses |
-| `validators.py` | Pre-solve constraint checks (well count, replicate feasibility) |
-| `output.py` | Converts solved layout to DataFrame / CSV / JSON |
-
----
+The bundled package docs are intended to explain the design engine itself. For actual setup and operation of this repository, use this root README first.
 
 ## License
 
-MIT — see [LICENSE.md](LICENSE.md)
-
+MIT. See [LICENSE.md](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/LICENSE.md).

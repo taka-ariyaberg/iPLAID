@@ -212,11 +212,19 @@
 
 /* (divider is now .upload-col-divider inside each column) */
 
-/* 2-column grid for the two action buttons — kept for responsive fallback */
-.uploader-action-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+.uploader-action-shell {
+  display: flex;
+  align-items: center;
   gap: 0.85rem;
+  padding: 0.85rem 0.9rem;
+  border-radius: 18px;
+  border: 1.5px dashed rgba(255, 255, 255, 0.1);
+  background: #111118;
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease,
+    transform 140ms ease;
 }
 
 /* ── Base action button (shared structure) ───────────────── */
@@ -225,17 +233,32 @@
   display: flex;
   align-items: center;
   gap: 0.65rem;
-  padding: 0.85rem 0.9rem;
-  border-radius: 18px;
-  border: 1.5px dashed rgba(255, 255, 255, 0.1);
-  background: #111118;
+  padding: 0;
+  border: none;
+  background: transparent;
   cursor: pointer;
   text-align: left;
-  transition:
-    border-color 180ms ease,
-    background 180ms ease,
-    box-shadow 180ms ease,
-    transform 140ms ease;
+  flex: 1;
+}
+
+.uploader-action-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.uploader-action-btn:focus-visible {
+  outline: none;
+}
+
+.uploader-action-shell:has(.uploader-action-btn:focus-visible) {
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.12);
+}
+
+.uploader-action-shell .upload-zone-clear {
+  flex-shrink: 0;
+  align-self: center;
 }
 
 /* Icon box */
@@ -285,11 +308,6 @@
   line-height: 1.3;
 }
 
-/* Right badge */
-.uploader-action-right {
-  flex-shrink: 0;
-}
-
 .uploader-action-badge {
   font-size: 0.62rem;
   font-weight: 700;
@@ -304,28 +322,28 @@
   transition: color 180ms ease, background 180ms ease, border-color 180ms ease;
 }
 
-/* ── Teal variant: Create Meta File ──────────────────────── */
+/* ── Teal variant: Create Metadata ───────────────────────── */
 
-.uploader-action-btn--meta:hover {
+.uploader-action-shell--meta:hover {
   border-color: rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.03);
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.04);
   transform: translateY(-1px);
 }
 
-.uploader-action-btn--meta:hover .uploader-action-icon-box {
+.uploader-action-shell--meta:hover .uploader-action-icon-box {
   border-color: rgba(255, 255, 255, 0.15);
   background: rgba(255, 255, 255, 0.06);
   color: rgba(255, 255, 255, 0.65);
 }
 
-.uploader-action-btn--meta.is-active {
+.uploader-action-shell--meta.is-active {
   border-style: solid;
   border-color: rgba(52, 211, 153, 0.38);
   background: rgba(52, 211, 153, 0.04);
 }
 
-.uploader-action-btn--meta.is-active .uploader-action-icon-box {
+.uploader-action-shell--meta.is-active .uploader-action-icon-box {
   border-color: rgba(52, 211, 153, 0.3);
   background: rgba(52, 211, 153, 0.10);
   color: #34d399;
@@ -339,26 +357,26 @@
 
 /* ── Purple variant: Design with PLAID ──────────────────── */
 
-.uploader-action-btn--design:hover {
+.uploader-action-shell--design:hover {
   border-color: rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.03);
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.04);
   transform: translateY(-1px);
 }
 
-.uploader-action-btn--design:hover .uploader-action-icon-box {
+.uploader-action-shell--design:hover .uploader-action-icon-box {
   border-color: rgba(255, 255, 255, 0.15);
   background: rgba(255, 255, 255, 0.06);
   color: rgba(255, 255, 255, 0.65);
 }
 
-.uploader-action-btn--design.is-active {
+.uploader-action-shell--design.is-active {
   border-style: solid;
   border-color: rgba(129, 140, 248, 0.38);
   background: rgba(129, 140, 248, 0.05);
 }
 
-.uploader-action-btn--design.is-active .uploader-action-icon-box {
+.uploader-action-shell--design.is-active .uploader-action-icon-box {
   border-color: rgba(129, 140, 248, 0.3);
   background: rgba(129, 140, 248, 0.10);
   color: var(--icell-accent);
@@ -372,13 +390,13 @@
 
 /* ── Loaded state: file produced by this action is active ── */
 
-.uploader-action-btn.is-loaded {
+.uploader-action-shell.is-loaded {
   border-style: solid;
   border-color: rgba(52, 211, 153, 0.38);
   background: rgba(52, 211, 153, 0.04);
 }
 
-.uploader-action-btn.is-loaded .uploader-action-icon-box {
+.uploader-action-shell.is-loaded .uploader-action-icon-box {
   border-color: rgba(52, 211, 153, 0.3);
   background: rgba(52, 211, 153, 0.10);
   color: #34d399;
@@ -391,10 +409,7 @@
 }
 
 @media (max-width: 520px) {
-  .uploader-action-grid {
-    grid-template-columns: 1fr;
-  }
-  .uploader-action-right {
+  .uploader-action-badge {
     display: none;
   }
 }

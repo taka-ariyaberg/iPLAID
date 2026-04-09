@@ -1,4 +1,5 @@
 import type { BootstrapResponse, RunConfig } from "../../types";
+import { SpinInput } from "./SpinInput";
 import "./RunConfigPanel.css";
 
 const numericFields: Array<keyof RunConfig> = [
@@ -18,6 +19,31 @@ type RunConfigPanelProps = {
   onConfigChange: (field: keyof RunConfig, value: string) => void;
   onProcess: () => void;
 };
+
+type NumericFieldProps = {
+  label: string;
+  field: typeof numericFields[number];
+  value: number;
+  min: number;
+  step: number;
+  onConfigChange: (field: keyof RunConfig, value: string) => void;
+};
+
+function NumericField({ label, field, value, min, step, onConfigChange }: NumericFieldProps) {
+  return (
+    <label>
+      <span>{label}</span>
+      <SpinInput
+        value={value}
+        min={min}
+        step={step}
+        className="design-num-input"
+        onChange={(nextValue) => onConfigChange(field, String(nextValue))}
+        onCommit={(nextValue) => onConfigChange(field, String(nextValue))}
+      />
+    </label>
+  );
+}
 
 export function RunConfigPanel({
   config,
@@ -39,57 +65,95 @@ export function RunConfigPanel({
       <div className="config-form">
         <label>
           <span>User name</span>
-          <input value={config.user_name} onChange={(e) => onConfigChange("user_name", e.target.value)} />
+          <input
+            value={config.user_name}
+            onChange={(e) => onConfigChange("user_name", e.target.value)}
+          />
         </label>
 
         <label>
           <span>Protocol name</span>
-          <input value={config.protocol_name} onChange={(e) => onConfigChange("protocol_name", e.target.value)} />
+          <input
+            value={config.protocol_name}
+            onChange={(e) => onConfigChange("protocol_name", e.target.value)}
+          />
         </label>
 
         <label>
           <span>Source plate</span>
-          <select value={config.sourceplate_type} onChange={(e) => onConfigChange("sourceplate_type", e.target.value)}>
-            {bootstrap.sourcePlateTypes.map((pt) => (
-              <option key={pt} value={pt}>{pt}</option>
+          <select
+            value={config.sourceplate_type}
+            onChange={(e) => onConfigChange("sourceplate_type", e.target.value)}
+          >
+            {bootstrap.sourcePlateTypes.map((plateType) => (
+              <option key={plateType} value={plateType}>
+                {plateType}
+              </option>
             ))}
           </select>
         </label>
 
         <label>
-          <span>Working volume (µL)</span>
-          <input type="number" min="0" step="0.1" value={config.working_volume_ul} onChange={(e) => onConfigChange("working_volume_ul", e.target.value)} />
-        </label>
-
-        <label>
-          <span>Max DMSO (%)</span>
-          <input type="number" min="0" step="0.01" value={config.max_dmso_pct} onChange={(e) => onConfigChange("max_dmso_pct", e.target.value)} />
-        </label>
-
-        <label>
-          <span>Prep overage (%)</span>
-          <input type="number" min="0" step="0.01" value={config.source_prep_overage_pct} onChange={(e) => onConfigChange("source_prep_overage_pct", e.target.value)} />
-        </label>
-
-        <label>
-          <span>Minimum pipette volume (µL)</span>
-          <input type="number" min="0" step="0.1" value={config.min_pipette_volume_uL} onChange={(e) => onConfigChange("min_pipette_volume_uL", e.target.value)} />
-        </label>
-
-        <label>
           <span>Dilution solvent</span>
-          <input value={config.dilution_solvent} onChange={(e) => onConfigChange("dilution_solvent", e.target.value)} />
+          <input
+            value={config.dilution_solvent}
+            onChange={(e) => onConfigChange("dilution_solvent", e.target.value)}
+          />
         </label>
 
-        <label>
-          <span>Source well fill (%)</span>
-          <input type="number" min="0" step="0.01" value={config.source_well_fill_pct} onChange={(e) => onConfigChange("source_well_fill_pct", e.target.value)} />
-        </label>
+        <NumericField
+          label="Working volume (uL)"
+          field="working_volume_ul"
+          value={config.working_volume_ul}
+          min={0}
+          step={0.1}
+          onConfigChange={onConfigChange}
+        />
 
-        <label>
-          <span>Standard prep volume (µL)</span>
-          <input type="number" min="0" step="1" value={config.standard_prep_volume_uL} onChange={(e) => onConfigChange("standard_prep_volume_uL", e.target.value)} />
-        </label>
+        <NumericField
+          label="Max DMSO (%)"
+          field="max_dmso_pct"
+          value={config.max_dmso_pct}
+          min={0}
+          step={0.01}
+          onConfigChange={onConfigChange}
+        />
+
+        <NumericField
+          label="Prep overage (%)"
+          field="source_prep_overage_pct"
+          value={config.source_prep_overage_pct}
+          min={0}
+          step={0.01}
+          onConfigChange={onConfigChange}
+        />
+
+        <NumericField
+          label="Minimum pipette volume (uL)"
+          field="min_pipette_volume_uL"
+          value={config.min_pipette_volume_uL}
+          min={0}
+          step={0.1}
+          onConfigChange={onConfigChange}
+        />
+
+        <NumericField
+          label="Source well fill (%)"
+          field="source_well_fill_pct"
+          value={config.source_well_fill_pct}
+          min={0}
+          step={0.01}
+          onConfigChange={onConfigChange}
+        />
+
+        <NumericField
+          label="Standard prep volume (uL)"
+          field="standard_prep_volume_uL"
+          value={config.standard_prep_volume_uL}
+          min={0}
+          step={1}
+          onConfigChange={onConfigChange}
+        />
       </div>
 
       <button
@@ -97,7 +161,7 @@ export function RunConfigPanel({
         disabled={!canProcess || processing}
         onClick={onProcess}
       >
-        {processing ? "Submitting…" : "Run iPLAID"}
+        {processing ? "Submitting..." : "Run iPLAID"}
       </button>
     </section>
   );

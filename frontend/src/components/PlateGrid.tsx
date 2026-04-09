@@ -627,7 +627,7 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
   function copySelected() {
     const filledSelected = selectedWellIds
       .map((id) => selectionLookup.get(id))
-      .filter((w): w is WellRecord => Boolean(w) && w.isFilled);
+      .filter((w): w is WellRecord => w !== undefined && w.isFilled);
     if (filledSelected.length === 0) return;
 
     // Excel-like: offsets are relative to the bounding-box top-left (minRow, minCol),

@@ -2,29 +2,33 @@
  * MetaCreatorModal — interactive builder for the `cmpd_info.csv` metadata file.
  *
  * Columns written:  cmpdname, highest_stock_mM, solvent
- * DMSO is always appended as the last row (shown as a locked read-only footer row).
  * "Use as Meta File" creates a File object and passes it back via `onApply`.
  * "Download CSV" also writes it to disk for archiving.
  */
 
-import React, { useState } from "react";
-import { getStableCompoundColor, DMSO_COLOR } from "../../utils/colorUtils";
+import React, { useMemo, useState } from "react";
+import { SpinInput } from "../design/SpinInput";
+import { getStableCompoundColor } from "../../utils/colorUtils";
 import "./MetaCreatorModal.css";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-interface CompoundRow {
+export interface CompoundRow {
   id: number;
   name: string;
   stock_mM: string;
+  stockUnit: StockUnit;
   solvent: string;
 }
 
+type StockUnit = "M" | "mM" | "uM" | "nM";
+
 interface MetaCreatorModalProps {
+  initialRows?: CompoundRow[];
   onClose: () => void;
-  onApply: (file: File) => void;
+  onApply: (file: File, rows: CompoundRow[]) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -36,8 +40,16 @@ const mkRow = (): CompoundRow => ({
   id: _nextId++,
   name: "",
   stock_mM: "",
+  stockUnit: "mM",
   solvent: "DMSO",
 });
+
+const STOCK_UNIT_FACTORS: Record<StockUnit, number> = {
+  M: 1000,
+  mM: 1,
+  uM: 0.001,
+  nM: 0.000001,
+};
 
 /** Wrap a CSV field in quotes if it contains a comma, quote, or newline. */
 function csvField(v: string): string {
@@ -50,13 +62,12 @@ function buildCSV(rows: CompoundRow[]): string {
   const dataLines: string[] = [];
   for (const r of rows) {
     const name = r.name.trim();
-    if (!name || name.toUpperCase() === "DMSO" || seen.has(name)) continue;
+    if (!name || seen.has(name)) continue;
     seen.add(name);
-    const stock = r.stock_mM === "" ? "0" : String(Math.max(0, Number(r.stock_mM)));
+    const stockValue = r.stock_mM === "" ? 0 : Math.max(0, Number(r.stock_mM));
+    const stock = String(stockValue * STOCK_UNIT_FACTORS[r.stockUnit]);
     dataLines.push(`${csvField(name)},${stock},${csvField(r.solvent || "DMSO")}`);
   }
-  // DMSO control row is always last
-  dataLines.push("DMSO,0,DMSO");
   return [header, ...dataLines].join("\n");
 }
 
@@ -64,8 +75,15 @@ function buildCSV(rows: CompoundRow[]): string {
 // Component
 // ---------------------------------------------------------------------------
 
-export function MetaCreatorModal({ onClose, onApply }: MetaCreatorModalProps) {
-  const [rows, setRows] = useState<CompoundRow[]>([mkRow()]);
+export function MetaCreatorModal({ initialRows, onClose, onApply }: MetaCreatorModalProps) {
+  const seededRows = useMemo(() => {
+    if (!initialRows || initialRows.length === 0) return [mkRow()];
+    const nextSeed = initialRows.map((row) => ({ ...row, stockUnit: row.stockUnit ?? "mM" }));
+    const maxId = nextSeed.reduce((max, row) => Math.max(max, row.id), 0);
+    _nextId = Math.max(_nextId, maxId + 1);
+    return nextSeed;
+  }, [initialRows]);
+  const [rows, setRows] = useState<CompoundRow[]>(seededRows);
 
   const addRow = () => setRows((r) => [...r, mkRow()]);
 
@@ -78,7 +96,7 @@ export function MetaCreatorModal({ onClose, onApply }: MetaCreatorModalProps) {
   const validCount = rows.filter(
     (r, i, arr) => {
       const name = r.name.trim();
-      return name && name.toUpperCase() !== "DMSO" && arr.findIndex((x) => x.name.trim() === name) === i;
+      return name && arr.findIndex((x) => x.name.trim() === name) === i;
     }
   ).length;
 
@@ -86,7 +104,7 @@ export function MetaCreatorModal({ onClose, onApply }: MetaCreatorModalProps) {
     const csv = buildCSV(rows);
     const blob = new Blob([csv], { type: "text/csv" });
     const file = new File([blob], "cmpd_info.csv", { type: "text/csv" });
-    onApply(file);
+    onApply(file, rows);
   }
 
   function handleDownload() {
@@ -114,8 +132,7 @@ export function MetaCreatorModal({ onClose, onApply }: MetaCreatorModalProps) {
             <p className="mcm-kicker">Inputs</p>
             <h2 className="mcm-title">Build compound info file</h2>
             <p className="mcm-subtitle">
-              Defines compound names, stock concentrations, and solvents.
-              DMSO is always added automatically as the final row.
+              Define compound names, stock concentrations, and solvents for the metadata CSV.
             </p>
           </div>
           <button className="mcm-close-btn" onClick={onClose} aria-label="Close">
@@ -130,7 +147,8 @@ export function MetaCreatorModal({ onClose, onApply }: MetaCreatorModalProps) {
         <div className="mcm-col-headers">
           <span className="mcm-dot-spacer" />
           <span className="mcm-col-lbl mcm-col-name">Compound name</span>
-          <span className="mcm-col-lbl mcm-col-stock">Stock (mM)</span>
+          <span className="mcm-col-lbl mcm-col-stock">Stock</span>
+          <span className="mcm-col-lbl mcm-col-unit">Unit</span>
           <span className="mcm-col-lbl mcm-col-solvent">Solvent</span>
           <span className="mcm-remove-spacer" />
         </div>
@@ -150,16 +168,25 @@ export function MetaCreatorModal({ onClose, onApply }: MetaCreatorModalProps) {
                 onChange={(e) => updateRow(row.id, "name", e.target.value)}
                 onFocus={(e) => e.target.select()}
               />
-              <input
-                className="mcm-input mcm-input-stock"
-                type="number"
+              <SpinInput
                 min={0}
-                step="any"
+                step={1}
+                className="mcm-stock-spin"
                 placeholder="10"
-                value={row.stock_mM}
-                onChange={(e) => updateRow(row.id, "stock_mM", e.target.value)}
-                onFocus={(e) => e.target.select()}
+                value={row.stock_mM === "" ? 0 : Number(row.stock_mM) || 0}
+                onChange={(value) => updateRow(row.id, "stock_mM", String(Math.max(0, value)))}
+                onCommit={(value) => updateRow(row.id, "stock_mM", String(Math.max(0, value)))}
               />
+              <select
+                className="mcm-input mcm-input-unit"
+                value={row.stockUnit}
+                onChange={(e) => updateRow(row.id, "stockUnit", e.target.value as StockUnit)}
+              >
+                <option value="M">M</option>
+                <option value="mM">mM</option>
+                <option value="uM">uM</option>
+                <option value="nM">nM</option>
+              </select>
               <input
                 className="mcm-input mcm-input-solvent"
                 placeholder="DMSO"
@@ -177,26 +204,16 @@ export function MetaCreatorModal({ onClose, onApply }: MetaCreatorModalProps) {
               </button>
             </div>
           ))}
-
-          {/* ── DMSO footer row — always present, read-only ── */}
-          <div className="mcm-row mcm-row-dmso">
-            <span className="mcm-row-dot" style={{ background: DMSO_COLOR }} />
-            <span className="mcm-input mcm-input-name mcm-dmso-cell">DMSO</span>
-            <span className="mcm-input mcm-input-stock mcm-dmso-cell" style={{ textAlign: "right" }}>0</span>
-            <span className="mcm-input mcm-input-solvent mcm-dmso-cell">DMSO</span>
-            <span className="mcm-remove-spacer" />
-          </div>
         </div>
 
         <button className="mcm-add-row-btn" onClick={addRow}>
-          + Add compound
+          Add Compound
         </button>
 
         {/* ── Footer ── */}
         <div className="mcm-footer">
           <span className="mcm-compound-count">
-            {validCount + 1} compound{validCount + 1 !== 1 ? "s" : ""}
-            <span className="mcm-count-note"> (incl. DMSO)</span>
+            {validCount} compound{validCount !== 1 ? "s" : ""}
           </span>
           <div className="mcm-footer-actions">
             <button className="mcm-btn mcm-btn-ghost" onClick={handleDownload}>

@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { ConfirmRunModal } from "../components/workbench/ConfirmRunModal";
 import { FileUploader } from "../components/workbench/FileUploader";
 import { MetaCreatorModal } from "../components/workbench/MetaCreatorModal";
+import type { CompoundRow as MetaCompoundRow } from "../components/workbench/MetaCreatorModal";
 import { PlateViewerPanel } from "../components/workbench/PlateViewerPanel";
 import { RunConfigPanel, numericFields } from "../components/workbench/RunConfigPanel";
 import { WorkbenchHero } from "../components/workbench/WorkbenchHero";
@@ -96,6 +97,7 @@ export function WorkbenchPage() {
   const [revertKey, setRevertKey] = useState(0);
   const [showClearLayoutWarning, setShowClearLayoutWarning] = useState(false);
   const [layoutInputKey, setLayoutInputKey] = useState(0);
+  const [metaInputKey, setMetaInputKey] = useState(0);
   const [viewerPlateTypeId, setViewerPlateTypeId] = useState<string>("MWP 384");
   const [customRows, setCustomRows] = useState<number>(16);
   const [customCols, setCustomCols] = useState<number>(24);
@@ -107,19 +109,21 @@ export function WorkbenchPage() {
 
   // ----- conflict warning state -----
   const [conflictWarning, setConflictWarning] = useState<{ message: string; onConfirm: () => void } | null>(null);
-  // pending file input event held while waiting for user confirmation
-  const pendingLayoutEventRef = useRef<ChangeEvent<HTMLInputElement> | null>(null);
-  const pendingMetaEventRef   = useRef<ChangeEvent<HTMLInputElement> | null>(null);
+  // pending files held while waiting for user confirmation
+  const pendingLayoutFileRef = useRef<File | null>(null);
+  const pendingMetaFileRef   = useRef<File | null>(null);
 
   // ----- design mode -----
   const [designActive, setDesignActive] = useState(false);
 
   // ----- meta creator -----
   const [metaCreatorOpen, setMetaCreatorOpen] = useState(false);
+  const [metaCreatorRows, setMetaCreatorRows] = useState<MetaCompoundRow[]>([]);
 
-  function handleMetaFile(file: File) {
+  function handleMetaFile(file: File, rows: MetaCompoundRow[]) {
     setMetaFile(file);
     setMetaSource("created");
+    setMetaCreatorRows(rows.map((row) => ({ ...row })));
     setConfig((c) => (c ? { ...c, meta_file: file.name } : c));
     setMetaCreatorOpen(false);
   }
@@ -150,6 +154,7 @@ export function WorkbenchPage() {
     setPreview(null);
     setWorkingPreview(null);
     setIsEditMode(false);
+    pendingLayoutFileRef.current = null;
     setLayoutInputKey((k) => k + 1);
     setConfig((c) => (c ? { ...c, layout_file: "" } : c));
   }
@@ -162,7 +167,16 @@ export function WorkbenchPage() {
   function clearMetaFile() {
     setMetaFile(null);
     setMetaSource(null);
+    setMetaCreatorRows([]);
+    pendingMetaFileRef.current = null;
+    setMetaInputKey((k) => k + 1);
     setConfig((c) => (c ? { ...c, meta_file: "" } : c));
+  }
+
+  function dismissConflictWarning() {
+    pendingLayoutFileRef.current = null;
+    pendingMetaFileRef.current = null;
+    setConflictWarning(null);
   }
 
   async function applyLayoutFile(file: File) {
@@ -183,16 +197,17 @@ export function WorkbenchPage() {
 
   async function handleLayoutChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
+    event.target.value = "";
     if (!file) return;
     if (layoutSource === "design" && layoutFile) {
-      pendingLayoutEventRef.current = event;
+      pendingLayoutFileRef.current = file;
       setConflictWarning({
         message: "You have a PLAID-designed layout loaded. Uploading a CSV will replace it.",
         onConfirm: () => {
-          const e = pendingLayoutEventRef.current;
-          pendingLayoutEventRef.current = null;
+          const nextFile = pendingLayoutFileRef.current;
+          pendingLayoutFileRef.current = null;
           setConflictWarning(null);
-          if (e?.target.files?.[0]) void applyLayoutFile(e.target.files[0]);
+          if (nextFile) void applyLayoutFile(nextFile);
         },
       });
       return;
@@ -208,16 +223,17 @@ export function WorkbenchPage() {
 
   function handleMetaChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
+    event.target.value = "";
     if (!file) return;
     if (metaSource === "created" && metaFile) {
-      pendingMetaEventRef.current = event;
+      pendingMetaFileRef.current = file;
       setConflictWarning({
         message: "You have a created meta file loaded. Uploading a CSV will replace it.",
         onConfirm: () => {
-          const e = pendingMetaEventRef.current;
-          pendingMetaEventRef.current = null;
+          const nextFile = pendingMetaFileRef.current;
+          pendingMetaFileRef.current = null;
           setConflictWarning(null);
-          if (e?.target.files?.[0]) applyMetaFile(e.target.files[0]);
+          if (nextFile) applyMetaFile(nextFile);
         },
       });
       return;
@@ -356,6 +372,7 @@ export function WorkbenchPage() {
           layoutFile={layoutFile}
           metaFile={metaFile}
           layoutInputKey={layoutInputKey}
+          metaInputKey={metaInputKey}
           layoutSource={layoutSource}
           metaSource={metaSource}
           onLayoutChange={handleLayoutChange}
@@ -400,8 +417,8 @@ export function WorkbenchPage() {
           />
         )}
 
-        {/* Run config — only when design panel is not active */}
-        {!designActive && (
+        {/* Run config — only when design panel is not active and config/bootstrap are loaded */}
+        {!designActive && config && bootstrap && (
           <RunConfigPanel
             config={config}
             bootstrap={bootstrap}
@@ -424,6 +441,7 @@ export function WorkbenchPage() {
 
       {metaCreatorOpen && (
         <MetaCreatorModal
+          initialRows={metaCreatorRows}
           onClose={() => setMetaCreatorOpen(false)}
           onApply={handleMetaFile}
         />
@@ -433,7 +451,7 @@ export function WorkbenchPage() {
         <ConflictWarning
           message={conflictWarning.message}
           onConfirm={conflictWarning.onConfirm}
-          onCancel={() => setConflictWarning(null)}
+          onCancel={dismissConflictWarning}
         />
       )}
     </div>
