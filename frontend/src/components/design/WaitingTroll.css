@@ -1,0 +1,61 @@
+/* ---------------------------------------------------------------------------
+ * WaitingTroll — overlay tokens + progress bar
+ * --------------------------------------------------------------------------- */
+
+/* Wrapper that sits exactly over the grid-wrapper */
+.wt-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Individual well token */
+.wt-token {
+  position: absolute;
+  border-radius: 4px;
+  opacity: 0.82;
+  /* Smooth position travel + subtle scale */
+  transition:
+    top    0.6s cubic-bezier(0.4, 0, 0.2, 1),
+    left   0.6s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.15s ease-out,
+    box-shadow 0.15s ease-out,
+    opacity 0.15s ease-out;
+}
+
+/* Lifted state: z-index raised so token travels above well cells; no scale/glow */
+.wt-token-moving {
+  opacity: 0.96;
+  z-index: 10;
+  box-shadow: none;
+}
+
+/* Progress bar */
+.wt-progress-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 0;
+}
+
+.wt-bar-track {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.wt-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #4ade80, #00b8ff);
+}
+
+.wt-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: 0.04em;
+}

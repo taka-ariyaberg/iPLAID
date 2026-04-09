@@ -5,7 +5,7 @@
  *   - replicate count
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import type { CompoundDef, ControlDef } from "../../types";
 import { getStableCompoundColor, getConcColor, DMSO_COLOR } from "../../utils/colorUtils";
 import { SpinInput } from "./SpinInput";
@@ -58,15 +58,27 @@ function EntryEditor({ isControl, color, entry, onChange, onRemove }: EntryEdito
     sourceIdx?: number;
     prevValue?: number;
   } | null>(null);
+  // Shown when the user tries to add a new concentration while one is still blank.
+  const [showBlankWarn, setShowBlankWarn] = useState(false);
   // Incrementing this key remounts the SpinInput(s) so their draft resets.
   const [spinResetKey, setSpinResetKey] = useState(0);
 
   const addConc = () => {
-    const existing = entries.findIndex((e) => e.value_um === 0);
-    if (existing !== -1) {
-      setDupConflict({ existingIdx: existing, pendingReps: 3 });
+    // For compounds: block adding a new row while any existing row is still blank (value 0).
+    if (!isControl && entries.some((e) => e.value_um === 0)) {
+      setShowBlankWarn(true);
       return;
     }
+    // For controls: treat zero as a real concentration — block a second zero entry with dup popup.
+    if (isControl) {
+      const existingZero = entries.findIndex((e) => e.value_um === 0);
+      if (existingZero !== -1) {
+        setDupConflict({ existingIdx: existingZero, pendingReps: 3 });
+        return;
+      }
+    }
+    setShowBlankWarn(false);
+    // New rows start blank (value_um: 0 renders as empty placeholder in SpinInput).
     onChange({ ...entry, conc_entries: [...entries, { value_um: 0, replicates: 3 }] });
   };
 
@@ -88,6 +100,8 @@ function EntryEditor({ isControl, color, entry, onChange, onRemove }: EntryEdito
   };
 
   const updateConcValue = (i: number, value_um: number) => {
+    setShowBlankWarn(false);
+    // Duplicate concentration check.
     const existing = entries.findIndex((e, j) => j !== i && e.value_um === value_um);
     if (existing !== -1) {
       setDupConflict({ existingIdx: existing, pendingReps: entries[i].replicates, sourceIdx: i, prevValue: entries[i].value_um });
@@ -135,7 +149,7 @@ function EntryEditor({ isControl, color, entry, onChange, onRemove }: EntryEdito
               <SpinInput
                 key={`val-${i}-${spinResetKey}`}
                 min={0}
-                className="cp-conc-val"
+                className={`cp-conc-val${!isControl && e.value_um === 0 ? " cp-conc-val--blank" : ""}`}
                 placeholder="0"
                 value={e.value_um}
                 onChange={(v) => updateConcValue(i, v)}
@@ -154,6 +168,9 @@ function EntryEditor({ isControl, color, entry, onChange, onRemove }: EntryEdito
               <button className="cp-conc-remove" onClick={() => removeConc(i)} title="Remove">×</button>
             </div>
           ))}
+          {showBlankWarn && (
+            <p className="cp-blank-warn">Fill in the empty concentration before adding another.</p>
+          )}
           <button className="cp-conc-add" onClick={addConc}>Add concentration</button>
         </div>
 
@@ -213,13 +230,34 @@ export function CompoundPanel({
   }, [isOverflow]);
 
   // Overflow error is shown in the toast, not the inline strip.
-  const stripMessages = validationMessages.filter((m) => !m.text.startsWith("Too many entries"));
+  // Blank-concentration and dup-name errors show only as inline card indicators.
+  const stripMessages = validationMessages.filter(
+    (m) =>
+      !m.text.startsWith("Too many entries") &&
+      !m.text.startsWith("__blank_conc__") &&
+      !m.text.startsWith("Two or more compounds")
+  );
+
+  // Index of the compound card that currently has a duplicate name (null = none).
+  const [dupNameConflict, setDupNameConflict] = useState<number | null>(null);
 
   const updateCompound = useCallback(
     (i: number, u: CompoundDef | ControlDef) => {
-      const updated = [...compounds];
-      updated[i] = u as CompoundDef;
-      onCompoundsChange(updated);
+      const updated = u as CompoundDef;
+      // Always commit the name change so the input stays responsive while typing.
+      const all = [...compounds];
+      all[i] = updated;
+      onCompoundsChange(all);
+      // Track whether this card's name is now a duplicate of another compound.
+      const trimmed = updated.name.trim();
+      if (trimmed) {
+        const isDup = compounds.some(
+          (c, j) => j !== i && c.name.trim().toLowerCase() === trimmed.toLowerCase()
+        );
+        setDupNameConflict(isDup ? i : null);
+      } else {
+        setDupNameConflict(null);
+      }
     },
     [compounds, onCompoundsChange],
   );
@@ -266,14 +304,21 @@ export function CompoundPanel({
           <p className="cp-empty-hint">No compounds yet — click on Add to begin.</p>
         )}
         {compounds.map((c, i) => (
-          <EntryEditor
-            key={i}
-            isControl={false}
-            color={getStableCompoundColor(i)}
-            entry={c}
-            onChange={(u) => updateCompound(i, u)}
-            onRemove={() => onCompoundsChange(compounds.filter((_, j) => j !== i))}
-          />
+          <Fragment key={i}>
+            <EntryEditor
+              isControl={false}
+              color={getStableCompoundColor(i)}
+              entry={c}
+              onChange={(u) => updateCompound(i, u)}
+              onRemove={() => {
+                if (dupNameConflict === i) setDupNameConflict(null);
+                onCompoundsChange(compounds.filter((_, j) => j !== i));
+              }}
+            />
+            {dupNameConflict === i && (
+              <p className="cp-dup-name-warn">⚠ This name is already used by another compound.</p>
+            )}
+          </Fragment>
         ))}
         <button
           className="design-add-btn"

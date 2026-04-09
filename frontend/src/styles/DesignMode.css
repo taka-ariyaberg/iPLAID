@@ -125,24 +125,6 @@ details[open] > .design-config-section-title::before {
   flex-shrink: 0;
 }
 
-/* Keep this rule for readonly spans that still use design-num-input */
-.design-num-input:not(.spin-input) {
-  width: 76px;
-  padding: 6px 10px;
-  border-radius: 8px;
-  border: 1px solid var(--icell-border-strong);
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--icell-text);
-  font-size: 14px;
-  text-align: right;
-}
-
-.design-num-input:not(.spin-input):focus {
-  outline: none;
-  border-color: var(--icell-accent);
-  box-shadow: 0 0 0 2px rgba(129,140,248,0.12);
-}
-
 .design-num-readonly {
   width: 76px;
   padding: 6px 10px;
@@ -257,6 +239,7 @@ details[open] > .design-config-section-title::before {
   background: var(--icell-bg-alt);
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,0.08) transparent;
+  position: relative;  /* anchor for TrollOverlay */
 }
 
 .design-plate-grid-wrapper::-webkit-scrollbar { width: 5px; height: 5px; }
@@ -318,16 +301,6 @@ details[open] > .design-config-section-title::before {
   box-shadow: 0 0 8px rgba(0,184,255,0.2), inset 0 0 4px rgba(0,184,255,0.1) !important;
 }
 
-.design-well-edge {
-  opacity: 0.35;
-  cursor: default;
-}
-
-.design-well-edge:hover {
-  border-color: rgba(255,255,255,0.1) !important;
-  box-shadow: none !important;
-}
-
 /* Floating tooltip */
 .design-well-tooltip {
   position: fixed;
@@ -356,42 +329,6 @@ details[open] > .design-config-section-title::before {
   font-size: 11px;
   line-height: 1.4;
 }
-.design-solver-status {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  border-radius: var(--icell-radius-control);
-  background: var(--icell-panel-soft);
-  border: 1px solid var(--icell-border);
-}
-
-.design-solver-pill {
-  font-size: 12px;
-  font-weight: 500;
-  padding: 3px 10px;
-  border-radius: 999px;
-}
-
-.design-solver-queued  { background: rgba(255,255,255,0.06); color: var(--icell-text-muted); }
-.design-solver-running { background: rgba(251,191,36,0.15);  color: #fbbf24; }
-.design-solver-done    { background: rgba(74,222,128,0.12);  color: var(--icell-success); }
-.design-solver-failed  { background: rgba(255,59,85,0.12);   color: var(--icell-danger); }
-
-.design-use-btn {
-  margin-left: auto;
-  padding: 7px 18px;
-  border-radius: var(--icell-radius-tag);
-  border: none;
-  background: var(--icell-accent);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.15s;
-}
-
-.design-use-btn:hover { opacity: 0.85; }
 
 /* ============================================================
    CompoundPanel
@@ -626,6 +563,7 @@ details[open] > .design-config-section-title::before {
 
 /* Size variants — just constrain the wrapper width */
 .spin-input.cp-conc-val { min-width: 84px; }
+.spin-input.cp-conc-val--blank { border-color: #facc15; }
 .spin-input.cp-conc-reps { min-width: 68px; }
 
 .spin-input-field {
@@ -726,6 +664,26 @@ details[open] > .design-config-section-title::before {
   transition: background 150ms ease;
 }
 .cp-conc-add:hover { background: #9da5fb; }
+
+/* Blank concentration warning */
+.cp-blank-warn {
+  font-size: 0.7rem;
+  color: #facc15;
+  margin: 4px 0 0 0;
+  padding: 0;
+}
+
+/* Inline duplicate-name warning (shown beneath the offending compound card) */
+.cp-dup-name-warn {
+  font-size: 11px;
+  color: var(--icell-danger);
+  margin: -4px 0 6px 0;
+  padding: 5px 10px;
+  background: rgba(255, 59, 85, 0.08);
+  border: 1px solid rgba(255, 59, 85, 0.25);
+  border-radius: 0 0 6px 6px;
+  border-top: none;
+}
 
 /* Empty hint */
 .cp-empty-hint {
@@ -837,58 +795,6 @@ details[open] > .design-config-section-title::before {
 .design-generate-btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
-}
-
-/* ============================================================
-   Expand modal
-   ============================================================ */
-
-.design-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.65);
-  z-index: 200;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-}
-
-.design-modal {
-  background: var(--icell-panel);
-  border: 1px solid var(--icell-border-strong);
-  border-radius: var(--icell-radius-panel);
-  width: 100%;
-  max-width: 640px;
-  max-height: 80vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: var(--icell-shadow-panel);
-}
-
-.design-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--icell-border);
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.design-modal-close {
-  background: transparent;
-  border: none;
-  color: var(--icell-text-dim);
-  font-size: 20px;
-  cursor: pointer;
-  line-height: 1;
-}
-
-.design-modal-body {
-  padding: 16px 20px;
-  overflow-y: auto;
-  flex: 1;
 }
 
 /* ── Duplicate-concentration inline warning ─────────────────────────────── */

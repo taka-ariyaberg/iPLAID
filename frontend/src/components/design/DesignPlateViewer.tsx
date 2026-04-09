@@ -7,8 +7,10 @@
  */
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import type { LayoutPreview } from "../../types";
-import { getCompoundColor, getConcColor, DMSO_COLOR } from "../../utils/colorUtils";
+import type { CompoundDef, ControlDef, LayoutPreview } from "../../types";
+import { getConcColor, DMSO_COLOR, getStableCompoundColor } from "../../utils/colorUtils";
+import { useWaitingTroll, TrollOverlay, TrollProgressBar } from "./WaitingTroll";
+import type { WellAssignment } from "./WaitingTroll";
 
 // Accent colour for selection glow (matches iCELL cyan)
 const ACCENT = "#00b8ff";
@@ -17,10 +19,17 @@ interface DesignPlateViewerProps {
   rows: number;
   cols: number;
   emptyEdge: number;
+  /** Compounds and controls — used to colour-fill wells in preview */
+  compounds: CompoundDef[];
+  controls: ControlDef[];
   /** If provided, display solved layout (read-only) */
   solvedPreview?: LayoutPreview | null;
   /** Total wells needed (shown in badge) */
   wellsNeeded: number;
+  /** True while the solver is running — activates the WaitingTroll animation */
+  isGenerating: boolean;
+  /** Called when the troll animation reaches 100% — lets DesignPanel reveal the result */
+  onTrollDone?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -42,6 +51,57 @@ function wellName(r: number, c: number): string {
 }
 
 // ---------------------------------------------------------------------------
+// Build compound fill map
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns a map of well-key → colour for the first N usable wells,
+ * filled left-to-right, top-to-bottom, in the order entries were added.
+ * Compounds use getStableCompoundColor; controls use the DMSO amber.
+ */
+function buildFillMap(
+  compounds: CompoundDef[],
+  controls: ControlDef[],
+  rows: number,
+  cols: number,
+  edge: number
+): Map<string, string> {
+  // Build an ordered list of (color, wellCount) segments
+  const segments: Array<{ color: string; count: number }> = [];
+  compounds.forEach((cmp, ci) => {
+    const baseColor = getStableCompoundColor(ci);
+    const total = cmp.conc_entries.length;
+    cmp.conc_entries.forEach((entry, ri) => {
+      const color = getConcColor(baseColor, ri, total);
+      if (entry.replicates > 0) segments.push({ color, count: entry.replicates });
+    });
+  });
+  controls.forEach((ctrl) => {
+    const count = ctrl.conc_entries.reduce((s, e) => s + e.replicates, 0);
+    if (count > 0) segments.push({ color: DMSO_COLOR, count });
+  });
+
+  const map = new Map<string, string>();
+  // Walk usable wells in reading order
+  let segIdx = 0;
+  let remaining = segments[0]?.count ?? 0;
+  for (let r = edge; r < rows - edge; r++) {
+    for (let c = edge; c < cols - edge; c++) {
+      while (segIdx < segments.length && remaining === 0) {
+        segIdx++;
+        remaining = segments[segIdx]?.count ?? 0;
+      }
+      const color = segIdx < segments.length
+        ? segments[segIdx].color
+        : null; // no token for empty wells
+      if (color !== null) map.set(`${r},${c}`, color);
+      if (segIdx < segments.length) remaining--;
+    }
+  }
+  return map;
+}
+
+// ---------------------------------------------------------------------------
 // Build selection from edge
 // ---------------------------------------------------------------------------
 
@@ -59,22 +119,17 @@ function selectionFromEdge(rows: number, cols: number, edge: number): Set<string
 // Colour helpers for solved layout display
 // ---------------------------------------------------------------------------
 
-function buildCompoundColorMap(preview: LayoutPreview): Map<string, string> {
-  const compounds: string[] = [];
-  preview.compoundSummary?.forEach((cs) => {
-    if (!compounds.includes(cs.name)) compounds.push(cs.name);
-  });
-  const map = new Map<string, string>();
-  compounds.forEach((name, i) => {
-    map.set(name, getCompoundColor(i, compounds.length));
-  });
-  return map;
-}
-
+/**
+ * Returns the colour for a well in the solved preview.
+ * Compound identity is looked up in the config compoundsList so that the
+ * same stable index → getStableCompoundColor mapping used in buildFillMap
+ * is reused here.  This guarantees visual consistency between config mode
+ * and solved-view mode.
+ */
 function wellColorFromPreview(
   wellKey: string,
   preview: LayoutPreview,
-  colorMap: Map<string, string>
+  configCompounds: CompoundDef[]
 ): string | null {
   for (const plate of preview.plates) {
     for (const w of plate.wells) {
@@ -82,13 +137,9 @@ function wellColorFromPreview(
       const c = w.column - 1;
       if (`${r},${c}` === wellKey) {
         if (!w.compound || w.compound === "DMSO") return DMSO_COLOR;
-        const base = colorMap.get(w.compound) ?? "rgba(129,140,248,0.85)";
-        const concVals = plate.wells
-          .filter((ww) => ww.compound === w.compound)
-          .map((ww) => ww.concentration ?? 0)
-          .sort((a, b) => a - b);
-        const rank = concVals.indexOf(w.concentration ?? 0);
-        return getConcColor(base, rank, concVals.length);
+        // Match by name to get the stable config index → same colour as config preview
+        const ci = configCompounds.findIndex((cmp) => cmp.name === w.compound);
+        return getStableCompoundColor(ci >= 0 ? ci : 0);
       }
     }
   }
@@ -103,8 +154,12 @@ export function DesignPlateViewer({
   rows,
   cols,
   emptyEdge,
+  compounds,
+  controls,
   solvedPreview,
   wellsNeeded,
+  isGenerating,
+  onTrollDone,
 }: DesignPlateViewerProps) {
   // Selected wells = the region the user has drawn. Starts empty (nothing glowing).
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -135,11 +190,32 @@ export function DesignPlateViewer({
     setSelected(selectionFromEdge(rows, cols, emptyEdge));
   }, [rows, cols, emptyEdge]);
 
-  // Solved layout colour map (memoised)
-  const colorMap = useMemo(
-    () => (solvedPreview ? buildCompoundColorMap(solvedPreview) : new Map()),
-    [solvedPreview]
+  // Compound fill map — always computed so the troll can snapshot it
+  const fillMap = useMemo(
+    () => buildFillMap(compounds, controls, rows, cols, emptyEdge),
+    [compounds, controls, rows, cols, emptyEdge]
   );
+
+  // Flat assignment list derived from fillMap (stable reference for the hook)
+  const fillAssignments = useMemo<WellAssignment[]>(
+    () => Array.from(fillMap.entries()).map(([key, color]) => ({ key, color })),
+    [fillMap]
+  );
+
+  // All usable positions — the full shuffle pool for the troll (includes empty wells)
+  const allUsableKeys = useMemo<string[]>(() => {
+    const keys: string[] = [];
+    for (let r = emptyEdge; r < rows - emptyEdge; r++)
+      for (let c = emptyEdge; c < cols - emptyEdge; c++)
+        keys.push(`${r},${c}`);
+    return keys;
+  }, [rows, cols, emptyEdge]);
+
+  // WaitingTroll: shuffles assigned-well tokens across the full usable pool while generating
+  const { tokens, progress } = useWaitingTroll(isGenerating, fillAssignments, allUsableKeys, onTrollDone);
+
+  // Active fill: nothing during generation (overlay handles it) or in solved mode
+  const activeFillMap = !isGenerating && !solvedPreview ? fillMap : new Map<string, string>();
 
   // ---------------------------------------------------------------------------
   // Render
@@ -193,7 +269,7 @@ export function DesignPlateViewer({
         </div>
       </div>
 
-      {/* Grid wrapper */}
+      {/* Grid wrapper — TrollOverlay is absolutely positioned inside here */}
       <div className="design-plate-grid-wrapper">
         <div
           className="design-plate-grid"
@@ -225,35 +301,56 @@ export function DesignPlateViewer({
 
               {Array.from({ length: cols }, (_, c) => {
                 const key = `${r},${c}`;
-                // In solved mode there is no selection glow — the compound colours speak for themselves.
-                const isSelected = !solvedPreview && selected.has(key);
+                // In solved mode there is no selection glow — compound colours speak for themselves.
+                // During generation there is no glow either — troll overlay handles visuals.
+                const isSelected = !isGenerating && !solvedPreview && selected.has(key);
 
-                // Colour in solved mode
+                // Colour in solved mode (never shown while troll is still animating)
                 let solvedColor: string | null = null;
-                if (solvedPreview) {
-                  solvedColor = wellColorFromPreview(key, solvedPreview, colorMap);
+                if (solvedPreview && !isGenerating) {
+                  solvedColor = wellColorFromPreview(key, solvedPreview, compounds);
                 }
+
+                // Compound fill colour (idle config or troll-shuffled during generation)
+                const fillColor = activeFillMap.get(key) ?? null;
+
+                // During generation darken usable wells slightly — tokens sit on top
+                const darkenForTroll    = isGenerating && selected.has(key);
+                // During generation make forbidden wells near-black so the boundary is clearly visible
+                const darkenForbidden   = isGenerating && !selected.has(key);
 
                 // Background
                 let bg = "rgba(255,255,255,0.04)";
                 if (solvedColor) {
                   bg = solvedColor;
+                } else if (darkenForbidden) {
+                  // Near-opaque black — clearly darker than anything in the usable region
+                  bg = "rgba(0,0,0,0.92)";
+                } else if (darkenForTroll) {
+                  // Usable area: slightly tinted backdrop so tokens are visible above it
+                  bg = "rgba(0,0,0,0.25)";
+                } else if (fillColor) {
+                  bg = fillColor;
                 } else if (isSelected) {
                   bg = `${ACCENT}26`;
                 }
 
-                // Box shadow glow
+                // Border / glow
+                // • Usable well with no fill yet → ACCENT glow so the region is visible
+                // • Usable well with compound fill → plain border, no glow (colour speaks for itself)
+                // • Solved preview → plain border keyed to the solved colour, no glow
+                // • Everything else → subtle default border
                 let boxShadow = "none";
                 let borderColor = "rgba(255,255,255,0.12)";
                 let borderWidth = 1;
-                if (isSelected) {
-                  if (solvedColor) {
-                    boxShadow = `inset 0 0 8px ${solvedColor}, 0 0 12px ${solvedColor}`;
-                    borderColor = solvedColor;
-                  } else {
-                    boxShadow = `inset 0 0 8px ${ACCENT}99, 0 0 12px ${ACCENT}66`;
-                    borderColor = ACCENT;
-                  }
+                if (solvedColor) {
+                  borderColor = solvedColor;
+                } else if (fillColor) {
+                  borderColor = fillColor;
+                } else if (isSelected) {
+                  // Empty usable well — show the region glow
+                  boxShadow = `inset 0 0 8px ${ACCENT}99, 0 0 12px ${ACCENT}66`;
+                  borderColor = ACCENT;
                   borderWidth = 2;
                 }
 
@@ -262,7 +359,7 @@ export function DesignPlateViewer({
                 return (
                   <div
                     key={c}
-                    className={`design-well${isSelected ? " design-well-selected" : ""}`}
+                    className="design-well"
                     style={{
                       width: wellSize,
                       height: wellSize,
@@ -272,7 +369,7 @@ export function DesignPlateViewer({
                       background: bg,
                       border: `${borderWidth}px solid ${borderColor}`,
                       boxShadow,
-                      transition: "box-shadow 0.1s ease-out, border-color 0.1s ease-out",
+                      transition: "background 0.45s ease, box-shadow 0.1s ease-out, border-color 0.1s ease-out",
                       cursor: "default",
                       position: "relative",
                     }}
@@ -285,7 +382,20 @@ export function DesignPlateViewer({
             </React.Fragment>
           ))}
         </div>
+
+        {/* Troll overlay: tokens travel inside the grid-wrapper coordinate space */}
+        {isGenerating && (
+          <TrollOverlay
+            tokens={tokens}
+            wellSize={wellSize}
+            gap={gap}
+            headerSize={headerSize}
+          />
+        )}
       </div>
+
+      {/* WaitingTroll progress bar */}
+      {isGenerating && <TrollProgressBar progress={progress} />}
 
       {/* Floating tooltip */}
       {hoveredWell && (

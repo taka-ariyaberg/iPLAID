@@ -15,8 +15,6 @@ import { totalWellsNeeded } from "./designUtils";
 import { apiClient } from "../../services/apiClient";
 import type {
   BootstrapResponse,
-  CompoundDef,
-  ControlDef,
   DesignConfig,
   DesignJob,
   LayoutPreview,
@@ -79,7 +77,12 @@ function buildValidationMessages(dc: DesignConfig) {
   }
   dc.compounds.forEach((c, i) => {
     if (!c.name.trim()) msgs.push({ level: "error", text: `Compound ${i + 1} has no name.` });
+    if (c.conc_entries.some((e) => e.value_um === 0))
+      msgs.push({ level: "error", text: `__blank_conc__:${c.name || `#${i + 1}`}` });
   });
+  const cmpNames = dc.compounds.map((c) => c.name.trim().toLowerCase()).filter(Boolean);
+  if (new Set(cmpNames).size < cmpNames.length)
+    msgs.push({ level: "error", text: "Two or more compounds share the same name." });
   dc.controls.forEach((c, i) => {
     if (!c.name.trim()) msgs.push({ level: "error", text: `Control ${i + 1} has no name.` });
   });
@@ -106,7 +109,9 @@ export function DesignPanel({ bootstrap, onComplete, onCancel, onError }: Design
 
   const [designJob, setDesignJob] = useState<DesignJob | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollRef      = useRef<ReturnType<typeof setInterval> | null>(null);
+  const designJobRef = useRef<DesignJob | null>(null);
+  designJobRef.current = designJob;
 
   // Cleanup poll on unmount
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
@@ -133,9 +138,12 @@ export function DesignPanel({ bootstrap, onComplete, onCancel, onError }: Design
           if (updated.status === "completed" || updated.status === "failed") {
             clearInterval(pollRef.current!);
             pollRef.current = null;
-            setIsGenerating(false);
             if (updated.status === "failed") {
+              // Fail-fast: stop the troll immediately and show the error
+              setIsGenerating(false);
               onError(updated.error?.message ?? "Solver failed.");
+            } else {
+              // Success: let the troll animation run to completion before revealing the layout
             }
           }
         } catch {
@@ -148,6 +156,16 @@ export function DesignPanel({ bootstrap, onComplete, onCancel, onError }: Design
       onError(err instanceof Error ? err.message : "Failed to start solver.");
       setIsGenerating(false);
     }
+  }
+
+  // Called by DesignPlateViewer at the end of each 15 s animation cycle.
+  // Only reveals the layout once the solver has actually finished.
+  // If the solver is still running the hook auto-loops for another 15 s.
+  function handleTrollDone() {
+    if (designJobRef.current?.status === "completed") {
+      setIsGenerating(false);
+    }
+    // else: keep isGenerating=true — the hook detects activeRef.current===true and loops.
   }
 
   async function handleUseLayout() {
@@ -198,11 +216,16 @@ export function DesignPanel({ bootstrap, onComplete, onCancel, onError }: Design
             rows={designConfig.plate_rows}
             cols={designConfig.plate_cols}
             emptyEdge={designConfig.empty_edge}
+            compounds={designConfig.compounds}
+            controls={designConfig.controls}
             solvedPreview={solvedPreview}
             wellsNeeded={totalWellsNeeded(designConfig.compounds, designConfig.controls)}
+            isGenerating={isGenerating}
+            onTrollDone={handleTrollDone}
           />
 
-          {designJob && (
+          {/* Solver status pills — only shown after the troll animation completes */}
+          {designJob && !isGenerating && (
             <div className="dp-solver-status">
               {designJob.status === "queued" && (
                 <span className="dp-pill dp-pill-queued">Queued…</span>
