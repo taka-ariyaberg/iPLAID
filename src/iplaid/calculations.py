@@ -12,6 +12,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from src.iplaid.solvents import clean_label, get_solvent_cap_pct
+
 
 # Stock finding utilities
 def stockfinder_safe(
@@ -31,7 +33,7 @@ def stockfinder_safe(
         concUM: Target concentration in µM
         highest_stock_mM: Highest available stock concentration in mM
         V2_ul: Target well volume in µL
-        dmso_percmax: Maximum DMSO percentage allowed
+        dmso_percmax: Maximum carrier-solvent percentage allowed
         sourceplate_type: Source plate type (e.g. "S.100 Plate", "S.200")
         
     Returns:
@@ -77,7 +79,7 @@ def stockfinder(
     sourceplate_type: str,
 ) -> float:
     """
-    Find optimal stock concentration that respects DMSO constraints.
+    Find optimal stock concentration that respects solvent percentage constraints.
     
     Generates a dilution series from the highest stock and selects the concentration
     that allows the requested target concentration to be achieved while respecting
@@ -87,7 +89,7 @@ def stockfinder(
         concUM: Target concentration in µM
         highest_stock_mM: Highest available stock concentration in mM
         V2_ul: Target well volume in µL
-        dmso_percmax: Maximum DMSO percentage allowed
+        dmso_percmax: Maximum carrier-solvent percentage allowed
         sourceplate_type: Source plate type (e.g. "S.100 Plate", "S.200")
         
     Returns:
@@ -120,7 +122,7 @@ def stockfinder(
             diagnostics = []
             diagnostics.append(f"Target: {concUM:.4g} µM")
             diagnostics.append(f"Well volume: {V2_ul} µL")
-            diagnostics.append(f"DMSO limit: {dmso_percmax:.1f}% = {MaxV1_nl:.0f} nL")
+            diagnostics.append(f"Solvent limit: {dmso_percmax:.1f}% = {MaxV1_nl:.0f} nL")
             diagnostics.append(f"Highest available stock: {highest_stock_mM:.2f} mM")
             diagnostics.append(f"Required stock range: {C1_low:.2f}–{C1_high:.2f} mM")
             
@@ -132,7 +134,7 @@ def stockfinder(
                     f"  Need minimum: {C1_low:.2f} mM\n"
                     f"  Shortfall: {(C1_low/highest_stock_mM - 1)*100:.0f}%\n"
                     f"\nTO FIX:\n"
-                    f"  • Increase max_dmso_pct from {dmso_percmax:.1f}% to >= {min_required_dmso:.2f}%\n"
+                    f"  • Increase the solvent cap from {dmso_percmax:.1f}% to >= {min_required_dmso:.2f}%\n"
                     f"  • OR use higher concentration stock (>= {C1_low:.2f} mM)\n"
                     f"  • OR target lower concentration"
                 )
@@ -144,7 +146,7 @@ def stockfinder(
                     f"  Maximum allowed: {C1_high:.2f} mM\n"
                     f"  Would require volume: <{MinV1_nl} nL (below {sourceplate_type} limit)\n"
                     f"\nTO FIX:\n"
-                    f"  • Increase max_dmso_pct from {dmso_percmax:.1f}% to >= {min_required_dmso:.2f}%\n"
+                    f"  • Increase the solvent cap from {dmso_percmax:.1f}% to >= {min_required_dmso:.2f}%\n"
                     f"  • OR use lower concentration stock\n"
                     f"  • OR target higher concentration"
                 )
@@ -161,18 +163,18 @@ def assign_stock_concentrations(
     stockfinder_fn,
     stockfinder_safe_fn,
     working_volume_ul: float,
-    max_dmso_pct: float,
+    config: dict,
     sourceplate_type: str,
 ) -> pd.DataFrame:
     """
-    Assign optimal stock concentrations to each row based on DMSO constraints.
+    Assign optimal stock concentrations to each row based on solvent constraints.
     
     Args:
         df: DataFrame with CONCuM and highest_stock_mM columns
         stockfinder_fn: Function that finds optimal stock
         stockfinder_safe_fn: Wrapper that sets plate type context
         working_volume_ul: Target well working volume
-        max_dmso_pct: Maximum DMSO percentage allowed
+        config: Full run configuration used to resolve solvent caps
         sourceplate_type: Source plate type
         
     Returns:
@@ -185,20 +187,22 @@ def assign_stock_concentrations(
     
     # Determine minimum pipette volume based on plate type
     min_pipette_nl = 30 if sourceplate_type == "S.200" else 8
-    max_dmso_nl = (max_dmso_pct / 100) * (working_volume_ul * 1000)
-    
     # Track failures for diagnostic reporting
     failed_rows = []
 
     def find_stock_with_diagnostics(row):
         """Find stock with detailed error tracking."""
+        solvent_name = clean_label(row.get("solvent", "DMSO"))
+        solvent_cap_pct = float(get_solvent_cap_pct(config, solvent_name))
+        max_solvent_nl = (solvent_cap_pct / 100) * (working_volume_ul * 1000)
+
         try:
             stock = stockfinder_safe_fn(
                 stockfinder_fn,
                 concUM=row["CONCuM"],
                 highest_stock_mM=row["highest_stock_mM"],
                 V2_ul=working_volume_ul,
-                dmso_percmax=max_dmso_pct,
+                dmso_percmax=solvent_cap_pct,
                 sourceplate_type=sourceplate_type,
             )
             return stock
@@ -206,17 +210,18 @@ def assign_stock_concentrations(
             # Calculate what ranges would be needed
             conc_um = row["CONCuM"]
             highest_stock = row["highest_stock_mM"]
-            C1_low = (working_volume_ul * conc_um) / max_dmso_nl
+            C1_low = (working_volume_ul * conc_um) / max_solvent_nl
             C1_high = (working_volume_ul * conc_um) / min_pipette_nl
             
             failed_rows.append({
                 "well": row.get("well", "UNKNOWN"),
                 "compound": row.get("cmpdname", "UNKNOWN"),
+                "solvent": solvent_name,
                 "target_conc_um": conc_um,
                 "highest_stock_mm": highest_stock,
                 "required_range_mm": (C1_low, C1_high),
-                "max_dmso_pct": max_dmso_pct,
-                "max_dmso_nl": max_dmso_nl,
+                "solvent_cap_pct": solvent_cap_pct,
+                "max_solvent_nl": max_solvent_nl,
                 "error": str(e),
             })
             return np.nan
@@ -251,7 +256,13 @@ def assign_stock_concentrations(
             print(f"\n  • {compound} @ {target_conc:.4g} µM  ({len(wells)} wells: {', '.join(sorted(wells))})")
             print(f"    ├─ Available stock: {fail_info['highest_stock_mm']:.2f} mM")
             print(f"    ├─ Required stock range: {fail_info['required_range_mm'][0]:.2f} – {fail_info['required_range_mm'][1]:.2f} mM")
-            print(f"    ├─ DMSO limit: {fail_info['max_dmso_pct']:.1f}% = {fail_info['max_dmso_nl']:.0f} nL per {working_volume_ul} µL well")
+            print(
+                f"    ├─ Solvent: {fail_info['solvent']}"
+            )
+            print(
+                f"    ├─ Solvent limit: {fail_info['solvent_cap_pct']:.1f}% = "
+                f"{fail_info['max_solvent_nl']:.0f} nL per {working_volume_ul} µL well"
+            )
             
             # Provide diagnostic insight
             c_low, c_high = fail_info["required_range_mm"]
@@ -259,14 +270,17 @@ def assign_stock_concentrations(
             
             if highest < c_low:
                 print(f"    └─ REASON: Available stock ({highest:.2f} mM) is too LOW")
-                print(f"              Need minimum {c_low:.2f} mM to achieve {target_conc:.4g} µM with only {fail_info['max_dmso_pct']:.1f}% DMSO")
-                print(f"              SUGGESTION: Increase max_dmso_pct or use higher concentration stock")
+                print(
+                    f"              Need minimum {c_low:.2f} mM to achieve {target_conc:.4g} µM "
+                    f"with only {fail_info['solvent_cap_pct']:.1f}% solvent"
+                )
+                print("              SUGGESTION: Increase the solvent cap or use higher concentration stock")
             elif highest < c_high:
                 print(f"    └─ REASON: Available stock ({highest:.2f} mM) is below optimal range ({c_high:.2f} mM)")
                 print(f"              Would require >0.5% pipette volume error")
-                print(f"              SUGGESTION: Increase max_dmso_pct to allow higher DMSO volumes")
+                print("              SUGGESTION: Increase the solvent cap to allow higher dispense volumes")
             else:
-                print(f"    └─ REASON: No suitable stock in range (check DMSO calculation)")
+                print("    └─ REASON: No suitable stock in range (check solvent-cap calculation)")
         
         print("\n" + "="*90)
         raise ValueError(

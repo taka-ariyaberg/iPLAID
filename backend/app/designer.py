@@ -1,7 +1,7 @@
 """
 Bridge between the DesignConfigModel (Pydantic) and PLAID_Core's PlateDesigner.
-Also contains the helper that converts a solved Layout into the two CSVs
-(layout CSV + meta CSV) that the iPLAID pipeline expects.
+Also contains the helper that converts a solved Layout into the layout CSV
+that the iPLAID pipeline expects.
 """
 from __future__ import annotations
 
@@ -10,9 +10,14 @@ import csv
 import io
 from typing import TYPE_CHECKING
 
-from plaid_core.config import Compound, Control, PlateConfig
-from plaid_core.designer import PlateDesigner
-from plaid_core.validators import validate_plate_config
+try:
+    from plaid_core.config import Compound, Control, PlateConfig
+    from plaid_core.designer import PlateDesigner
+    from plaid_core.validators import validate_plate_config
+except ImportError:
+    from src.plaid_core.config import Compound, Control, PlateConfig
+    from src.plaid_core.designer import PlateDesigner
+    from src.plaid_core.validators import validate_plate_config
 
 if TYPE_CHECKING:
     from .models import DesignConfigModel
@@ -28,8 +33,45 @@ def validate_design_config(cfg: "DesignConfigModel") -> list[str]:
     Empty list = all OK.
     """
     errors: list[str] = []
-    if not cfg.compounds and not cfg.controls:
-        errors.append("Add at least one compound or control.")
+    if not cfg.compounds and not cfg.solvents:
+        errors.append("Add at least one compound or solvent.")
+        return errors
+
+    compound_names: dict[str, str] = {}
+    duplicate_compounds: set[str] = set()
+    for compound in cfg.compounds:
+        key = compound.name.strip().casefold()
+        if not key:
+            continue
+        if key in compound_names:
+            duplicate_compounds.add(compound_names[key])
+        else:
+            compound_names[key] = compound.name.strip()
+
+    solvent_names: dict[str, str] = {}
+    duplicate_solvents: set[str] = set()
+    for solvent in cfg.solvents:
+        key = solvent.name.strip().casefold()
+        if not key:
+            continue
+        if key in solvent_names:
+            duplicate_solvents.add(solvent_names[key])
+        else:
+            solvent_names[key] = solvent.name.strip()
+
+    overlaps = sorted(
+        compound_names[key]
+        for key in compound_names.keys() & solvent_names.keys()
+    )
+
+    for name in sorted(duplicate_compounds):
+        errors.append(f'Compound "{name}" is listed more than once.')
+    for name in sorted(duplicate_solvents):
+        errors.append(f'Solvent "{name}" is listed more than once.')
+    for name in overlaps:
+        errors.append(f'"{name}" cannot be used as both a compound and a solvent.')
+
+    if errors:
         return errors
 
     try:
@@ -70,25 +112,25 @@ def layout_to_csv_bytes(layout, cfg: "DesignConfigModel") -> bytes:
     Serialise a Layout to the iPLAID layout CSV format:
         plateID, well, cmpdname, CONCuM, cmpdnum
     Since each (compound, concentration) pair is flattened to a unique internal
-    PLAID_Core compound (name suffixed with __c{i} or __ctrl{i}), we strip the
+    PLAID_Core entry (name suffixed with __c{i} or __solvent), we strip the
     suffix to restore the clean compound name and resolve the µM value.
     """
     df = layout.to_dataframe()
 
-    # Build lookup: internal_name + conc_label → µM value
-    # Compounds use label "Conc_1" (single concentration each)
-    # Controls use label "{internal_name}_conc_1"
+    # Build lookup: internal_name + conc_label → µM value.
+    # Compounds use label "Conc_1" (single concentration each).
+    # Solvents are exported as pure vehicle rows with 0 µM.
     conc_map: dict[tuple[str, str], float] = {}
     for cmpd in cfg.compounds:
         for i, entry in enumerate(cmpd.conc_entries):
             internal = f"{cmpd.name}__c{i}"
             conc_map[(internal, "Conc_1")] = entry.value_um
-    for ctrl in cfg.controls:
-        for i, entry in enumerate(ctrl.conc_entries):
-            internal = f"{ctrl.name}__ctrl{i}"
-            conc_map[(internal, f"{internal}_conc_1")] = entry.value_um
+    for solvent in cfg.solvents:
+        internal = f"{solvent.name}__solvent"
+        conc_map[(internal, "Conc_1")] = 0
+        conc_map[(internal, f"{internal}_conc_1")] = 0
 
-    _suffix_re = re.compile(r"__c\d+$|__ctrl\d+$")
+    _suffix_re = re.compile(r"__c\d+$|__solvent$")
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -116,9 +158,10 @@ def _to_plate_config(cfg: "DesignConfigModel") -> PlateConfig:
     """Convert DesignConfigModel → PlateConfig dataclass.
 
     Each (compound, concentration) pair is flattened to its own PLAID_Core
-    Compound/Control with a unique internal name ("name__cN" / "name__ctrlN").
-    This allows per-concentration replicate counts while staying within
-    PLAID_Core's single-replicates-per-compound API.
+    Compound with a unique internal name ("name__cN"). Solvents are exported as
+    single PLAID_Core controls with one concentration level and a replicate
+    count only, which keeps the resulting layout compatible with iPLAID's
+    solvent rows (0 µM on the target plate, 0 mM in metadata).
     """
     compounds = [
         Compound(
@@ -131,12 +174,11 @@ def _to_plate_config(cfg: "DesignConfigModel") -> PlateConfig:
     ]
     controls = [
         Control(
-            name=f"{c.name}__ctrl{i}",
+            name=f"{solvent.name}__solvent",
             concentration_levels=1,
-            replicates=entry.replicates,
+            replicates=solvent.replicates,
         )
-        for c in cfg.controls
-        for i, entry in enumerate(c.conc_entries)
+        for solvent in cfg.solvents
     ]
     return PlateConfig(
         plate_rows=cfg.plate_rows,

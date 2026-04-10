@@ -7,7 +7,7 @@ iPLAID converts screening layouts into iDOT Assay Studio dispense outputs. It ca
 - use an existing target-layout CSV,
 - design a new layout with PLAID_Core,
 - match compounds to stock concentrations,
-- normalize DMSO volumes,
+- normalize solvent-family carrier volumes,
 - generate iDOT dispense and liquids CSVs,
 - generate source-plate preparation instructions.
 
@@ -121,9 +121,26 @@ The metadata CSV must contain:
 |--------|---------|
 | `cmpdname` | Compound name; must match the layout compound names exactly |
 | `highest_stock_mM` | Highest available stock concentration in mM |
-| `solvent` | Solvent name, usually `DMSO` |
+| `solvent` | Solvent family name for that compound |
 
-DMSO must also exist as a row with `highest_stock_mM = 0`. The in-app metadata creator adds this automatically.
+Every solvent family used by compounds must also exist as its own metadata row with:
+
+- `cmpdname = solvent name`
+- `highest_stock_mM = 0`
+- `solvent = solvent name`
+
+Example:
+
+```csv
+cmpdname,highest_stock_mM,solvent
+Etoposide,10,DMSO
+VX-11e,5,Ethanol
+DMSO,0,DMSO
+Ethanol,0,Ethanol
+```
+
+The in-app metadata creator handles solvent rows automatically and does not ask the user for a stock value for solvents.
+Internally, the design solver still receives these solvent entries as PLAID_Core control objects with one concentration level and replicate counts only. After solving, iPLAID converts them back into solvent rows with `CONCuM = 0` in the exported layout CSV.
 
 ## Configuration
 
@@ -159,7 +176,8 @@ Important fields:
 | `sourceplate_type` | Must match a key in `data/source_plate_specs.json` |
 | `target_plate_type` | Must match an entry in `data/target_plate_types.json` |
 | `working_volume_ul` | Assay working volume in µL |
-| `max_dmso_pct` | Maximum allowed DMSO fraction |
+| `max_dmso_pct` | Default maximum solvent percentage used when no solvent-specific override is provided |
+| `solvent_caps_pct` | Optional per-solvent percentage limits, for example `{ "DMSO": 0.1, "Ethanol": 0.2 }` |
 
 ## Running iPLAID
 
@@ -254,12 +272,18 @@ before running the frontend, or put it in a frontend `.env` file if you are mana
 ### Design workflow
 
 1. Open **Design with PLAID**.
-2. Add compounds and controls, with concentration entries and replicate counts.
+2. Add compounds with concentration entries, plus any solvent-only wells as replicate counts.
 3. Configure plate geometry and solver options.
 4. Generate a layout.
 5. Accept the designed layout back into the workbench.
-6. Provide metadata separately, because the design step does not know stock concentrations or solvents.
+6. Provide metadata separately, because the design step does not know stock concentrations; solvent metadata rows should still be present and use `highest_stock_mM = 0`.
 7. Run the pipeline.
+
+Notes:
+
+- Solvents in the design panel are replicate-only entries. They do not take a target concentration.
+- The UI sends solvent entries to the backend as `solvents`, the backend translates them to PLAID_Core `Control` objects for solving, and the solved layout is translated back into solvent rows for the pipeline.
+- Only one design solve runs at a time, and cancelling design mode also cancels the backend solver job.
 
 ## Outputs
 
@@ -301,6 +325,7 @@ All endpoints are served by the FastAPI app in [backend/app/main.py](/Users/taka
 | `POST` | `/api/design/validate` | Validate a design config without solving |
 | `POST` | `/api/design/solve` | Start a design solve job |
 | `GET` | `/api/design/jobs/{job_id}` | Poll a design job |
+| `POST` | `/api/design/jobs/{job_id}/cancel` | Cancel a design job |
 | `GET` | `/api/design/jobs/{job_id}/artifacts/{name}` | Download a design artifact |
 
 ## Project structure

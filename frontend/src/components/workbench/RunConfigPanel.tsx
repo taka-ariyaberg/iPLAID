@@ -111,7 +111,7 @@ export function RunConfigPanel({
         />
 
         <NumericField
-          label="Max DMSO (%)"
+          label="Max solvent (%)"
           field="max_dmso_pct"
           value={config.max_dmso_pct}
           min={0}

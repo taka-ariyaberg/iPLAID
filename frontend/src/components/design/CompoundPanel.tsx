@@ -1,84 +1,95 @@
 /**
  * CompoundPanel — right panel of the Design mode.
- * Lets users add/edit/remove compounds and controls, each with:
- *   - named concentration values added one by one (µM)
- *   - replicate count
+ * Lets users add/edit/remove compounds with concentration rows and solvents
+ * with replicate counts only.
  */
 
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import type { CompoundDef, ControlDef } from "../../types";
-import { getStableCompoundColor, getConcColor, DMSO_COLOR } from "../../utils/colorUtils";
+import { Fragment, useEffect, useRef, useState } from "react";
+import type { CompoundDef, SolventDef } from "../../types";
+import { getConcColor, DMSO_COLOR, getStableCompoundColor } from "../../utils/colorUtils";
 import { SpinInput } from "./SpinInput";
 import { totalWellsNeeded } from "./designUtils";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 
 type ValidationEntry = { level: "error" | "warning"; text: string };
 
 interface CompoundPanelProps {
   compounds: CompoundDef[];
-  controls: ControlDef[];
+  solvents: SolventDef[];
   validationMessages: ValidationEntry[];
   usableWells: number;
   onCompoundsChange: (compounds: CompoundDef[]) => void;
-  onControlsChange: (controls: ControlDef[]) => void;
+  onSolventsChange: (solvents: SolventDef[]) => void;
   onGenerate: () => void;
   isGenerating: boolean;
   canGenerate: boolean;
 }
 
-// ---------------------------------------------------------------------------
-// Defaults
-// ---------------------------------------------------------------------------
-
 const DEFAULT_COMPOUND = (): CompoundDef => ({ name: "", conc_entries: [] });
-const DEFAULT_CONTROL  = (): ControlDef  => ({ name: "", conc_entries: [] });
+const DEFAULT_SOLVENT = (): SolventDef => ({ name: "", replicates: 3 });
 
-// ---------------------------------------------------------------------------
-// Entry editor (compound or control card)
-// ---------------------------------------------------------------------------
+function normalizeName(name: string): string {
+  return name.trim().toLowerCase();
+}
 
-interface EntryEditorProps {
-  isControl: boolean;
+function getDuplicateIndices(names: string[]): Set<number> {
+  const duplicates = new Set<number>();
+  const seen = new Map<string, number[]>();
+
+  names.forEach((name, index) => {
+    const key = normalizeName(name);
+    if (!key) return;
+    const indices = seen.get(key) ?? [];
+    indices.push(index);
+    seen.set(key, indices);
+  });
+
+  seen.forEach((indices) => {
+    if (indices.length > 1) {
+      indices.forEach((index) => duplicates.add(index));
+    }
+  });
+
+  return duplicates;
+}
+
+function getOverlappingIndices(primary: string[], secondary: string[]): Set<number> {
+  const secondaryKeys = new Set(secondary.map(normalizeName).filter(Boolean));
+  const overlaps = new Set<number>();
+
+  primary.forEach((name, index) => {
+    const key = normalizeName(name);
+    if (key && secondaryKeys.has(key)) {
+      overlaps.add(index);
+    }
+  });
+
+  return overlaps;
+}
+
+interface CompoundEntryEditorProps {
   color: string;
-  entry: CompoundDef | ControlDef;
-  onChange: (updated: CompoundDef | ControlDef) => void;
+  entry: CompoundDef;
+  onChange: (updated: CompoundDef) => void;
   onRemove: () => void;
 }
 
-function EntryEditor({ isControl, color, entry, onChange, onRemove }: EntryEditorProps) {
+function CompoundEntryEditor({ color, entry, onChange, onRemove }: CompoundEntryEditorProps) {
   const entries = entry.conc_entries;
-  // Pending conflict: existing index to merge into, replicates to add, and
-  // optionally the source index + prevValue when editing an existing row.
   const [dupConflict, setDupConflict] = useState<{
     existingIdx: number;
     pendingReps: number;
     sourceIdx?: number;
     prevValue?: number;
   } | null>(null);
-  // Shown when the user tries to add a new concentration while one is still blank.
   const [showBlankWarn, setShowBlankWarn] = useState(false);
-  // Incrementing this key remounts the SpinInput(s) so their draft resets.
   const [spinResetKey, setSpinResetKey] = useState(0);
 
   const addConc = () => {
-    // For compounds: block adding a new row while any existing row is still blank (value 0).
-    if (!isControl && entries.some((e) => e.value_um === 0)) {
+    if (entries.some((item) => item.value_um === 0)) {
       setShowBlankWarn(true);
       return;
     }
-    // For controls: treat zero as a real concentration — block a second zero entry with dup popup.
-    if (isControl) {
-      const existingZero = entries.findIndex((e) => e.value_um === 0);
-      if (existingZero !== -1) {
-        setDupConflict({ existingIdx: existingZero, pendingReps: 3 });
-        return;
-      }
-    }
     setShowBlankWarn(false);
-    // New rows start blank (value_um: 0 renders as empty placeholder in SpinInput).
     onChange({ ...entry, conc_entries: [...entries, { value_um: 0, replicates: 3 }] });
   };
 
@@ -88,33 +99,36 @@ function EntryEditor({ isControl, color, entry, onChange, onRemove }: EntryEdito
     setDupConflict(null);
     let next = [...entries];
     next[existingIdx] = { ...next[existingIdx], replicates: next[existingIdx].replicates + pendingReps };
-    // If the conflict came from editing an existing row, remove that row.
     if (sourceIdx !== undefined) {
-      next = next.filter((_, j) => j !== sourceIdx);
+      next = next.filter((_, index) => index !== sourceIdx);
     }
     onChange({ ...entry, conc_entries: next });
   };
 
-  const removeConc = (i: number) => {
-    onChange({ ...entry, conc_entries: entries.filter((_, j) => j !== i) });
+  const removeConc = (index: number) => {
+    onChange({ ...entry, conc_entries: entries.filter((_, itemIndex) => itemIndex !== index) });
   };
 
-  const updateConcValue = (i: number, value_um: number) => {
+  const updateConcValue = (index: number, value_um: number) => {
     setShowBlankWarn(false);
-    // Duplicate concentration check.
-    const existing = entries.findIndex((e, j) => j !== i && e.value_um === value_um);
+    const existing = entries.findIndex((item, itemIndex) => itemIndex !== index && item.value_um === value_um);
     if (existing !== -1) {
-      setDupConflict({ existingIdx: existing, pendingReps: entries[i].replicates, sourceIdx: i, prevValue: entries[i].value_um });
+      setDupConflict({
+        existingIdx: existing,
+        pendingReps: entries[index].replicates,
+        sourceIdx: index,
+        prevValue: entries[index].value_um,
+      });
       return;
     }
     const next = [...entries];
-    next[i] = { ...next[i], value_um };
+    next[index] = { ...next[index], value_um };
     onChange({ ...entry, conc_entries: next });
   };
 
-  const updateConcReps = (i: number, replicates: number) => {
+  const updateConcReps = (index: number, replicates: number) => {
     const next = [...entries];
-    next[i] = { ...next[i], replicates: Math.max(1, replicates) };
+    next[index] = { ...next[index], replicates: Math.max(1, replicates) };
     onChange({ ...entry, conc_entries: next });
   };
 
@@ -122,76 +136,101 @@ function EntryEditor({ isControl, color, entry, onChange, onRemove }: EntryEdito
     <article className="cp-entry">
       <div className="cp-entry-bar" style={{ background: color }} />
       <div className="cp-entry-body">
-        {/* Header: name input + well tally + remove */}
         <div className="cp-entry-header">
           <input
             className="cp-entry-name"
-            placeholder={isControl ? "Control name…" : "Compound name…"}
+            placeholder="Compound name…"
             value={entry.name}
             onChange={(e) => onChange({ ...entry, name: e.target.value })}
             onFocus={(e) => e.target.select()}
-            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur();
+            }}
           />
           <span className="cp-entry-tally">
-            {entries.reduce((s, e) => s + e.replicates, 0)}W
+            {entries.reduce((sum, item) => sum + item.replicates, 0)}W
           </span>
-          <button className="cp-entry-remove" onClick={onRemove} title="Remove">×</button>
+          <button type="button" className="cp-entry-remove" onClick={onRemove} title="Remove">
+            ×
+          </button>
         </div>
 
-        {/* Concentration rows with colored swatches */}
         <div className="cp-conc-block">
-          {entries.map((e, i) => (
-            <div key={i} className="cp-conc-row">
+          {entries.map((item, index) => (
+            <div key={index} className="cp-conc-row">
               <span
                 className="cp-conc-swatch"
-                style={{ background: getConcColor(color, i, Math.max(entries.length, 1)) }}
+                style={{ background: getConcColor(color, index, Math.max(entries.length, 1)) }}
               />
               <SpinInput
-                key={`val-${i}-${spinResetKey}`}
+                key={`val-${index}-${spinResetKey}`}
                 min={0}
-                className={`cp-conc-val${!isControl && e.value_um === 0 ? " cp-conc-val--blank" : ""}`}
+                className={`cp-conc-val${item.value_um === 0 ? " cp-conc-val--blank" : ""}`}
                 placeholder="0"
-                value={e.value_um}
-                onChange={(v) => updateConcValue(i, v)}
+                value={item.value_um}
+                onChange={(value) => updateConcValue(index, value)}
               />
-              <span className="cp-conc-unit">µM</span>
+              <span className="cp-conc-unit">uM</span>
               <SpinInput
                 min={1}
                 max={20}
                 className="cp-conc-reps"
                 placeholder="3"
-                value={e.replicates}
-                onChange={(v) => updateConcReps(i, v)}
-                onCommit={(v) => updateConcReps(i, v)}
+                value={item.replicates}
+                onChange={(value) => updateConcReps(index, value)}
+                onCommit={(value) => updateConcReps(index, value)}
               />
               <span className="cp-conc-reps-lbl">reps</span>
-              <button className="cp-conc-remove" onClick={() => removeConc(i)} title="Remove">×</button>
+              <button
+                type="button"
+                className="cp-conc-remove"
+                onClick={() => removeConc(index)}
+                title="Remove"
+              >
+                ×
+              </button>
             </div>
           ))}
           {showBlankWarn && (
             <p className="cp-blank-warn">Fill in the empty concentration before adding another.</p>
           )}
-          <button className="cp-conc-add" onClick={addConc}>Add concentration</button>
+          <button type="button" className="cp-conc-add" onClick={addConc}>
+            Add concentration
+          </button>
         </div>
 
         {dupConflict !== null && (
           <div className="cp-dup-popup" role="alertdialog">
             <p className="cp-dup-msg">
-              This concentration already exists for this {isControl ? "control" : "compound"}.
-              Would you like to add it as additional replicates instead?
+              This concentration already exists for this compound. Would you like to add it as
+              additional replicates instead?
             </p>
             <div className="cp-dup-actions">
-              <button className="cp-dup-btn cp-dup-cancel" onClick={() => {
-                if (dupConflict.sourceIdx !== undefined && dupConflict.prevValue !== undefined) {
-                  // Restore the row to its previous value so user can retype
-                  const next = [...entries];
-                  next[dupConflict.sourceIdx] = { ...next[dupConflict.sourceIdx], value_um: dupConflict.prevValue };
-                  onChange({ ...entry, conc_entries: next });
-                }
-                setSpinResetKey((k) => k + 1);
-                setDupConflict(null);
-              }}>Edit</button>
-              <button className="cp-dup-btn cp-dup-reps" onClick={mergeAsReplicates}>Add as replicates</button>
+              <button
+                type="button"
+                className="cp-dup-btn cp-dup-cancel"
+                onClick={() => {
+                  if (dupConflict.sourceIdx !== undefined && dupConflict.prevValue !== undefined) {
+                    const next = [...entries];
+                    next[dupConflict.sourceIdx] = {
+                      ...next[dupConflict.sourceIdx],
+                      value_um: dupConflict.prevValue,
+                    };
+                    onChange({ ...entry, conc_entries: next });
+                  }
+                  setSpinResetKey((value) => value + 1);
+                  setDupConflict(null);
+                }}
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                className="cp-dup-btn cp-dup-reps"
+                onClick={mergeAsReplicates}
+              >
+                Add as replicates
+              </button>
             </div>
           </div>
         )}
@@ -200,26 +239,81 @@ function EntryEditor({ isControl, color, entry, onChange, onRemove }: EntryEdito
   );
 }
 
-// ---------------------------------------------------------------------------
-// Main panel
-// ---------------------------------------------------------------------------
+interface SolventEntryEditorProps {
+  entry: SolventDef;
+  onChange: (updated: SolventDef) => void;
+  onRemove: () => void;
+}
+
+function SolventEntryEditor({ entry, onChange, onRemove }: SolventEntryEditorProps) {
+  return (
+    <article className="cp-entry">
+      <div className="cp-entry-bar" style={{ background: DMSO_COLOR }} />
+      <div className="cp-entry-body">
+        <div className="cp-entry-header">
+          <input
+            className="cp-entry-name"
+            placeholder="Solvent name…"
+            value={entry.name}
+            onChange={(e) => onChange({ ...entry, name: e.target.value })}
+            onFocus={(e) => e.target.select()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur();
+            }}
+          />
+          <span className="cp-entry-tally">{entry.replicates}W</span>
+          <button type="button" className="cp-entry-remove" onClick={onRemove} title="Remove">
+            ×
+          </button>
+        </div>
+
+        <div className="cp-conc-block">
+          <div className="cp-conc-row cp-solvent-row">
+            <span className="cp-conc-swatch" style={{ background: DMSO_COLOR }} />
+            <span className="cp-solvent-label">Replicates</span>
+            <SpinInput
+              min={1}
+              max={48}
+              className="cp-conc-reps"
+              placeholder="3"
+              value={entry.replicates}
+              onChange={(value) => onChange({ ...entry, replicates: Math.max(1, value) })}
+              onCommit={(value) => onChange({ ...entry, replicates: Math.max(1, value) })}
+            />
+            <span className="cp-conc-reps-lbl">reps</span>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
 
 export function CompoundPanel({
   compounds,
-  controls,
+  solvents,
   validationMessages,
   usableWells,
   onCompoundsChange,
-  onControlsChange,
+  onSolventsChange,
   onGenerate,
   isGenerating,
   canGenerate,
 }: CompoundPanelProps) {
-  const needed = totalWellsNeeded(compounds, controls);
+  const needed = totalWellsNeeded(compounds, solvents);
   const pct = usableWells > 0 ? Math.round((needed / usableWells) * 100) : 0;
-  const hasErrors = validationMessages.some((m) => m.level === "error");
+  const hasErrors = validationMessages.some((message) => message.level === "error");
 
-  // Overflow popup: re-shows whenever overflow newly appears, auto-clears when fixed.
+  const duplicateCompoundIndices = getDuplicateIndices(compounds.map((compound) => compound.name));
+  const duplicateSolventIndices = getDuplicateIndices(solvents.map((solvent) => solvent.name));
+  const overlappingCompoundIndices = getOverlappingIndices(
+    compounds.map((compound) => compound.name),
+    solvents.map((solvent) => solvent.name),
+  );
+  const overlappingSolventIndices = getOverlappingIndices(
+    solvents.map((solvent) => solvent.name),
+    compounds.map((compound) => compound.name),
+  );
+
   const isOverflow = usableWells > 0 && needed > usableWells;
   const [popupDismissed, setPopupDismissed] = useState(false);
   const wasOverflowRef = useRef(isOverflow);
@@ -229,52 +323,32 @@ export function CompoundPanel({
     wasOverflowRef.current = isOverflow;
   }, [isOverflow]);
 
-  // Overflow error is shown in the toast, not the inline strip.
-  // Blank-concentration and dup-name errors show only as inline card indicators.
   const stripMessages = validationMessages.filter(
-    (m) =>
-      !m.text.startsWith("Too many entries") &&
-      !m.text.startsWith("__blank_conc__") &&
-      !m.text.startsWith("Two or more compounds")
+    (message) =>
+      !message.text.startsWith("Too many entries") &&
+      !message.text.startsWith("__blank_conc__") &&
+      !message.text.startsWith("__dup_compound__") &&
+      !message.text.startsWith("__dup_solvent__") &&
+      !message.text.startsWith("__compound_solvent_overlap__"),
   );
 
-  // Index of the compound card that currently has a duplicate name (null = none).
-  const [dupNameConflict, setDupNameConflict] = useState<number | null>(null);
+  const compoundWarnings = (index: number): string[] => {
+    const warnings: string[] = [];
+    if (duplicateCompoundIndices.has(index)) warnings.push("This compound name is already used.");
+    if (overlappingCompoundIndices.has(index)) warnings.push("This name is already used by a solvent.");
+    return warnings;
+  };
 
-  const updateCompound = useCallback(
-    (i: number, u: CompoundDef | ControlDef) => {
-      const updated = u as CompoundDef;
-      // Always commit the name change so the input stays responsive while typing.
-      const all = [...compounds];
-      all[i] = updated;
-      onCompoundsChange(all);
-      // Track whether this card's name is now a duplicate of another compound.
-      const trimmed = updated.name.trim();
-      if (trimmed) {
-        const isDup = compounds.some(
-          (c, j) => j !== i && c.name.trim().toLowerCase() === trimmed.toLowerCase()
-        );
-        setDupNameConflict(isDup ? i : null);
-      } else {
-        setDupNameConflict(null);
-      }
-    },
-    [compounds, onCompoundsChange],
-  );
-
-  const updateControl = useCallback(
-    (i: number, u: CompoundDef | ControlDef) => {
-      const updated = [...controls];
-      updated[i] = u as ControlDef;
-      onControlsChange(updated);
-    },
-    [controls, onControlsChange],
-  );
+  const solventWarnings = (index: number): string[] => {
+    const warnings: string[] = [];
+    if (duplicateSolventIndices.has(index)) warnings.push("This solvent name is already used.");
+    if (overlappingSolventIndices.has(index)) warnings.push("This name is already used by a compound.");
+    return warnings;
+  };
 
   return (
     <div className="design-compound-panel">
       <div className="cp-scroll">
-        {/* Well usage badge */}
         <div className="design-well-badge">
           <span className="design-well-count">{needed}</span>
           <span className="design-well-sep">/</span>
@@ -288,75 +362,80 @@ export function CompoundPanel({
                   width: `${Math.min(100, pct)}%`,
                   background:
                     pct > 100 ? "var(--icell-danger)" :
-                    pct > 90  ? "#facc15" :
-                                "var(--icell-success)",
+                    pct > 90 ? "#facc15" :
+                    "var(--icell-success)",
                 }}
               />
             </div>
           )}
         </div>
 
-        {/* Compounds */}
         <div className="design-section-header">
           <span className="design-section-title">Compounds</span>
         </div>
         {compounds.length === 0 && (
           <p className="cp-empty-hint">No compounds yet — click on Add to begin.</p>
         )}
-        {compounds.map((c, i) => (
-          <Fragment key={i}>
-            <EntryEditor
-              isControl={false}
-              color={getStableCompoundColor(i)}
-              entry={c}
-              onChange={(u) => updateCompound(i, u)}
-              onRemove={() => {
-                if (dupNameConflict === i) setDupNameConflict(null);
-                onCompoundsChange(compounds.filter((_, j) => j !== i));
+        {compounds.map((compound, index) => (
+          <Fragment key={index}>
+            <CompoundEntryEditor
+              color={getStableCompoundColor(index)}
+              entry={compound}
+              onChange={(updated) => {
+                const next = [...compounds];
+                next[index] = updated;
+                onCompoundsChange(next);
               }}
+              onRemove={() => onCompoundsChange(compounds.filter((_, itemIndex) => itemIndex !== index))}
             />
-            {dupNameConflict === i && (
-              <p className="cp-dup-name-warn">⚠ This name is already used by another compound.</p>
+            {compoundWarnings(index).length > 0 && (
+              <p className="cp-dup-name-warn">{compoundWarnings(index).join(" ")}</p>
             )}
           </Fragment>
         ))}
         <button
+          type="button"
           className="design-add-btn"
           onClick={() => onCompoundsChange([...compounds, DEFAULT_COMPOUND()])}
         >
           Add Compound
         </button>
 
-        {/* Controls */}
         <div className="design-section-header" style={{ marginTop: 16 }}>
-          <span className="design-section-title">Controls</span>
+          <span className="design-section-title">Solvents</span>
         </div>
-        {controls.length === 0 && (
-          <p className="cp-empty-hint">No controls yet — click on Add to begin.</p>
+        {solvents.length === 0 && (
+          <p className="cp-empty-hint">No solvents yet — click on Add to begin.</p>
         )}
-        {controls.map((c, i) => (
-          <EntryEditor
-            key={i}
-            isControl
-            color={DMSO_COLOR}
-            entry={c}
-            onChange={(u) => updateControl(i, u)}
-            onRemove={() => onControlsChange(controls.filter((_, j) => j !== i))}
-          />
+        {solvents.map((solvent, index) => (
+          <Fragment key={index}>
+            <SolventEntryEditor
+              entry={solvent}
+              onChange={(updated) => {
+                const next = [...solvents];
+                next[index] = updated;
+                onSolventsChange(next);
+              }}
+              onRemove={() => onSolventsChange(solvents.filter((_, itemIndex) => itemIndex !== index))}
+            />
+            {solventWarnings(index).length > 0 && (
+              <p className="cp-dup-name-warn">{solventWarnings(index).join(" ")}</p>
+            )}
+          </Fragment>
         ))}
         <button
+          type="button"
           className="design-add-btn"
-          onClick={() => onControlsChange([...controls, DEFAULT_CONTROL()])}
+          onClick={() => onSolventsChange([...solvents, DEFAULT_SOLVENT()])}
         >
-          Add Control
+          Add Solvent
         </button>
 
-        {/* Validation strip (overflow shown in toast, not here) */}
         {stripMessages.length > 0 && (
           <div className="design-validation-strip">
-            {stripMessages.map((m, i) => (
-              <div key={i} className={`design-validation-msg design-validation-${m.level}`}>
-                {m.level === "error" ? "✗" : "⚠"} {m.text}
+            {stripMessages.map((message, index) => (
+              <div key={index} className={`design-validation-msg design-validation-${message.level}`}>
+                {message.level === "error" ? "✗" : "⚠"} {message.text}
               </div>
             ))}
           </div>
@@ -368,9 +447,9 @@ export function CompoundPanel({
         )}
       </div>
 
-      {/* Footer: generate button */}
       <div className="cp-footer">
         <button
+          type="button"
           className="design-generate-btn"
           onClick={onGenerate}
           disabled={!canGenerate || isGenerating || hasErrors}
@@ -379,15 +458,15 @@ export function CompoundPanel({
         </button>
       </div>
 
-      {/* Overflow toast */}
       {isOverflow && !popupDismissed && (
         <div className="dpv-overflow-popup" role="alert">
           <span className="dpv-overflow-icon">✗</span>
           <p className="dpv-overflow-msg">
-            Too many entries: <strong>{needed}</strong> wells assigned,
-            only <strong>{usableWells}</strong> available.
+            Too many entries: <strong>{needed}</strong> wells assigned, only <strong>{usableWells}</strong>{" "}
+            available.
           </p>
           <button
+            type="button"
             className="dpv-overflow-dismiss"
             aria-label="Dismiss"
             onClick={() => setPopupDismissed(true)}

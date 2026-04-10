@@ -11,3 +11,119 @@
 .results-error-block h3 {
   margin-top: 0;
 }
+
+.results-error-details {
+  margin-top: 0.9rem;
+}
+
+.results-error-details summary {
+  cursor: pointer;
+  color: var(--icell-text-dim);
+  font-weight: 600;
+}
+
+.results-error-details pre {
+  margin: 0.85rem 0 0;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.results-preflight-block {
+  padding: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.results-preflight-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.results-preflight-header h3 {
+  margin: 0.15rem 0 0;
+}
+
+.results-preflight-summary {
+  margin: 0;
+  color: var(--icell-text-dim);
+}
+
+.results-preflight-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.results-preflight-section h4 {
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.results-preflight-list {
+  margin: 0;
+  padding-left: 1rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.results-preflight-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.results-preflight-card {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 0.8rem 0.9rem;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.results-preflight-card.is-warning {
+  border-color: rgba(250, 204, 21, 0.28);
+  background: rgba(250, 204, 21, 0.07);
+}
+
+.results-preflight-card.is-error {
+  border-color: rgba(248, 113, 113, 0.3);
+  background: rgba(248, 113, 113, 0.08);
+}
+
+.results-preflight-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  align-items: baseline;
+  margin-bottom: 0.35rem;
+}
+
+.results-preflight-card p {
+  margin: 0.18rem 0;
+  color: var(--icell-text-dim);
+}
+
+.results-preflight-table-wrap {
+  overflow-x: auto;
+}
+
+.results-preflight-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.results-preflight-table th,
+.results-preflight-table td {
+  text-align: left;
+  padding: 0.6rem 0.55rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.86rem;
+}
+
+.results-preflight-table th {
+  color: var(--icell-text-dim);
+  font-weight: 700;
+}

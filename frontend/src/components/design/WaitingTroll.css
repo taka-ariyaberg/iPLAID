@@ -1,8 +1,3 @@
-/* ---------------------------------------------------------------------------
- * WaitingTroll — overlay tokens + progress bar
- * --------------------------------------------------------------------------- */
-
-/* Wrapper that sits exactly over the grid-wrapper */
 .wt-overlay {
   position: absolute;
   inset: 0;
@@ -10,28 +5,21 @@
   z-index: 5;
 }
 
-/* Individual well token */
 .wt-token {
   position: absolute;
   border-radius: 4px;
   opacity: 0.82;
-  /* Smooth position travel + subtle scale */
   transition:
-    top    0.6s cubic-bezier(0.4, 0, 0.2, 1),
-    left   0.6s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.15s ease-out,
-    box-shadow 0.15s ease-out,
-    opacity 0.15s ease-out;
+    top 0.65s cubic-bezier(0.4, 0, 0.2, 1),
+    left 0.65s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.18s ease-out;
 }
 
-/* Lifted state: z-index raised so token travels above well cells; no scale/glow */
 .wt-token-moving {
   opacity: 0.96;
   z-index: 10;
-  box-shadow: none;
 }
 
-/* Progress bar */
 .wt-progress-wrap {
   display: flex;
   flex-direction: column;
@@ -54,8 +42,36 @@
   background: linear-gradient(90deg, #4ade80, #00b8ff);
 }
 
+.wt-bar-fill.is-preflight {
+  width: 28%;
+  animation: wt-pulse 1.4s ease-in-out infinite alternate;
+}
+
+.wt-bar-fill.is-solving {
+  width: 78%;
+  animation: wt-pulse 1.4s ease-in-out infinite alternate;
+}
+
+.wt-bar-fill.is-complete {
+  width: 100%;
+}
+
+.wt-bar-fill.is-failed {
+  width: 100%;
+  background: linear-gradient(90deg, #f87171, #ef4444);
+}
+
 .wt-label {
   font-size: 11px;
   color: rgba(255, 255, 255, 0.45);
   letter-spacing: 0.04em;
+}
+
+@keyframes wt-pulse {
+  from {
+    opacity: 0.65;
+  }
+  to {
+    opacity: 1;
+  }
 }

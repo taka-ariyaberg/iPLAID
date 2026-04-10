@@ -212,23 +212,23 @@ export function PlateConfigPanel({ config, onChange, targetPlateOptions }: Plate
         />
       </Section>
 
-      {/* ----- Control layout ----- */}
-      <Section title="Control layout">
+      {/* ----- Solvent layout ----- */}
+      <Section title="Solvent layout">
         <Toggle
-          label="Balance controls per plate"
-          hint="Distribute controls evenly within each plate"
+          label="Balance solvents per plate"
+          hint="Distribute solvent-only wells evenly within each plate"
           value={config.balance_controls_inside_plate}
           onChange={(v) => patch({ balance_controls_inside_plate: v })}
         />
         <Toggle
-          label="Force spread controls"
-          hint="Apply proven bounds to force control spreading (advanced)"
+          label="Force spread solvents"
+          hint="Apply proven bounds to force solvent spreading (advanced)"
           value={config.force_spread_controls}
           onChange={(v) => patch({ force_spread_controls: v })}
         />
         <NumberField
-          label="Control slack"
-          hint="Higher values allow more flexibility in control distribution (0 = strict)"
+          label="Solvent slack"
+          hint="Higher values allow more flexibility in solvent distribution (0 = strict)"
           value={config.control_slack}
           min={0}
           max={20}
@@ -273,7 +273,7 @@ export function PlateConfigPanel({ config, onChange, targetPlateOptions }: Plate
           hint="Maximum solver runtime in seconds"
           value={config.timeout_seconds}
           min={1}
-          max={600}
+          max={120}
           onChange={(v) => patch({ timeout_seconds: v })}
         />
         <NumberField
@@ -281,7 +281,7 @@ export function PlateConfigPanel({ config, onChange, targetPlateOptions }: Plate
           hint="Parallel solver threads (Gecode)"
           value={config.num_threads}
           min={1}
-          max={32}
+          max={8}
           onChange={(v) => patch({ num_threads: v })}
         />
         <label className="design-num-row">

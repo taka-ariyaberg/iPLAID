@@ -148,7 +148,7 @@
 }
 
 .mcm-col-headers-solvent {
-  grid-template-columns: 8px minmax(0, 1fr) 104px 66px 28px;
+  grid-template-columns: 8px minmax(0, 1fr) 28px;
 }
 
 .mcm-dot-spacer {
@@ -320,7 +320,7 @@
 }
 
 .mcm-row-solvent {
-  grid-template-columns: 8px minmax(0, 1fr) 104px 66px 28px;
+  grid-template-columns: 8px minmax(0, 1fr) 28px;
 }
 
 .mcm-remove-btn {

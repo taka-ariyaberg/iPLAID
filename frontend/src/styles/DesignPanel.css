@@ -101,7 +101,7 @@
   min-width: 0;
 }
 
-/* Right column: compounds + controls + generate */
+/* Right column: compounds + solvents + generate */
 .dp-col-compounds {
   height: 76vh;
   display: flex;

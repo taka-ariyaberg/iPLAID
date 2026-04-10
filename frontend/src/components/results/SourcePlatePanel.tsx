@@ -13,7 +13,7 @@ import type {
 import { parseLiquidName } from "../../utils/liquidUtils";
 
 function buildSourcePlatePreview(
-  liquidsPreview: Array<Record<string, string | number>>,
+  liquidsPreview: Array<Record<string, string | number | boolean>>,
 ): LayoutPreview | null {
   if (!liquidsPreview.length) return null;
 
@@ -30,10 +30,11 @@ function buildSourcePlatePreview(
 
     if ("compound" in row && "stock_mM" in row) {
       compound = String(row["compound"]);
-      if (compound.toUpperCase() === "DMSO") {
+      const raw = typeof row["stock_mM"] === "number" ? row["stock_mM"] : parseFloat(String(row["stock_mM"]));
+      const isControlLiquid = Boolean(row["is_control_liquid"]) || (!isNaN(raw) && raw === 0);
+      if (isControlLiquid) {
         stockMM = null;
       } else {
-        const raw = typeof row["stock_mM"] === "number" ? row["stock_mM"] : parseFloat(String(row["stock_mM"]));
         stockMM = isNaN(raw) ? null : raw;
       }
     } else {
@@ -52,7 +53,7 @@ function buildSourcePlatePreview(
       column: parseInt(match[2], 10),
       compound,
       concentration: stockMM,
-      isControl: compound.toUpperCase() === "DMSO",
+      isControl: stockMM === null,
     };
 
     if (!plateMap.has(plateId)) plateMap.set(plateId, []);
@@ -99,18 +100,18 @@ export function SourcePlatePanel({ job, plateDef }: SourcePlatePanelProps) {
   );
 
   const wellTooltipContent = useMemo(() => {
-    const wellInfoMap = new Map<string, { compound: string; stockMM: number | null; isDmso: boolean }>();
+    const wellInfoMap = new Map<string, { compound: string; stockMM: number | null; isControlLiquid: boolean }>();
     for (const row of job.liquidsPreview) {
       const sourceWell = String(row["Source Well"] ?? "");
       if (!sourceWell) continue;
       const compound = String(row["compound"] ?? "");
-      const isDmso = compound.toUpperCase() === "DMSO";
       const rawStock = row["stock_mM"];
       const parsed = typeof rawStock === "number" ? rawStock : parseFloat(String(rawStock));
+      const isControlLiquid = Boolean(row["is_control_liquid"]) || (!isNaN(parsed) && parsed === 0);
       wellInfoMap.set(sourceWell, {
         compound,
-        stockMM: isDmso ? null : (isNaN(parsed) ? null : parsed),
-        isDmso,
+        stockMM: isControlLiquid ? null : (isNaN(parsed) ? null : parsed),
+        isControlLiquid,
       });
     }
     const targetMap = job.sourceWellTargetMap ?? {};
@@ -120,17 +121,17 @@ export function SourcePlatePanel({ job, plateDef }: SourcePlatePanelProps) {
       const wellName = wellId.slice(colonIdx + 1);
       const info = wellInfoMap.get(wellName);
       if (!info) return null;
-      const { compound, stockMM, isDmso } = info;
+      const { compound, stockMM, isControlLiquid } = info;
       const targetWells: string[] = targetMap[wellName] ?? [];
       const MAX_SHOWN = 30;
       return (
         <>
           <div className="well-tt-name">{wellName}</div>
           <div className="well-tt-compound">{compound}</div>
-          {!isDmso && stockMM != null && (
+          {!isControlLiquid && stockMM != null && (
             <div className="well-tt-stock">{stockMM} mM stock</div>
           )}
-          {isDmso && <div className="well-tt-stock">Top-up solvent</div>}
+          {isControlLiquid && <div className="well-tt-stock">Top-up solvent</div>}
           {targetWells.length > 0 && (
             <div className="well-tt-targets">
               <div className="well-tt-label">Target wells ({targetWells.length})</div>
@@ -153,10 +154,10 @@ export function SourcePlatePanel({ job, plateDef }: SourcePlatePanelProps) {
       const sourceWell = String(row["Source Well"] ?? "");
       if (!sourceWell) continue;
       const compound = String(row["compound"] ?? "");
-      const isDmso = compound.toUpperCase() === "DMSO";
       const rawStock = row["stock_mM"];
       const parsed = typeof rawStock === "number" ? rawStock : parseFloat(String(rawStock));
-      const stockMM = isDmso ? null : (isNaN(parsed) ? null : parsed);
+      const isControlLiquid = Boolean(row["is_control_liquid"]) || (!isNaN(parsed) && parsed === 0);
+      const stockMM = isControlLiquid ? null : (isNaN(parsed) ? null : parsed);
       const concLabel = stockMM === null ? "No concentration" : String(stockMM);
       const key = `${compound}::${concLabel}`;
       if (!concToTargets.has(key)) {

@@ -1,214 +1,130 @@
-/**
- * WaitingTroll — purely cosmetic module.
- *
- * Exports:
- *   useWaitingTroll(active, assignments, allUsableKeys, onComplete?)
- *     Hook that maintains tokens only for assigned (coloured) wells.
- *     A burst every ~700 ms redistributes ALL assigned tokens to new
- *     distinct positions drawn from the full usable-well pool, so tokens
- *     travel freely across empty positions.  Emits { tokens, progress }.
- *
- *   TrollOverlay
- *     Renders absolutely-positioned coloured discs inside the grid-wrapper that
- *     physically travel between well positions, gliding with ease-in-out.
- *     Moving tokens are raised to z-index 10 so they pass over well cells.
- *
- *   TrollProgressBar
- *     Thin progress bar rendered below the grid.
- */
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
-import React, { useEffect, useRef, useState } from "react";
+import type { DesignPhase } from "../../types";
 import "./WaitingTroll.css";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 export interface WellAssignment {
-  key: string;   // "row,col"
+  key: string;
   color: string;
 }
 
 export interface TrollToken {
-  id: number;    // stable identity = original index
-  key: string;   // current well position
+  id: number;
+  key: string;
   color: string;
 }
 
-// ---------------------------------------------------------------------------
-// Pixel helpers
-// ---------------------------------------------------------------------------
+function shuffleArr<T>(arr: T[]): T[] {
+  const next = [...arr];
+  for (let index = next.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
+  }
+  return next;
+}
 
-/**
- * Convert a "row,col" key to the pixel top-left of the well inside the
- * grid-wrapper.  The overlay has position:absolute;inset:0 inside the
- * wrapper, so its origin is the wrapper's inner border edge.  From there:
- *   • 8px  = wrapper padding (padding: 8px on .design-plate-grid-wrapper)
- *   • 12px = grid padding   (padding: 12px on .design-plate-grid)
- * Grid tracks then follow: [headerSize] [gap] [wellSize] [gap] …
- */
-const GRID_PAD = 20; // 8px wrapper-padding + 12px grid-padding
+const GRID_PAD = 20;
 
 function wellTopLeft(
   key: string,
   wellSize: number,
   gap: number,
-  headerSize: number
+  headerSize: number,
 ): { top: number; left: number } {
-  const [r, c] = key.split(",").map(Number);
-  const top  = GRID_PAD + headerSize + gap + r * (wellSize + gap);
-  const left = GRID_PAD + headerSize + gap + c * (wellSize + gap);
-  return { top, left };
+  const [row, col] = key.split(",").map(Number);
+  return {
+    top: GRID_PAD + headerSize + gap + row * (wellSize + gap),
+    left: GRID_PAD + headerSize + gap + col * (wellSize + gap),
+  };
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function shuffleArr<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-// ---------------------------------------------------------------------------
-// Hook
-// ---------------------------------------------------------------------------
-
-/**
- * 18–22 s progress ramp + shuffle burst every ~700 ms.
- * Only assigned wells become tokens; the shuffle pool is the full
- * set of usable positions so tokens can travel to empty wells.
- * onComplete fires once when the animation reaches 100%.
- */
 export function useWaitingTroll(
   active: boolean,
   initialAssignments: WellAssignment[],
   allUsableKeys: string[],
-  onComplete?: () => void
 ) {
   const [tokens, setTokens] = useState<TrollToken[]>([]);
-  const [progress, setProgress] = useState(0);
-
-  const rafRef          = useRef<number | null>(null);
-  const timerRef        = useRef<ReturnType<typeof setInterval> | null>(null);
-  const onCompleteRef   = useRef(onComplete);
-  const usableKeysRef   = useRef(allUsableKeys);
-  const activeRef       = useRef(active);
-  onCompleteRef.current = onComplete;
-  usableKeysRef.current = allUsableKeys;
-  activeRef.current     = active;
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (!active) {
-      if (rafRef.current)   cancelAnimationFrame(rafRef.current);
       if (timerRef.current) clearInterval(timerRef.current);
+      timerRef.current = null;
       setTokens([]);
-      setProgress(0);
       return;
     }
 
-    let current: TrollToken[] = initialAssignments.map((a, i) => ({
-      id: i,
-      key: a.key,
-      color: a.color,
+    let current = initialAssignments.map((assignment, index) => ({
+      id: index,
+      key: assignment.key,
+      color: assignment.color,
     }));
-    setTokens([...current]);
+    setTokens(current);
 
-    // 15 s progress ramp — loops automatically if the solver hasn't finished yet.
-    const dur = 15_000;
-    let cycleStart = performance.now();
-    function tick(now: number) {
-      const pct = Math.min(100, ((now - cycleStart) / dur) * 100);
-      setProgress(pct);
-      if (pct < 100) {
-        rafRef.current = requestAnimationFrame(tick);
-      } else {
-        // Notify the caller that one cycle finished.
-        onCompleteRef.current?.();
-        // If the caller kept us active (solver not done yet), loop for another cycle.
-        if (activeRef.current) {
-          cycleStart = performance.now();
-          rafRef.current = requestAnimationFrame(tick);
-        } else {
-          // Caller deactivated us — stop the shuffle interval too.
-          if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-        }
-      }
-    }
-    rafRef.current = requestAnimationFrame(tick);
-
-    // Shuffle burst: redistribute ALL tokens to n distinct random positions
-    // drawn from the full usable pool (so tokens can land on empty wells).
     timerRef.current = setInterval(() => {
-      const n = current.length;
-      if (n < 2) return;
-      const newKeys = shuffleArr([...usableKeysRef.current]).slice(0, n);
-      current = current.map((t, i) => ({ ...t, key: newKeys[i] }));
+      const count = current.length;
+      if (count < 2) return;
+      const nextKeys = shuffleArr(allUsableKeys).slice(0, count);
+      current = current.map((token, index) => ({ ...token, key: nextKeys[index] }));
       setTokens([...current]);
-    }, 700);
+    }, 900);
 
     return () => {
-      if (rafRef.current)   cancelAnimationFrame(rafRef.current);
       if (timerRef.current) clearInterval(timerRef.current);
+      timerRef.current = null;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active]);
+  }, [active, initialAssignments, allUsableKeys]);
 
-  return { tokens, progress };
+  return { tokens };
 }
 
-// ---------------------------------------------------------------------------
-// TrollOverlay — absolutely positioned tokens inside .design-plate-grid-wrapper
-// ---------------------------------------------------------------------------
-
-interface TrollOverlayProps {
+export function TrollOverlay({
+  tokens,
+  wellSize,
+  gap,
+  headerSize,
+}: {
   tokens: TrollToken[];
   wellSize: number;
   gap: number;
   headerSize: number;
-}
-
-export function TrollOverlay({ tokens, wellSize, gap, headerSize }: TrollOverlayProps) {
-  // Track which token ids are currently "in flight" (mid-move)
+}) {
   const [moving, setMoving] = useState<Set<number>>(new Set());
-  const prevKeysRef = useRef<Map<number, string>>(new Map());
+  const previousKeysRef = useRef<Map<number, string>>(new Map());
 
   useEffect(() => {
     if (tokens.length === 0) return;
-    const movers = new Set<number>();
-    tokens.forEach((t) => {
-      const prev = prevKeysRef.current.get(t.id);
-      if (prev !== undefined && prev !== t.key) movers.add(t.id);
-      prevKeysRef.current.set(t.id, t.key);
-    });
-    if (movers.size === 0) return;
 
+    const movers = new Set<number>();
+    tokens.forEach((token) => {
+      const previous = previousKeysRef.current.get(token.id);
+      if (previous !== undefined && previous !== token.key) {
+        movers.add(token.id);
+      }
+      previousKeysRef.current.set(token.id, token.key);
+    });
+
+    if (movers.size === 0) return;
     setMoving(movers);
-    // After transition completes, unmark (land)
-    const tid = setTimeout(() => setMoving(new Set()), 650);
-    return () => clearTimeout(tid);
+    const timeoutId = window.setTimeout(() => setMoving(new Set()), 650);
+    return () => window.clearTimeout(timeoutId);
   }, [tokens]);
 
   return (
     <div className="wt-overlay">
-      {tokens.map((t) => {
-        const { top, left } = wellTopLeft(t.key, wellSize, gap, headerSize);
-        const isMoving = moving.has(t.id);
+      {tokens.map((token) => {
+        const { top, left } = wellTopLeft(token.key, wellSize, gap, headerSize);
         return (
           <div
-            key={t.id}
-            className={`wt-token${isMoving ? " wt-token-moving" : ""}`}
+            key={token.id}
+            className={`wt-token${moving.has(token.id) ? " wt-token-moving" : ""}`}
             style={{
-              width:      wellSize,
-              height:     wellSize,
+              width: wellSize,
+              height: wellSize,
               top,
               left,
-              background: t.color,
-            } as React.CSSProperties}
+              background: token.color,
+            }}
           />
         );
       })}
@@ -216,17 +132,42 @@ export function TrollOverlay({ tokens, wellSize, gap, headerSize }: TrollOverlay
   );
 }
 
-// ---------------------------------------------------------------------------
-// Progress bar component
-// ---------------------------------------------------------------------------
+function phaseLabel(phase: DesignPhase): string {
+  switch (phase) {
+    case "preflight":
+      return "Running design preflight…";
+    case "solving":
+      return "Generating layout with PLAID_Core…";
+    case "completed":
+      return "Layout ready.";
+    case "failed":
+      return "Design failed.";
+    default:
+      return "Preparing design…";
+  }
+}
 
-export function TrollProgressBar({ progress }: { progress: number }) {
+function phaseClass(phase: DesignPhase): string {
+  switch (phase) {
+    case "solving":
+      return "is-solving";
+    case "completed":
+      return "is-complete";
+    case "failed":
+      return "is-failed";
+    default:
+      return "is-preflight";
+  }
+}
+
+export function TrollStatusBar({ phase }: { phase: DesignPhase }) {
+  const label = useMemo(() => phaseLabel(phase), [phase]);
   return (
     <div className="wt-progress-wrap">
       <div className="wt-bar-track">
-        <div className="wt-bar-fill" style={{ width: `${progress}%` }} />
+        <div className={`wt-bar-fill ${phaseClass(phase)}`} />
       </div>
-      <span className="wt-label">Solving layout…&nbsp;{Math.round(progress)}%</span>
+      <span className="wt-label">{label}</span>
     </div>
   );
 }

@@ -1,11 +1,14 @@
-import type { CompoundDef, ControlDef } from "../../types";
+import type { CompoundDef, SolventDef } from "../../types";
 
-/** Total wells required across all compounds and controls. */
+/** Total wells required across all compounds and solvents. */
 export function totalWellsNeeded(
   compounds: CompoundDef[],
-  controls: ControlDef[],
+  solvents: SolventDef[],
 ): number {
-  const cw  = compounds.reduce((s, c) => s + c.conc_entries.reduce((es, e) => es + e.replicates, 0), 0);
-  const ctw = controls.reduce( (s, c) => s + c.conc_entries.reduce((es, e) => es + e.replicates, 0), 0);
-  return cw + ctw;
+  const compoundWells = compounds.reduce(
+    (sum, compound) => sum + compound.conc_entries.reduce((entrySum, entry) => entrySum + entry.replicates, 0),
+    0,
+  );
+  const solventWells = solvents.reduce((sum, solvent) => sum + solvent.replicates, 0);
+  return compoundWells + solventWells;
 }

@@ -239,7 +239,7 @@ details[open] > .design-config-section-title::before {
   background: var(--icell-bg-alt);
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,0.08) transparent;
-  position: relative;  /* anchor for TrollOverlay */
+  position: relative;
 }
 
 .design-plate-grid-wrapper::-webkit-scrollbar { width: 5px; height: 5px; }
@@ -621,6 +621,12 @@ details[open] > .design-config-section-title::before {
   color: var(--icell-text-dim);
   flex-shrink: 0;
   min-width: 16px;
+}
+
+.cp-solvent-label {
+  font-size: 0.72rem;
+  color: var(--icell-text-dim);
+  min-width: 58px;
 }
 
 .cp-conc-reps-lbl {

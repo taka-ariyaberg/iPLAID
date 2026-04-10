@@ -3,7 +3,7 @@ Validators Module
 
 Protocol validation checks and assertions:
 - Export file structure validation
-- DMSO normalization verification
+- Solvent-family normalization verification
 """
 
 from __future__ import annotations
@@ -20,21 +20,7 @@ def validate_export_file(
     user_name: str,
     software_version: str = "1.7.2021.1019",
 ) -> tuple[pd.DataFrame, int]:
-    """
-    Validate structure of exported protocol file.
-    
-    Args:
-        out_protocol: Path to protocol CSV file
-        protocol_name: Expected protocol name in header
-        user_name: Expected user name in header
-        software_version: Expected software version
-        
-    Returns:
-        Tuple of (protocol_dataframe, header_row_index)
-        
-    Raises:
-        AssertionError: If file validation fails
-    """
+    """Validate structure of exported protocol file."""
     out_protocol = str(out_protocol)
 
     assert os.path.exists(out_protocol), f"Missing file: {out_protocol}"
@@ -59,38 +45,54 @@ def validate_export_file(
     return p, header_row_idx
 
 
-def validate_dmso_normalization(
-    df: pd.DataFrame,
-    *,
-    max_dmso_pct: float,
-    working_volume_ul: float,
-) -> tuple[float, float]:
+def validate_solvent_normalization(df: pd.DataFrame) -> list[dict]:
     """
-    Validate DMSO normalization was successful.
-    
-    Args:
-        df: DataFrame with dmso_total_uL column
-        max_dmso_pct: Maximum DMSO percentage allowed
-        working_volume_ul: Working volume of wells
-        
-    Returns:
-        Tuple of (target_dmso_ul, max_dmso_ul)
-        
-    Raises:
-        ValueError: If normalization failed
+    Validate solvent-family normalization and return a solvent summary.
     """
-    max_dmso_ul = (max_dmso_pct / 100.0) * working_volume_ul
+    required_columns = {
+        "solvent_key",
+        "solvent_family",
+        "solvent_total_uL",
+        "solvent_target_uL",
+        "solvent_cap_pct",
+        "solvent_cap_uL",
+        "solvent_topup_uL",
+        "is_solvent_control",
+    }
+    missing = sorted(required_columns - set(df.columns))
+    if missing:
+        raise ValueError(f"Missing solvent normalization columns: {missing}")
 
-    assert "dmso_total_uL" in df.columns, "Missing df['dmso_total_uL']"
+    summaries: list[dict] = []
+    for solvent_key, family_rows in df.groupby("solvent_key", sort=True):
+        family_name = str(family_rows["solvent_family"].iloc[0]).strip()
+        target_ul = float(family_rows["solvent_target_uL"].iloc[0])
+        max_ul = float(family_rows["solvent_cap_uL"].iloc[0])
+        cap_pct = float(family_rows["solvent_cap_pct"].iloc[0])
+        totals = family_rows["solvent_total_uL"].astype(float)
 
-    target_dmso_ul = float(df["dmso_total_uL"].iloc[0])
+        if not np.allclose(totals.values, target_ul, atol=1e-9):
+            raise ValueError(
+                f'Solvent normalization failed for "{family_name}": final solvent is not identical across the family.'
+            )
 
-    if not np.allclose(df["dmso_total_uL"].values, target_dmso_ul, atol=1e-9):
-        raise ValueError("DMSO normalization failed: final DMSO is not identical across all wells.")
+        if totals.max() > max_ul + 1e-12:
+            raise ValueError(
+                f'Solvent normalization failed for "{family_name}": exceeded the configured solvent cap.'
+            )
 
-    if df["dmso_total_uL"].max() > max_dmso_ul + 1e-12:
-        raise ValueError(
-            f"DMSO exceeds cap: max {df['dmso_total_uL'].max():.6f} uL > cap {max_dmso_ul:.6f} uL"
+        control_mask = family_rows["is_solvent_control"].fillna(False).astype(bool)
+        summaries.append(
+            {
+                "solvent": family_name,
+                "solventKey": solvent_key,
+                "configuredCapPct": cap_pct,
+                "maxSolventUl": max_ul,
+                "targetSolventUl": target_ul,
+                "compoundWellCount": int((~control_mask).sum()),
+                "controlWellCount": int(control_mask.sum()),
+                "topupDispenseCount": int((family_rows["solvent_topup_uL"].astype(float) > 0).sum()),
+            }
         )
 
-    return target_dmso_ul, max_dmso_ul
+    return summaries

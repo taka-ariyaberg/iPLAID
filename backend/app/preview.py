@@ -44,6 +44,7 @@ def build_layout_preview_from_dataframe(df) -> dict:
         well = str(getattr(row, "well", ""))
         compound = str(getattr(row, "cmpdname", "Unknown")).strip()
         concentration = _normalize_number(getattr(row, "CONCuM", None))
+        explicit_is_control = getattr(row, "is_solvent_control", None)
         row_label, column_number = _parse_well(well)
 
         plate = plates.setdefault(
@@ -64,7 +65,11 @@ def build_layout_preview_from_dataframe(df) -> dict:
                 "column": column_number,
                 "compound": compound,
                 "concentration": concentration,
-                "isControl": compound.upper() == "DMSO",
+                "isControl": (
+                    bool(explicit_is_control)
+                    if explicit_is_control is not None
+                    else (concentration == 0 if concentration is not None else compound.upper() == "DMSO")
+                ),
             }
         )
 

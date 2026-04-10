@@ -29,18 +29,18 @@ from src.iplaid.calculations import (
 )
 from src.iplaid.normalization import (
     add_target_and_volume_columns,
-    enforce_dmso_volume_cap,
-    normalize_dmso_topup,
+    enforce_solvent_volume_cap,
+    normalize_solvent_topup,
 )
 from src.iplaid.output import (
-    build_compound_and_dmso_rows,
+    build_compound_and_topup_rows,
     build_liquid_table,
     attach_and_sort_dispense_rows,
     build_full_protocol,
     write_outputs,
 )
-from src.iplaid.validators import validate_export_file, validate_dmso_normalization
-from src.iplaid.validators_preflight import run_preflight_validation
+from src.iplaid.validators import validate_export_file, validate_solvent_normalization
+from src.iplaid.validators_preflight import PreflightAssessmentError, run_preflight_validation
 from src.iplaid import source_plate_prep
 
 
@@ -151,27 +151,19 @@ def _run_pipeline_with_resolved_inputs(*, root: Path, cfg: dict, paths: dict, in
 
     # Load and normalize input data
     df = load_layout_csv(paths["layout_path"])
-    df, is_dmso_control = normalize_layout_df(df)
+    df, _ = normalize_layout_df(df)
 
     cmpd_info = load_meta_csv(paths["meta_path"])
     cmpd_info = normalize_meta_df(cmpd_info)
     df = merge_layout_with_meta(df, cmpd_info)
 
-    # Pre-flight validation: Check all concentrations are feasible
-    # Extract highest stock concentration from compound metadata
-    highest_stock_mm = float(df[df['highest_stock_mM'] > 0]['highest_stock_mM'].max()) if 'highest_stock_mM' in df.columns else 10.0
-    
-    can_proceed = run_preflight_validation(
+    # Pre-flight validation: check all concentrations and solvent families are feasible
+    preflight_assessment = run_preflight_validation(
         df,
         cfg,
-        highest_stock_mm=highest_stock_mm,
     )
-    if not can_proceed:
-        raise ValueError(
-            "Pre-flight validation failed. "
-            "See recommendations above and update configuration as needed. "
-            "Do NOT override the max_dmso_pct constraint without reviewing the feasibility analysis."
-        )
+    if not preflight_assessment["ok"]:
+        raise PreflightAssessmentError(preflight_assessment)
 
     # Stock selection and volume calculation
     # Track input before stock assignment
@@ -182,7 +174,7 @@ def _run_pipeline_with_resolved_inputs(*, root: Path, cfg: dict, paths: dict, in
         stockfinder_fn=stockfinder,
         stockfinder_safe_fn=stockfinder_safe,
         working_volume_ul=float(cfg["working_volume_ul"]),
-        max_dmso_pct=float(cfg["max_dmso_pct"]),
+        config=cfg,
         sourceplate_type=str(cfg["sourceplate_type"]),
     )
     stock_summary = make_stock_summary(df)
@@ -215,21 +207,21 @@ def _run_pipeline_with_resolved_inputs(*, root: Path, cfg: dict, paths: dict, in
         working_volume_ul=float(cfg["working_volume_ul"]),
     )
 
-    df, max_dmso_ul = enforce_dmso_volume_cap(
+    df, solvent_caps = enforce_solvent_volume_cap(
         df,
-        max_dmso_pct=float(cfg["max_dmso_pct"]),
+        config=cfg,
         working_volume_ul=float(cfg["working_volume_ul"]),
     )
 
-    # DMSO normalization
-    df, target_dmso_ul, max_dmso_ul = normalize_dmso_topup(
+    # Solvent-family normalization
+    df, solvent_summary = normalize_solvent_topup(
         df,
-        max_dmso_pct=float(cfg["max_dmso_pct"]),
+        config=cfg,
         working_volume_ul=float(cfg["working_volume_ul"]),
     )
 
     # Protocol building
-    compound_rows, dmso_rows, all_rows = build_compound_and_dmso_rows(df)
+    compound_rows, topup_rows, all_rows = build_compound_and_topup_rows(df)
     liquid_table, liquid_table_export = build_liquid_table(all_rows, str(cfg["protocol_name"]))
     
     # Diagnostic: Report final liquid table
@@ -297,11 +289,13 @@ All 13 target concentrations are handled by the 8 unique source stocks shown abo
         user_name=str(cfg["user_name"]),
     )
 
-    validated_target_dmso_ul, validated_max_dmso_ul = validate_dmso_normalization(
-        df,
-        max_dmso_pct=float(cfg["max_dmso_pct"]),
-        working_volume_ul=float(cfg["working_volume_ul"]),
+    validated_solvent_summary = validate_solvent_normalization(df)
+    dmso_summary = next(
+        (entry for entry in validated_solvent_summary if str(entry["solventKey"]) == "dmso"),
+        None,
     )
+    validated_target_dmso_ul = float(dmso_summary["targetSolventUl"]) if dmso_summary else 0.0
+    validated_max_dmso_ul = float(dmso_summary["maxSolventUl"]) if dmso_summary else 0.0
 
     # Source plate preparation (optional)
     source_prep_volumes = None
@@ -341,16 +335,19 @@ All 13 target concentrations are handled by the 8 unique source stocks shown abo
         "source_specs": source_specs,
         "df": df,
         "cmpd_info": cmpd_info,
+        "preflight_assessment": preflight_assessment,
         "stock_summary": stock_summary,
         "compound_rows": compound_rows,
-        "dmso_rows": dmso_rows,
+        "topup_rows": topup_rows,
         "all_rows": all_rows,
         "liquid_table": liquid_table,
         "liquid_table_export": liquid_table_export,
         "fullprotocol": fullprotocol,
         "preview_df": preview_df,
         "header_row_idx": header_row_idx,
-        "is_dmso_control_count": int(is_dmso_control.sum()),
+        "is_solvent_control_count": int(df["is_solvent_control"].fillna(False).astype(bool).sum()),
+        "solvent_caps": solvent_caps,
+        "solvent_summary": validated_solvent_summary or solvent_summary,
         "target_dmso_ul": validated_target_dmso_ul,
         "max_dmso_ul": validated_max_dmso_ul,
         "source_prep_volumes": source_prep_volumes,

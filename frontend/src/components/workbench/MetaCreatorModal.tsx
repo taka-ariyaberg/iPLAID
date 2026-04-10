@@ -76,15 +76,18 @@ function normalizeName(value: string): string {
 
 function getRowClass(row: CompoundRow): RowClass {
   if (row.rowClass) return row.rowClass;
-  const name = row.name.trim().toUpperCase();
-  const stockValue = Number(row.stock_mM);
-  if ((name === "DMSO" || name === row.solvent.trim().toUpperCase()) && stockValue === 0) {
+  const nameKey = normalizeName(row.name);
+  const solventKey = normalizeName(row.solvent);
+  if (nameKey && nameKey === solventKey) {
     return "solvent";
   }
   return "compound";
 }
 
 function getExportStockMm(row: CompoundRow): number {
+  if (getRowClass(row) === "solvent") {
+    return 0;
+  }
   const stockValue = Number(row.stock_mM);
   if (!Number.isFinite(stockValue)) {
     return 0;
@@ -123,6 +126,9 @@ function validateRow(row: CompoundRow, rows: CompoundRow[]): ValidationResult {
   }
 
   if (rowClass === "solvent") {
+    if (stockValue !== 0) {
+      return { ok: false, message: "Solvent rows must be 0." };
+    }
     return { ok: true, message: "" };
   }
 
@@ -139,10 +145,12 @@ function buildCSV(rows: CompoundRow[]): string {
   const dataLines: string[] = [];
   for (const r of rows) {
     const name = r.name.trim();
-    if (!name || seen.has(name)) continue;
-    seen.add(name);
+    const nameKey = normalizeName(name);
+    if (!name || seen.has(nameKey)) continue;
+    seen.add(nameKey);
     const stock = String(getExportStockMm(r));
-    dataLines.push(`${csvField(name)},${stock},${csvField(r.solvent || "DMSO")}`);
+    const solvent = getRowClass(r) === "solvent" ? name : (r.solvent || "DMSO");
+    dataLines.push(`${csvField(name)},${stock},${csvField(solvent)}`);
   }
   return [header, ...dataLines].join("\n");
 }
@@ -150,7 +158,7 @@ function buildCSV(rows: CompoundRow[]): string {
 function MetaEntryEditor({
   row,
   index,
-  isSolventControl,
+  isSolventRow,
   onUpdate,
   onStockUpdate,
   onRemove,
@@ -158,7 +166,7 @@ function MetaEntryEditor({
 }: {
   row: CompoundRow;
   index: number;
-  isSolventControl: boolean;
+  isSolventRow: boolean;
   onUpdate: (field: keyof CompoundRow, value: string) => void;
   onStockUpdate: (value: number) => void;
   onRemove: () => void;
@@ -166,44 +174,48 @@ function MetaEntryEditor({
 }) {
   return (
     <Fragment>
-      <div className={`mcm-row${isSolventControl ? " mcm-row-solvent" : ""}${validationMessage ? " is-invalid" : ""}`}>
+      <div className={`mcm-row${isSolventRow ? " mcm-row-solvent" : ""}${validationMessage ? " is-invalid" : ""}`}>
         <span
           className="mcm-row-dot"
           style={{ background: getStableCompoundColor(index) }}
         />
         <input
           className="mcm-input mcm-input-name"
-          placeholder={isSolventControl ? "e.g. DMSO" : "e.g. Etoposide"}
+          placeholder={isSolventRow ? "e.g. DMSO" : "e.g. Etoposide"}
           value={row.name}
           onChange={(e) => {
             const nextValue = e.target.value;
             onUpdate("name", nextValue);
-            if (isSolventControl) {
+            if (isSolventRow) {
               onUpdate("solvent", nextValue);
             }
           }}
           onFocus={(e) => e.target.select()}
         />
-        <SpinInput
-          min={isSolventControl ? 0 : 1}
-          step={1}
-          className="mcm-stock-spin"
-          placeholder={isSolventControl ? "0" : "10"}
-          value={row.stock_mM === "" ? (isSolventControl ? 0 : 10) : Number(row.stock_mM) || 0}
-          onChange={onStockUpdate}
-          onCommit={onStockUpdate}
-        />
-        <select
-          className="mcm-input mcm-input-unit"
-          value={row.stockUnit}
-          onChange={(e) => onUpdate("stockUnit", e.target.value as StockUnit)}
-        >
-          <option value="M">M</option>
-          <option value="mM">mM</option>
-          <option value="uM">uM</option>
-          <option value="nM">nM</option>
-        </select>
-        {!isSolventControl ? (
+        {isSolventRow ? null : (
+          <SpinInput
+            min={1}
+            step={1}
+            className="mcm-stock-spin"
+            placeholder="10"
+            value={row.stock_mM === "" ? 10 : Number(row.stock_mM) || 0}
+            onChange={onStockUpdate}
+            onCommit={onStockUpdate}
+          />
+        )}
+        {isSolventRow ? null : (
+          <select
+            className="mcm-input mcm-input-unit"
+            value={row.stockUnit}
+            onChange={(e) => onUpdate("stockUnit", e.target.value as StockUnit)}
+          >
+            <option value="M">M</option>
+            <option value="mM">mM</option>
+            <option value="uM">uM</option>
+            <option value="nM">nM</option>
+          </select>
+        )}
+        {!isSolventRow ? (
           <input
             className="mcm-input mcm-input-solvent"
             placeholder="DMSO"
@@ -234,7 +246,9 @@ export function MetaCreatorModal({ initialRows, onClose, onApply }: MetaCreatorM
     if (!initialRows || initialRows.length === 0) return [mkRow(), mkSolventRow()];
     const nextSeed: CompoundRow[] = initialRows.map((row) => ({
       ...row,
-      stockUnit: row.stockUnit ?? "mM",
+      stock_mM: getRowClass(row) === "solvent" ? "0" : row.stock_mM,
+      stockUnit: getRowClass(row) === "solvent" ? "mM" : (row.stockUnit ?? "mM"),
+      solvent: getRowClass(row) === "solvent" ? row.name : row.solvent,
       rowClass: getRowClass(row),
     }));
     if (!nextSeed.some((row) => getRowClass(row) === "solvent")) {
@@ -259,14 +273,15 @@ export function MetaCreatorModal({ initialRows, onClose, onApply }: MetaCreatorM
   const updateRow = (id: number, field: keyof CompoundRow, value: string) =>
     setRows((r) => r.map((x) => (x.id === id ? { ...x, [field]: value } : x)));
 
-  function updateStock(id: number, isSolventControl: boolean, value: number) {
-    if (isSolventControl) {
+  function updateStock(id: number, isSolventRow: boolean, value: number) {
+    if (isSolventRow) {
       setStockWarnings((current) => {
         const next = { ...current };
         delete next[id];
         return next;
       });
-      updateRow(id, "stock_mM", String(Math.max(0, value)));
+      updateRow(id, "stock_mM", "0");
+      updateRow(id, "stockUnit", "mM");
       return;
     }
 
@@ -287,6 +302,11 @@ export function MetaCreatorModal({ initialRows, onClose, onApply }: MetaCreatorM
   }
 
   const rowStates = rows.map((row) => ({ row, validation: validateRow(row, rows) }));
+  const normalizedRows: CompoundRow[] = rows.map((row) => (
+    getRowClass(row) === "solvent"
+      ? { ...row, stock_mM: "0", stockUnit: "mM" as StockUnit, solvent: row.name.trim() }
+      : row
+  ));
   const compoundRows = rowStates.filter(({ row }) => getRowClass(row) === "compound");
   const solventRows = rowStates.filter(({ row }) => getRowClass(row) === "solvent");
   const hasInvalidCompoundRows = compoundRows.some(({ validation }) => !validation.ok);
@@ -320,14 +340,14 @@ export function MetaCreatorModal({ initialRows, onClose, onApply }: MetaCreatorM
   }
 
   function handleApply() {
-    const csv = buildCSV(rows);
+    const csv = buildCSV(normalizedRows);
     const blob = new Blob([csv], { type: "text/csv" });
     const file = new File([blob], "cmpd_info.csv", { type: "text/csv" });
-    onApply(file, rows);
+    onApply(file, normalizedRows);
   }
 
   function handleDownload() {
-    const csv = buildCSV(rows);
+    const csv = buildCSV(normalizedRows);
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -378,7 +398,7 @@ export function MetaCreatorModal({ initialRows, onClose, onApply }: MetaCreatorM
                 key={row.id}
                 row={row}
                 index={i}
-                isSolventControl={false}
+                isSolventRow={false}
                 validationMessage={stockWarnings[row.id] ?? (validation.ok ? undefined : validation.message)}
                 onUpdate={(field, value) => updateRow(row.id, field, value)}
                 onStockUpdate={(value) => updateStock(row.id, false, value)}
@@ -396,22 +416,20 @@ export function MetaCreatorModal({ initialRows, onClose, onApply }: MetaCreatorM
 
           <section className="mcm-group">
             <div className="mcm-group-header">
-              <p className="mcm-group-title">Solvent / controls</p>
+              <p className="mcm-group-title">Solvents</p>
             </div>
             <div className="mcm-col-headers mcm-col-headers-solvent">
               <span className="mcm-dot-spacer" />
               <span className="mcm-col-lbl mcm-col-name">Name</span>
-              <span className="mcm-col-lbl mcm-col-stock">Stock</span>
-              <span className="mcm-col-lbl mcm-col-unit">Unit</span>
               <span className="mcm-remove-spacer" />
             </div>
-            {solventRows.length === 0 && <p className="mcm-empty-hint">No solvent/control rows yet.</p>}
+            {solventRows.length === 0 && <p className="mcm-empty-hint">No solvents yet.</p>}
             {solventRows.map(({ row, validation }, i) => (
               <MetaEntryEditor
                 key={row.id}
                 row={row}
                 index={compoundRows.length + i}
-                isSolventControl={true}
+                isSolventRow={true}
                 validationMessage={stockWarnings[row.id] ?? (validation.ok ? undefined : validation.message)}
                 onUpdate={(field, value) => updateRow(row.id, field, value)}
                 onStockUpdate={(value) => updateStock(row.id, true, value)}
@@ -423,7 +441,7 @@ export function MetaCreatorModal({ initialRows, onClose, onApply }: MetaCreatorM
               onClick={addSolventRow}
               disabled={hasInvalidSolventRows}
             >
-              Add solvent/control
+              Add solvent
             </button>
           </section>
         </div>

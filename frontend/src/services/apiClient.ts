@@ -2,13 +2,27 @@ import type { BootstrapResponse, DesignConfig, DesignJob, JobRecord, LayoutPrevi
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
+function formatErrorDetail(detail: unknown): string {
+  if (typeof detail === "string") return detail;
+  if (detail && typeof detail === "object") {
+    const record = detail as Record<string, unknown>;
+    if (Array.isArray(record.errors)) {
+      return record.errors.map((item) => String(item)).join("\n");
+    }
+    if (typeof record.message === "string") {
+      return record.message;
+    }
+  }
+  return "Request failed";
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, init);
   if (!response.ok) {
     const contentType = response.headers.get("content-type") ?? "";
     if (contentType.includes("application/json")) {
       const payload = await response.json();
-      throw new Error(payload.detail ?? "Request failed");
+      throw new Error(formatErrorDetail(payload.detail));
     }
     throw new Error(await response.text());
   }
@@ -75,6 +89,12 @@ export const apiClient = {
 
   async getDesignJob(jobId: string): Promise<DesignJob> {
     return request<DesignJob>(`/api/design/jobs/${jobId}`);
+  },
+
+  async cancelDesignJob(jobId: string): Promise<DesignJob> {
+    return request<DesignJob>(`/api/design/jobs/${jobId}/cancel`, {
+      method: "POST",
+    });
   },
 
   designArtifactUrl(jobId: string, artifactName: string): string {

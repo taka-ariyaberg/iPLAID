@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 JobStatus = Literal["queued", "running", "completed", "failed"]
@@ -24,10 +24,10 @@ class CompoundDef(BaseModel):
     conc_entries: List[ConcEntry] = Field(default_factory=list)
 
 
-class ControlDef(BaseModel):
-    """One control entry for the plate designer."""
+class SolventDef(BaseModel):
+    """One solvent entry for the plate designer."""
     name: str
-    conc_entries: List[ConcEntry] = Field(default_factory=list)
+    replicates: int = Field(default=3, ge=1)
 
 
 class DesignConfigModel(BaseModel):
@@ -36,9 +36,9 @@ class DesignConfigModel(BaseModel):
     plate_rows: int = Field(default=16, ge=4)
     plate_cols: int = Field(default=24, ge=4)
     empty_edge: int = Field(default=1, ge=0)
-    # Compounds & controls
+    # Compounds & solvents
     compounds: List[CompoundDef] = Field(default_factory=list)
-    controls: List[ControlDef] = Field(default_factory=list)
+    solvents: List[SolventDef] = Field(default_factory=list)
     # Distribution constraints
     concentrations_on_different_rows: bool = True
     concentrations_on_different_columns: bool = True
@@ -56,9 +56,61 @@ class DesignConfigModel(BaseModel):
     horizontal_cell_lines: int = Field(default=1, ge=1)
     vertical_cell_lines: int = Field(default=1, ge=1)
     # Solver
-    timeout_seconds: int = Field(default=30, ge=1)
-    num_threads: int = Field(default=4, ge=1)
+    timeout_seconds: int = Field(default=30, ge=1, le=120)
+    num_threads: int = Field(default=4, ge=1, le=8)
     random_seed: Optional[int] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_solvents(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+
+        raw_solvents = data.get("solvents")
+        if raw_solvents is None and "controls" in data:
+            raw_solvents = data.get("controls")
+
+        if raw_solvents is None:
+            return data
+
+        normalized_solvents: list[dict[str, Any]] = []
+        for item in raw_solvents or []:
+            if isinstance(item, SolventDef):
+                normalized_solvents.append(item.model_dump())
+                continue
+            if not isinstance(item, dict):
+                normalized_solvents.append({"name": "", "replicates": 3})
+                continue
+
+            replicates = item.get("replicates")
+            if replicates is None:
+                entries = item.get("conc_entries") or []
+                non_zero_entries = [
+                    entry
+                    for entry in entries
+                    if isinstance(entry, dict) and float(entry.get("value_um", 0) or 0) != 0
+                ]
+                if non_zero_entries:
+                    raise ValueError(
+                        "Legacy design controls with explicit concentrations can no longer be "
+                        "auto-converted to solvents. Recreate them as compounds with real "
+                        "concentrations, and use solvents only for vehicle-only wells."
+                    )
+                replicates = sum(
+                    int(entry.get("replicates", 0))
+                    for entry in entries
+                    if isinstance(entry, dict)
+                ) or 3
+
+            normalized_solvents.append({
+                "name": item.get("name", ""),
+                "replicates": replicates,
+            })
+
+        normalized = dict(data)
+        normalized["solvents"] = normalized_solvents
+        normalized.pop("controls", None)
+        return normalized
 
 
 class RunConfigModel(BaseModel):
@@ -70,6 +122,7 @@ class RunConfigModel(BaseModel):
     target_plate_type: str = Field(default="MWP 384")
     working_volume_ul: float = Field(default=40.0, gt=0)
     max_dmso_pct: float = Field(default=0.1, gt=0)
+    solvent_caps_pct: Optional[Dict[str, float]] = None
     source_prep_overage_pct: float = Field(default=0.30, ge=0)
     min_pipette_volume_uL: float = Field(default=1.0, ge=0)
     dilution_solvent: str = Field(default="DMSO")

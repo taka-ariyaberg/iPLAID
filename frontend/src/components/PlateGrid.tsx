@@ -73,6 +73,7 @@ type WellRecord = {
   well: string;
   compound: string | null;
   concentration: number | null;
+  isControl: boolean;
   isFilled: boolean;
 };
 
@@ -193,7 +194,14 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
   // Overwrite conflict: filled wells among selected at assign time
   const [assignConflict, setAssignConflict] = useState<{ filledIds: string[] } | null>(null);
   // Copy/paste clipboard: relative offsets from the copy-time anchor
-  type ClipboardEntry = { plateId: string; rowOffset: number; colOffset: number; compound: string; concentration: number | null };
+  type ClipboardEntry = {
+    plateId: string;
+    rowOffset: number;
+    colOffset: number;
+    compound: string;
+    concentration: number | null;
+    isControl: boolean;
+  };
   const [clipboard, setClipboard] = useState<ClipboardEntry[] | null>(null);
   // Paste conflict: filled wells that would be overwritten
   const [pasteConflict, setPasteConflict] = useState<{
@@ -241,6 +249,7 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
             well: wellName,
             compound: well?.compound ?? null,
             concentration: well?.concentration ?? null,
+            isControl: Boolean(well?.isControl),
             isFilled: Boolean(well),
           };
           allWells.push(record);
@@ -269,14 +278,23 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
   }, [renderedPlates]);
 
   const legendGroups = useMemo(() => {
-    const groups = new Map<string, { count: number; concentrations: Map<string, { numeric: number | null; count: number }> }>();
+    const groups = new Map<string, {
+      count: number;
+      isControl: boolean;
+      concentrations: Map<string, { numeric: number | null; count: number }>;
+    }>();
 
     displayPreview.plates.forEach((plate) => {
       plate.wells.forEach((well) => {
         const compound = well.compound;
         const concentrationKey = well.concentration === null ? "No concentration" : String(well.concentration);
-        const group = groups.get(compound) ?? { count: 0, concentrations: new Map() };
+        const group = groups.get(compound) ?? {
+          count: 0,
+          isControl: Boolean(well.isControl),
+          concentrations: new Map(),
+        };
         group.count += 1;
+        group.isControl = group.isControl || Boolean(well.isControl);
         const currentConcentration = group.concentrations.get(concentrationKey) ?? {
           numeric: well.concentration,
           count: 0,
@@ -292,6 +310,7 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
       .map(([compound, group]) => ({
         compound,
         count: group.count,
+        isControl: group.isControl,
         concentrations: Array.from(group.concentrations.entries())
           .sort((left, right) => {
             const leftValue = left[1].numeric ?? -1;
@@ -311,7 +330,7 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
   // sequential discovery index, so adding new compounds never shifts existing colors.
   const compoundColorLookup = useMemo(() => {
     const lookup = new Map<string, string>();
-    const realGroups = legendGroups.filter((g) => g.compound.toUpperCase() !== 'DMSO');
+    const realGroups = legendGroups.filter((g) => !g.isControl);
     // Assign a stable index to each new compound — existing ones keep theirs forever.
     let nextIdx = compoundColorIndexRef.current.size;
     realGroups.forEach((group) => {
@@ -320,7 +339,7 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
       }
     });
     legendGroups.forEach((group) => {
-      if (group.compound.toUpperCase() === 'DMSO') {
+      if (group.isControl) {
         lookup.set(group.compound, DMSO_COLOR);
         return;
       }
@@ -337,12 +356,12 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
     const lookup = new Map<string, Map<string, string>>();
     legendGroups.forEach((group) => {
       const concMap = new Map<string, string>();
-      const isDmso = group.compound.toUpperCase() === 'DMSO';
+      const isControl = group.isControl;
       const baseColor = compoundColorLookup.get(group.compound)!;
       group.concentrations.forEach((conc, i) => {
         concMap.set(
           conc.label,
-          isDmso ? DMSO_COLOR : getConcColor(baseColor, i, group.concentrations.length),
+          isControl ? DMSO_COLOR : getConcColor(baseColor, i, group.concentrations.length),
         );
       });
       lookup.set(group.compound, concMap);
@@ -615,7 +634,7 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
           column: parsed ? parseInt(parsed[2], 10) : 0,
           compound: editCompound,
           concentration: concLabel ?? null,
-          isControl: editCompound.toUpperCase() === "DMSO",
+          isControl: editCompound.toUpperCase() === "DMSO" || concLabel === 0,
         });
       });
       return { ...plate, wells: Array.from(wellsMap.values()) };
@@ -654,6 +673,7 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
       colOffset: colIdx - minColIdx,
       compound: w.compound ?? "",
       concentration: w.concentration,
+      isControl: w.isControl,
     }));
     setClipboard(entries);
   }
@@ -684,7 +704,7 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
           column: col,
           compound: src.compound,
           concentration: src.concentration,
-          isControl: src.compound.toUpperCase() === "DMSO",
+          isControl: src.isControl,
         });
       }
       return { ...plate, wells: Array.from(wellsMap.values()) };
@@ -732,7 +752,7 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
           column: parsed ? parseInt(parsed[2], 10) : 0,
           compound: entry.compound,
           concentration: entry.concentration,
-          isControl: entry.compound.toUpperCase() === "DMSO",
+          isControl: entry.isControl,
         });
       }
       return { ...plate, wells: Array.from(wellsMap.values()) };

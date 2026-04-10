@@ -1,11 +1,11 @@
 """
 Pre-flight Validation Module
 
-Validates that all requested concentration-stock combinations are feasible
-before running the pipeline. Calculates minimum requirements and suggests
-configuration adjustments if needed.
-
-Accounts for stock dilution series (10mM → 1mM → 0.1mM → etc).
+Builds a structured feasibility assessment before the pipeline runs.
+The assessment is solvent-aware and can distinguish:
+- impossible concentration / stock combinations
+- solvent cap settings that are too low
+- solvent families that are used without solvent-only wells
 """
 
 from __future__ import annotations
@@ -13,220 +13,254 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from src.iplaid.solvents import clean_label, get_solvent_cap_pct, label_key
+
+
+class PreflightAssessmentError(ValueError):
+    """Raised when the structured pre-flight assessment contains blocking issues."""
+
+    def __init__(self, assessment: dict):
+        self.assessment = assessment
+        blocking_count = len(assessment.get("blockingIssues", []))
+        message = (
+            f"Pre-flight assessment found {blocking_count} blocking issue"
+            f"{'' if blocking_count == 1 else 's'}."
+        )
+        super().__init__(message)
+
 
 def get_min_pipette_volume_nl(sourceplate_type: str) -> float:
     """Get minimum pipette volume for source plate type in nanoliters."""
     return 30.0 if sourceplate_type == "S.200" else 8.0
 
 
-def calculate_required_dmso_pct(
+def calculate_required_solvent_pct(
     target_conc_um: float,
     highest_stock_mm: float,
     working_volume_ul: float,
     sourceplate_type: str,
-) -> tuple[bool, float|None, str]:
+) -> tuple[bool, float | None, str]:
     """
-    Calculate feasibility and required DMSO% for a target concentration.
-    
-    Tries all stocks in the dilution series to find the minimum DMSO% needed.
-    
-    Returns:
-        (is_feasible, min_dmso_pct_needed, reason)
+    Calculate the minimum carrier-solvent percentage needed for a target concentration.
+
+    Tries the full 10-fold dilution series derived from the highest available stock and
+    returns the least solvent percentage required to stay within minimum pipette limits.
     """
-    
     if highest_stock_mm == 0:
-        return True, 0.0, "Control/DMSO"
+        return True, 0.0, "Solvent row"
     if target_conc_um == 0:
         return True, 0.0, "Zero target"
-    
+
     min_pipette_nl = get_min_pipette_volume_nl(sourceplate_type)
-    
-    # Generate dilution series
     lowest_stock_mM = 0.0000001
     availstocks_mM = [
         highest_stock_mm / (10 ** x)
         for x in range(int(np.ceil(np.log10(highest_stock_mm / lowest_stock_mM))) + 1)
     ]
-    
-    # Try each stock to find minimum DMSO% needed
-    min_dmso_pct = 999.0
+
+    min_required_pct = 999.0
     best_stock = None
-    
+
     for stock_mm in availstocks_mM:
-        # C1_high = (V2 * target) / Min V1 = max stock that can be used
-        C1_high = (working_volume_ul * target_conc_um) / min_pipette_nl
-        
-        if stock_mm > C1_high:
-            continue  # Stock too concentrated
-        
-        # dmso% >= (target * 100) / (stock * 1000)
-        dmso_needed = (target_conc_um * 100) / (stock_mm * 1000)
-        
-        if dmso_needed <= 100 and dmso_needed < min_dmso_pct:
-            min_dmso_pct = dmso_needed
+        max_usable_stock = (working_volume_ul * target_conc_um) / min_pipette_nl
+        if stock_mm > max_usable_stock:
+            continue
+
+        solvent_pct_needed = (target_conc_um * 100) / (stock_mm * 1000)
+        if solvent_pct_needed <= 100 and solvent_pct_needed < min_required_pct:
+            min_required_pct = solvent_pct_needed
             best_stock = stock_mm
-    
+
     if best_stock is None:
-        return False, None, "No stock in series achieves this concentration"
-    
-    return True, min_dmso_pct, f"Requires >= {min_dmso_pct:.3f}% DMSO"
+        return False, None, "No stock in the dilution series can satisfy the pipetting limits."
+
+    return True, min_required_pct, f"Requires at least {min_required_pct:.3f}% carrier solvent"
 
 
-def validate_all_concentrations(
-    df: pd.DataFrame,
-    highest_stock_mm: float,
-    working_volume_ul: float,
-    sourceplate_type: str,
-    current_dmso_pct: float,
-) -> dict:
-    """Validate all compound-concentration pairs."""
-    
-    unique_pairs = df.groupby(['cmpdname', 'CONCuM']).size().reset_index(name='count')
-    
-    issues = []
-    requirements = []
-    max_required_dmso = current_dmso_pct
-    
-    for _, row in unique_pairs.iterrows():
-        compound = row['cmpdname']
-        target_conc = float(str(row['CONCuM']).strip().replace('"', ''))
-        count = row['count']
-        
-        is_feasible, required_dmso, reason = calculate_required_dmso_pct(
+def _build_solvent_family_rows(df: pd.DataFrame, config: dict) -> list[dict]:
+    families: list[dict] = []
+    compound_rows = df.loc[~df["is_solvent_control"]].copy()
+    if compound_rows.empty:
+        return families
+
+    for solvent_key, group in compound_rows.groupby("solvent_key", sort=True):
+        solvent_name = clean_label(group["solvent"].iloc[0])
+        control_well_count = int(
+            df.loc[df["is_solvent_control"] & df["solvent_key"].eq(solvent_key)].shape[0]
+        )
+        families.append(
+            {
+                "solvent": solvent_name,
+                "solventKey": solvent_key,
+                "compoundCount": int(group["cmpdname"].nunique()),
+                "compoundWellCount": int(len(group)),
+                "controlWellCount": control_well_count,
+                "configuredCapPct": float(get_solvent_cap_pct(config, solvent_name)),
+                "requiredCapPct": 0.0,
+                "status": "ok",
+            }
+        )
+
+    return families
+
+
+def assess_preflight_validation(df: pd.DataFrame, config: dict) -> dict:
+    """Create a structured solvent-aware pre-flight assessment."""
+    working_volume_ul = float(config.get("working_volume_ul", 40))
+    sourceplate_type = str(config.get("sourceplate_type", "S.100 Plate"))
+
+    compound_rows = df.loc[~df["is_solvent_control"]].copy()
+    solvent_families = _build_solvent_family_rows(df, config)
+    family_by_key = {entry["solventKey"]: entry for entry in solvent_families}
+
+    warnings: list[str] = []
+    blocking_issues: list[str] = []
+    requirements: list[dict] = []
+    cap_recommendations: list[dict] = []
+
+    for family in solvent_families:
+        if family["compoundWellCount"] > 0 and family["controlWellCount"] == 0:
+            family["status"] = "warning"
+            warnings.append(
+                f'Solvent "{family["solvent"]}" is used by compounds but has no solvent-only wells on the target plate.'
+            )
+
+    grouped_pairs = compound_rows.groupby(
+        ["cmpdname", "CONCuM", "highest_stock_mM", "solvent", "solvent_key"],
+        dropna=False,
+    ).size().reset_index(name="count")
+
+    for _, row in grouped_pairs.iterrows():
+        compound = clean_label(row["cmpdname"])
+        target_conc = float(row["CONCuM"])
+        highest_stock_mm = float(row["highest_stock_mM"])
+        solvent_name = clean_label(row["solvent"])
+        solvent_key = label_key(row["solvent_key"])
+        configured_cap_pct = float(get_solvent_cap_pct(config, solvent_name))
+
+        is_feasible, required_pct, reason = calculate_required_solvent_pct(
             target_conc,
             highest_stock_mm,
             working_volume_ul,
             sourceplate_type,
         )
-        
-        req_info = {
-            'compound': compound,
-            'target_conc_um': target_conc,
-            'feasible': is_feasible,
-            'required_dmso_pct': required_dmso,
-            'reason': reason,
-            'well_count': count,
+
+        requirement = {
+            "compound": compound,
+            "targetConcUm": target_conc,
+            "highestStockMm": highest_stock_mm,
+            "solvent": solvent_name,
+            "configuredCapPct": configured_cap_pct,
+            "requiredSolventPct": required_pct,
+            "feasible": is_feasible,
+            "reason": reason,
+            "wellCount": int(row["count"]),
+            "status": "ok",
         }
-        requirements.append(req_info)
-        
+
+        family_entry = family_by_key.get(solvent_key)
+        if family_entry is not None and required_pct is not None:
+            family_entry["requiredCapPct"] = max(
+                float(family_entry["requiredCapPct"]),
+                float(required_pct),
+            )
+
         if not is_feasible:
-            issues.append(
-                f"  ❌ {compound} @ {target_conc:.4g} µM: {reason} ({count} wells)"
+            requirement["status"] = "error"
+            if family_entry is not None:
+                family_entry["status"] = "error"
+            blocking_issues.append(
+                f"{compound} @ {target_conc:.4g} µM ({solvent_name}) is impossible: {reason}"
             )
-        elif required_dmso is not None and required_dmso > current_dmso_pct:
-            issues.append(
-                f"  ⚠️  {compound} @ {target_conc:.4g} µM: "
-                f"needs {required_dmso:.3f}% DMSO but configured {current_dmso_pct:.1f}% ({count} wells)"
+        elif required_pct is not None and required_pct > configured_cap_pct:
+            requirement["status"] = "needs_config"
+            if family_entry is not None:
+                family_entry["status"] = "error"
+            blocking_issues.append(
+                f"{compound} @ {target_conc:.4g} µM ({solvent_name}) needs {required_pct:.3f}% solvent "
+                f"but the configured cap is {configured_cap_pct:.3f}%."
             )
-        
-        if required_dmso is not None:
-            max_required_dmso = max(max_required_dmso, required_dmso)
-    
-    all_feasible = all(x['feasible'] for x in requirements)
-    
+            cap_recommendations.append(
+                {
+                    "solvent": solvent_name,
+                    "configuredCapPct": configured_cap_pct,
+                    "requiredCapPct": float(required_pct),
+                }
+            )
+
+        requirements.append(requirement)
+
+    deduped_cap_recommendations: dict[str, dict] = {}
+    for item in cap_recommendations:
+        key = label_key(item["solvent"])
+        existing = deduped_cap_recommendations.get(key)
+        if existing is None or item["requiredCapPct"] > existing["requiredCapPct"]:
+            deduped_cap_recommendations[key] = item
+    cap_recommendations = sorted(
+        deduped_cap_recommendations.values(),
+        key=lambda item: (label_key(item["solvent"]), item["requiredCapPct"]),
+    )
+
+    for family in solvent_families:
+        if family["status"] == "ok" and family["requiredCapPct"] > family["configuredCapPct"]:
+            family["status"] = "error"
+
+    summary = {
+        "compoundRowsChecked": int(len(compound_rows)),
+        "uniqueCompoundTargets": int(len(grouped_pairs)),
+        "solventFamilyCount": int(len(solvent_families)),
+        "warningCount": int(len(warnings)),
+        "blockingIssueCount": int(len(blocking_issues)),
+    }
+
     return {
-        'all_feasible': all_feasible,
-        'required_dmso_pct': max_required_dmso,
-        'issues': issues,
-        'requirements': requirements,
-        'current_dmso_pct': current_dmso_pct,
+        "ok": len(blocking_issues) == 0,
+        "summary": summary,
+        "warnings": warnings,
+        "blockingIssues": blocking_issues,
+        "solventFamilies": solvent_families,
+        "requirements": requirements,
+        "capRecommendations": cap_recommendations,
     }
 
 
-def print_preflight_report(validation_result: dict) -> bool:
-    """Print validation report. Returns True if pipeline should proceed."""
-    
-    issues = validation_result['issues']
-    feasible = validation_result['all_feasible']
-    current_dmso = validation_result['current_dmso_pct']
-    required_dmso = validation_result['required_dmso_pct']
-    reqs = validation_result['requirements']
-    
-    # Statistics
-    total_pairs = len(reqs)
-    feasible_count = sum(1 for r in reqs if r['feasible'])
-    warning_count = sum(1 for r in reqs if r['feasible'] and r['required_dmso_pct'] and r['required_dmso_pct'] > current_dmso)
-    error_count = sum(1 for r in reqs if not r['feasible'])
-    
-    print("\n" + "="*90)
-    print("PRE-FLIGHT VALIDATION: Concentration Feasibility Analysis")
-    print("="*90)
-    
-    print(f"\nConfiguration: max_dmso_pct = {current_dmso:.1f}%")
-    print(f"Analysis: {total_pairs} unique compound-concentration pairs")
-    print(f"  ✓ Feasible with current config: {feasible_count - warning_count}/{total_pairs}")
-    if warning_count > 0:
-        print(f"  ⚠️  Need config adjustment: {warning_count}/{total_pairs}")
-    if error_count > 0:
-        print(f"  ❌ Impossible: {error_count}/{total_pairs}")
-    
-    if issues:
-        print("\n" + "-"*90)
-        print("ISSUES DETECTED:")
-        print("-"*90)
-        for issue in issues:
-            print(issue)
-    
-    if error_count > 0:
-        print("\n" + "="*90)
-        print("RESULT: ❌ CRITICAL - Some concentrations impossible")
-        print("="*90)
-        print("\nThese concentrations cannot be achieved with ANY configuration.")
-        print("Options:")
-        print("  1. Use lower target concentrations")
-        print("  2. Request higher concentration stocks")
-        print("  3. Redesign assay parameters")
-        return False
-    
-    elif warning_count > 0:
-        print("\n" + "="*90)
-        print("RESULT: ⚠️  CONFIGURATION REQUIRES ADJUSTMENT")
-        print("="*90)
-        print(f"\nThe following concentrations require DMSO% adjustment:")
-        print(f"\n  Current configuration: \"max_dmso_pct\": {current_dmso:.1f}")
-        print(f"  Minimum required:    \"max_dmso_pct\": {required_dmso:.2f}\n")
-        print(f"RECOMMENDATION: Update config.json")
-        print(f'  Change "max_dmso_pct": {current_dmso:.1f} → "max_dmso_pct": {required_dmso:.2f}')
-        print(f"\nThen re-run the pipeline.")
-        return False
-    
-    else:
-        print("\n" + "="*90)
-        print("RESULT: ✅ ALL CONCENTRATIONS FEASIBLE")
-        print("="*90)
-        print(f"\n✓ All {total_pairs} concentrations achievable")
-        print(f"✓ Current DMSO limit ({current_dmso:.1f}%) is sufficient")
-        print(f"✓ Pipeline can proceed\n")
-        return True
-
-
-def run_preflight_validation(
-    df: pd.DataFrame,
-    config: dict,
-    highest_stock_mm: float,
-) -> bool:
-    """
-    Execute pre-flight validation workflow.
-    
-    Args:
-        df: DataFrame with compound-concentration pairs (from merge_layout_with_meta)
-        config: Configuration dictionary
-        highest_stock_mm: Highest stock concentration in mM (extracted from compound metadata)
-        
-    Returns:
-        True if all concentrations are feasible; False otherwise
-    """
-    
-    max_dmso_pct = float(config.get('max_dmso_pct', 0.1))
-    working_volume_ul = float(config.get('working_volume_ul', 40))
-    sourceplate_type = str(config.get('sourceplate_type', 'S.100 Plate'))
-    
-    result = validate_all_concentrations(
-        df,
-        highest_stock_mm,
-        working_volume_ul,
-        sourceplate_type,
-        max_dmso_pct,
+def print_preflight_report(assessment: dict) -> None:
+    """Print a concise CLI-oriented view of the structured assessment."""
+    summary = assessment["summary"]
+    print("\n" + "=" * 90)
+    print("PRE-FLIGHT ASSESSMENT")
+    print("=" * 90)
+    print(
+        f"Checked {summary['uniqueCompoundTargets']} unique compound/concentration targets "
+        f"across {summary['solventFamilyCount']} solvent families."
     )
-    
-    return print_preflight_report(result)
+
+    if assessment["warnings"]:
+        print("\nWarnings:")
+        for warning in assessment["warnings"]:
+            print(f"  • {warning}")
+
+    if assessment["blockingIssues"]:
+        print("\nBlocking issues:")
+        for issue in assessment["blockingIssues"]:
+            print(f"  • {issue}")
+
+    if assessment["capRecommendations"]:
+        print("\nCap recommendations:")
+        for item in assessment["capRecommendations"]:
+            print(
+                f"  • {item['solvent']}: raise solvent cap from "
+                f"{item['configuredCapPct']:.3f}% to at least {item['requiredCapPct']:.3f}%"
+            )
+
+    if assessment["ok"]:
+        print("\nResult: pipeline can proceed.")
+    else:
+        print("\nResult: resolve blocking issues before running the pipeline.")
+
+
+def run_preflight_validation(df: pd.DataFrame, config: dict) -> dict:
+    """Build and print the structured pre-flight assessment."""
+    assessment = assess_preflight_validation(df, config)
+    print_preflight_report(assessment)
+    return assessment

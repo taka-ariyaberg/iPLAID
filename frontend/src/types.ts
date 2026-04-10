@@ -1,4 +1,5 @@
 export type RunStatus = "queued" | "running" | "completed" | "failed";
+export type DesignPhase = "queued" | "preflight" | "solving" | "completed" | "failed";
 
 // ---------------------------------------------------------------------------
 // Design (PLAID_Core) types
@@ -15,9 +16,9 @@ export type CompoundDef = {
   conc_entries: ConcEntry[];
 };
 
-export type ControlDef = {
+export type SolventDef = {
   name: string;
-  conc_entries: ConcEntry[];
+  replicates: number;
 };
 
 export type DesignConfig = {
@@ -25,7 +26,7 @@ export type DesignConfig = {
   plate_cols: number;
   empty_edge: number;
   compounds: CompoundDef[];
-  controls: ControlDef[];
+  solvents: SolventDef[];
   concentrations_on_different_rows: boolean;
   concentrations_on_different_columns: boolean;
   replicates_on_same_plate: boolean;
@@ -46,17 +47,42 @@ export type DesignConfig = {
 export type ValidationResult = {
   ok: boolean;
   errors: string[];
+  warnings?: string[];
+  summary?: {
+    compoundCount: number;
+    concentrationEntryCount: number;
+    solventCount: number;
+    totalSamples: number;
+    usableWellsPerPlate: number;
+    estimatedMinimumPlates: number;
+  };
+};
+
+export type DesignPreflightReport = {
+  ok: boolean;
+  errors: string[];
+  warnings: string[];
+  summary: {
+    compoundCount: number;
+    concentrationEntryCount: number;
+    solventCount: number;
+    totalSamples: number;
+    usableWellsPerPlate: number;
+    estimatedMinimumPlates: number;
+  };
 };
 
 export type DesignJob = {
   jobId: string;
   jobType: "design";
   status: RunStatus;
+  phase: DesignPhase;
   createdAt: string;
   updatedAt: string;
   startedAt?: string;
   finishedAt?: string;
   designConfig: DesignConfig;
+  preflight: DesignPreflightReport | null;
   layoutPreview: LayoutPreview | null;
   artifacts: ArtifactInfo[];
   numPlates?: number;
@@ -77,12 +103,68 @@ export type RunConfig = {
   target_plate_type: string;
   working_volume_ul: number;
   max_dmso_pct: number;
+  solvent_caps_pct?: Record<string, number> | null;
   source_prep_overage_pct: number;
   min_pipette_volume_uL: number;
   dilution_solvent: string;
   source_well_fill_pct: number;
   standard_prep_volume_uL: number;
   output_timestamp_format: string;
+};
+
+export type SolventSummary = {
+  solvent: string;
+  solventKey: string;
+  configuredCapPct: number;
+  maxSolventUl: number;
+  targetSolventUl: number;
+  compoundWellCount: number;
+  controlWellCount: number;
+  topupDispenseCount: number;
+};
+
+export type PreflightSolventFamily = {
+  solvent: string;
+  solventKey: string;
+  compoundCount: number;
+  compoundWellCount: number;
+  controlWellCount: number;
+  configuredCapPct: number;
+  requiredCapPct: number;
+  status: "ok" | "warning" | "error";
+};
+
+export type PreflightRequirement = {
+  compound: string;
+  targetConcUm: number;
+  highestStockMm: number;
+  solvent: string;
+  configuredCapPct: number;
+  requiredSolventPct: number | null;
+  feasible: boolean;
+  reason: string;
+  wellCount: number;
+  status: "ok" | "needs_config" | "error";
+};
+
+export type PreflightAssessment = {
+  ok: boolean;
+  summary: {
+    compoundRowsChecked: number;
+    uniqueCompoundTargets: number;
+    solventFamilyCount: number;
+    warningCount: number;
+    blockingIssueCount: number;
+  };
+  warnings: string[];
+  blockingIssues: string[];
+  solventFamilies: PreflightSolventFamily[];
+  requirements: PreflightRequirement[];
+  capRecommendations: Array<{
+    solvent: string;
+    configuredCapPct: number;
+    requiredCapPct: number;
+  }>;
 };
 
 export type CompoundSummary = {
@@ -127,6 +209,8 @@ export type RunSummary = {
   dispenseRows: number;
   uniqueLiquids: number;
   plateCount: number;
+  solventFamilyCount: number;
+  solventSummary: SolventSummary[];
   targetDmsoUl: number;
   maxDmsoUl: number;
 };
@@ -134,6 +218,7 @@ export type RunSummary = {
 export type JobError = {
   message: string;
   details: string;
+  preflight?: PreflightAssessment | null;
 };
 
 export type JobRecord = {
@@ -147,9 +232,10 @@ export type JobRecord = {
   preview: LayoutPreview;
   resultPreview: LayoutPreview | null;
   summary: RunSummary | null;
+  preflight: PreflightAssessment | null;
   artifacts: ArtifactInfo[];
-  liquidsPreview: Array<Record<string, string | number>>;
-  stockSummary: Array<Record<string, string | number>>;
+  liquidsPreview: Array<Record<string, string | number | boolean>>;
+  stockSummary: Array<Record<string, string | number | boolean>>;
   sourceWellTargetMap?: Record<string, string[]>;
   error: JobError | null;
 };

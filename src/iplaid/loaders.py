@@ -4,6 +4,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from src.iplaid.solvents import clean_label, label_key
+
 
 def load_layout_csv(layout_path):
     layout_path = Path(layout_path)
@@ -57,10 +59,10 @@ def normalize_layout_df(df):
 
     df["cmpdname"] = (
         df["cmpdname"]
-        .astype(str)
-        .str.strip()
+        .map(clean_label)
         .replace({"Dimethyl sulfoxide": "DMSO"})
     )
+    df["cmpdname_key"] = df["cmpdname"].map(label_key)
     df["well"] = df["well"].astype(str).str.strip()
     df["plateID"] = df["plateID"].astype(str).str.strip()
 
@@ -79,14 +81,14 @@ def normalize_layout_df(df):
         else pd.Series("", index=df.index)
     )
 
-    is_dmso_control = (
-        df["cmpdname"].str.lower().eq("dmso")
+    is_named_dmso_control = (
+        df["cmpdname_key"].eq("dmso")
         | treatment_type.str.upper().str.contains("DMSO", na=False)
     )
-    df.loc[is_dmso_control, "CONCuM"] = df.loc[is_dmso_control, "CONCuM"].fillna(0)
+    df.loc[is_named_dmso_control, "CONCuM"] = df.loc[is_named_dmso_control, "CONCuM"].fillna(0)
 
     df = df.dropna(subset=["well", "CONCuM"]).copy()
-    return df, is_dmso_control
+    return df, is_named_dmso_control
 
 
 def load_meta_csv(meta_path):
@@ -102,10 +104,83 @@ def normalize_meta_df(cmpd_info):
     if meta_missing:
         raise ValueError(f"Meta file is missing required columns: {meta_missing}")
 
-    cmpd_info["cmpdname"] = cmpd_info["cmpdname"].astype(str).str.strip()
+    cmpd_info["cmpdname"] = cmpd_info["cmpdname"].map(clean_label)
+    cmpd_info["solvent"] = cmpd_info["solvent"].map(clean_label)
     cmpd_info["highest_stock_mM"] = pd.to_numeric(
         cmpd_info["highest_stock_mM"], errors="raise"
     )
+
+    blank_names = cmpd_info.loc[cmpd_info["cmpdname"].eq(""), "cmpdname"]
+    blank_solvents = cmpd_info.loc[cmpd_info["solvent"].eq(""), "solvent"]
+    if len(blank_names) > 0 or len(blank_solvents) > 0:
+        raise ValueError("Metadata rows must include both cmpdname and solvent.")
+
+    cmpd_info["cmpdname_key"] = cmpd_info["cmpdname"].map(label_key)
+    cmpd_info["solvent_key"] = cmpd_info["solvent"].map(label_key)
+
+    duplicate_names = sorted(
+        cmpd_info.loc[
+            cmpd_info["cmpdname_key"].duplicated(keep=False),
+            "cmpdname",
+        ].drop_duplicates().tolist()
+    )
+    if duplicate_names:
+        raise ValueError(
+            "Metadata contains duplicate compound names:\n  - " + "\n  - ".join(duplicate_names)
+        )
+
+    cmpd_info["is_solvent_control"] = cmpd_info["cmpdname_key"].eq(cmpd_info["solvent_key"])
+
+    invalid_solvent_rows = cmpd_info.loc[
+        cmpd_info["is_solvent_control"] & (cmpd_info["highest_stock_mM"] != 0),
+        ["cmpdname", "highest_stock_mM"],
+    ]
+    if len(invalid_solvent_rows) > 0:
+        lines = [
+            f"{row.cmpdname} has highest_stock_mM={float(row.highest_stock_mM):g}"
+            for row in invalid_solvent_rows.itertuples(index=False)
+        ]
+        raise ValueError(
+            "Solvent metadata rows must use highest_stock_mM = 0:\n  - "
+            + "\n  - ".join(lines)
+        )
+
+    invalid_compounds = cmpd_info.loc[
+        ~cmpd_info["is_solvent_control"] & (cmpd_info["highest_stock_mM"] <= 0),
+        ["cmpdname", "highest_stock_mM"],
+    ]
+    if len(invalid_compounds) > 0:
+        lines = [
+            f"{row.cmpdname} has highest_stock_mM={float(row.highest_stock_mM):g}"
+            for row in invalid_compounds.itertuples(index=False)
+        ]
+        raise ValueError(
+            "Compound metadata rows must use highest_stock_mM > 0:\n  - "
+            + "\n  - ".join(lines)
+        )
+
+    cmpd_info.loc[cmpd_info["is_solvent_control"], "highest_stock_mM"] = 0.0
+
+    control_name_map = (
+        cmpd_info.loc[cmpd_info["is_solvent_control"], ["solvent_key", "cmpdname"]]
+        .drop_duplicates(subset=["solvent_key"])
+        .set_index("solvent_key")["cmpdname"]
+        .to_dict()
+    )
+    cmpd_info["solvent"] = cmpd_info["solvent_key"].map(control_name_map).fillna(cmpd_info["solvent"])
+
+    missing_solvent_controls = sorted(
+        {
+            row.solvent
+            for row in cmpd_info.loc[~cmpd_info["is_solvent_control"], ["solvent", "solvent_key"]].itertuples(index=False)
+            if row.solvent_key not in control_name_map
+        }
+    )
+    if missing_solvent_controls:
+        raise ValueError(
+            "Metadata is missing solvent rows for:\n  - "
+            + "\n  - ".join(missing_solvent_controls)
+        )
 
     return cmpd_info
 
@@ -114,13 +189,31 @@ def merge_layout_with_meta(df, cmpd_info):
     df = df.copy()
     cmpd_info = cmpd_info.copy()
 
-    merged = df.merge(cmpd_info, on="cmpdname", how="left", indicator=True)
+    df["cmpdname_key"] = df["cmpdname"].map(label_key)
 
-    missing_cmpds = merged.loc[merged["_merge"] != "both", "cmpdname"].drop_duplicates().tolist()
+    merged = df.merge(
+        cmpd_info,
+        on="cmpdname_key",
+        how="left",
+        indicator=True,
+        suffixes=("_layout", ""),
+    )
+
+    missing_cmpds = merged.loc[merged["_merge"] != "both", "cmpdname_layout"].drop_duplicates().tolist()
     if missing_cmpds:
         raise ValueError(
             "These compounds are missing from metadata:\n  - " + "\n  - ".join(missing_cmpds)
         )
 
-    merged = merged.drop(columns=["_merge"]).copy()
+    merged["cmpdname"] = merged["cmpdname"].fillna(merged["cmpdname_layout"])
+    merged["solvent"] = merged["solvent"].map(clean_label)
+    merged["solvent_key"] = merged["solvent"].map(label_key)
+    merged["is_solvent_control"] = (
+        merged["is_solvent_control"].fillna(False).astype(bool)
+    )
+
+    merged = merged.drop(
+        columns=["_merge", "cmpdname_layout"],
+        errors="ignore",
+    ).copy()
     return merged
