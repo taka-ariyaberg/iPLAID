@@ -1,13 +1,12 @@
 /**
- * DesignPanel — self-contained PLAID_Core layout designer.
+ * DesignPanel — PLAID_Core layout designer.
  *
  * Rendered in place of PlateViewerPanel when the user activates design mode.
- * Manages all its own state (designConfig, designJob, polling).
  * On success calls onComplete(layoutFile, preview) so WorkbenchPage can
  * treat the generated layout like a manually-uploaded CSV.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, type Dispatch, type SetStateAction } from "react";
 import { CompoundPanel } from "./CompoundPanel";
 import { DesignPlateViewer } from "./DesignPlateViewer";
 import { PlateConfigPanel } from "./PlateConfigPanel";
@@ -19,37 +18,20 @@ import type {
   DesignJob,
   LayoutPreview,
 } from "../../types";
+import { DMSO_COLOR, getConcColor, getStableCompoundColor } from "../../utils/colorUtils";
+import {
+  buildExportFilename,
+  downloadPlateCsv,
+  downloadPlatePng,
+  downloadPlateSvg,
+  type PlateExportSpec,
+} from "../../utils/plateExport";
 import "../../styles/DesignMode.css";
 import "../../styles/DesignPanel.css";
 
 // ---------------------------------------------------------------------------
-// Helpers (self-contained — no coupling to WorkbenchPage)
+// Helpers
 // ---------------------------------------------------------------------------
-
-function defaultDesignConfig(rows = 16, cols = 24): DesignConfig {
-  return {
-    plate_rows: rows,
-    plate_cols: cols,
-    empty_edge: 1,
-    compounds: [],
-    solvents: [],
-    concentrations_on_different_rows: true,
-    concentrations_on_different_columns: true,
-    replicates_on_same_plate: true,
-    replicates_on_different_plates: false,
-    allow_empty_wells: true,
-    balance_controls_inside_plate: true,
-    interconnected_plates: true,
-    control_slack: 0,
-    force_spread_controls: false,
-    force_spread_concentrations: false,
-    horizontal_cell_lines: 1,
-    vertical_cell_lines: 1,
-    timeout_seconds: 30,
-    num_threads: 4,
-    random_seed: null,
-  };
-}
 
 function buildValidationMessages(dc: DesignConfig) {
   const msgs: Array<{ level: "error" | "warning"; text: string }> = [];
@@ -96,26 +78,173 @@ function buildValidationMessages(dc: DesignConfig) {
   return msgs;
 }
 
+function normalizeWellName(well: string): string {
+  return well.replace(/^([A-Za-z]+)0*(\d+)$/, "$1$2");
+}
+
+function buildDesignExportSpec(preview: LayoutPreview, config: DesignConfig): PlateExportSpec {
+  const compoundOrder = new Map<string, number>();
+  config.compounds.forEach((compound, index) => {
+    compoundOrder.set(compound.name.trim().toLowerCase(), index);
+  });
+
+  const plates = preview.plates.map((plate) => {
+    const wellMap = new Map(
+      plate.wells.map((well) => [normalizeWellName(well.well), well]),
+    );
+    const allWells: PlateExportSpec["plates"][number]["allWells"] = [];
+
+    plate.rowLabels.forEach((rowLabel) => {
+      plate.columnLabels.forEach((column) => {
+        const wellName = `${rowLabel}${column}`;
+        const well = wellMap.get(wellName);
+        allWells.push({
+          well: wellName,
+          compound: well?.compound ?? null,
+          concentration: well?.concentration ?? null,
+          isFilled: Boolean(well),
+        });
+      });
+    });
+
+    return {
+      plateId: plate.plateId,
+      rowLabels: plate.rowLabels,
+      columnLabels: plate.columnLabels,
+      allWells,
+    };
+  });
+
+  const totalEmptyCount = plates.reduce(
+    (sum, plate) => sum + plate.allWells.filter((well) => !well.isFilled).length,
+    0,
+  );
+
+  const groups = new Map<string, {
+    count: number;
+    isControl: boolean;
+    concentrations: Map<string, { numeric: number | null; count: number }>;
+  }>();
+
+  preview.plates.forEach((plate) => {
+    plate.wells.forEach((well) => {
+      const concentrationKey = well.concentration === null ? "No concentration" : String(well.concentration);
+      const group = groups.get(well.compound) ?? {
+        count: 0,
+        isControl: Boolean(well.isControl),
+        concentrations: new Map<string, { numeric: number | null; count: number }>(),
+      };
+      group.count += 1;
+      group.isControl = group.isControl || Boolean(well.isControl);
+
+      const concentration = group.concentrations.get(concentrationKey) ?? {
+        numeric: well.concentration,
+        count: 0,
+      };
+      concentration.count += 1;
+      group.concentrations.set(concentrationKey, concentration);
+      groups.set(well.compound, group);
+    });
+  });
+
+  const legendGroups = Array.from(groups.entries())
+    .sort(([leftName], [rightName]) => {
+      const leftIndex = compoundOrder.get(leftName.trim().toLowerCase());
+      const rightIndex = compoundOrder.get(rightName.trim().toLowerCase());
+      if (leftIndex != null && rightIndex != null && leftIndex !== rightIndex) {
+        return leftIndex - rightIndex;
+      }
+      if (leftIndex != null) return -1;
+      if (rightIndex != null) return 1;
+      return leftName.localeCompare(rightName);
+    })
+    .map(([compound, group]) => ({
+      compound,
+      count: group.count,
+      isControl: group.isControl,
+      concentrations: Array.from(group.concentrations.entries())
+        .sort((left, right) => {
+          const leftValue = left[1].numeric ?? -1;
+          const rightValue = right[1].numeric ?? -1;
+          return leftValue - rightValue;
+        })
+        .map(([label, concentration]) => ({
+          label,
+          numeric: concentration.numeric,
+          count: concentration.count,
+        })),
+    }));
+
+  const compoundColorLookup = new Map<string, string>();
+  let fallbackColorIndex = config.compounds.length;
+  legendGroups.forEach((group) => {
+    if (group.isControl) {
+      compoundColorLookup.set(group.compound, DMSO_COLOR);
+      return;
+    }
+
+    const configuredIndex = compoundOrder.get(group.compound.trim().toLowerCase());
+    const colorIndex = configuredIndex ?? fallbackColorIndex++;
+    compoundColorLookup.set(group.compound, getStableCompoundColor(colorIndex));
+  });
+
+  const wellColorLookup = new Map<string, Map<string, string>>();
+  legendGroups.forEach((group) => {
+    const baseColor = compoundColorLookup.get(group.compound) ?? DMSO_COLOR;
+    const concentrationColors = new Map<string, string>();
+    group.concentrations.forEach((concentration, index) => {
+      concentrationColors.set(
+        concentration.label,
+        group.isControl
+          ? DMSO_COLOR
+          : getConcColor(baseColor, index, group.concentrations.length),
+      );
+    });
+    wellColorLookup.set(group.compound, concentrationColors);
+  });
+
+  return {
+    title: "PLAID_Core design layout",
+    plates,
+    wellColorLookup,
+    compoundColorLookup,
+    legendGroups: legendGroups.map(({ isControl: _isControl, ...group }) => group),
+    totalEmptyCount,
+    concentrationUnit: "µM",
+    totalWellCount: preview.wellCount,
+    plateCount: preview.plateCount,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 interface DesignPanelProps {
   bootstrap: BootstrapResponse;
+  designConfig: DesignConfig;
+  onDesignConfigChange: Dispatch<SetStateAction<DesignConfig>>;
+  designJob: DesignJob | null;
+  onDesignJobChange: Dispatch<SetStateAction<DesignJob | null>>;
+  isGenerating: boolean;
+  onIsGeneratingChange: Dispatch<SetStateAction<boolean>>;
   onComplete: (layoutFile: File, preview: LayoutPreview) => void;
   onCancel: () => void;
   onError: (msg: string) => void;
 }
 
-export function DesignPanel({ bootstrap, onComplete, onCancel, onError }: DesignPanelProps) {
-  // Initialise to 384-well if available, otherwise 16×24
-  const [designConfig, setDesignConfig] = useState<DesignConfig>(() => {
-    const p384 = bootstrap.targetPlateDefinitions.find((p) => p.wells === 384);
-    return defaultDesignConfig(p384?.rows ?? 16, p384?.cols ?? 24);
-  });
-
-  const [designJob, setDesignJob] = useState<DesignJob | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
+export function DesignPanel({
+  bootstrap,
+  designConfig,
+  onDesignConfigChange,
+  designJob,
+  onDesignJobChange,
+  isGenerating,
+  onIsGeneratingChange,
+  onComplete,
+  onCancel,
+  onError,
+}: DesignPanelProps) {
   const pollRef      = useRef<ReturnType<typeof setInterval> | null>(null);
   const designJobRef = useRef<DesignJob | null>(null);
   const isMountedRef = useRef(true);
@@ -133,6 +262,10 @@ export function DesignPanel({ bootstrap, onComplete, onCancel, onError }: Design
       const activeJob = designJobRef.current;
       if (activeJob && (activeJob.status === "queued" || activeJob.status === "running")) {
         void apiClient.cancelDesignJob(activeJob.jobId).catch(() => undefined);
+        onIsGeneratingChange(false);
+        onDesignJobChange((current) =>
+          current?.jobId === activeJob.jobId ? null : current,
+        );
       }
     };
   }, []);
@@ -152,24 +285,24 @@ export function DesignPanel({ bootstrap, onComplete, onCancel, onError }: Design
       pollRef.current = null;
     }
     cancelAfterStartRef.current = false;
-    setIsGenerating(true);
-    setDesignJob(null);
+    onIsGeneratingChange(true);
+    onDesignJobChange(null);
     try {
       const job = await apiClient.solveDesign(designConfig);
       if (!isMountedRef.current || cancelAfterStartRef.current) {
         void apiClient.cancelDesignJob(job.jobId).catch(() => undefined);
         return;
       }
-      setDesignJob(job);
+      onDesignJobChange(job);
       pollRef.current = setInterval(async () => {
         try {
           const updated = await apiClient.getDesignJob(job.jobId);
           if (!isMountedRef.current) return;
-          setDesignJob(updated);
+          onDesignJobChange(updated);
           if (updated.status === "completed" || updated.status === "failed") {
             clearInterval(pollRef.current!);
             pollRef.current = null;
-            setIsGenerating(false);
+            onIsGeneratingChange(false);
             if (updated.status === "failed") {
               onError(updated.error?.message ?? "Solver failed.");
             }
@@ -178,14 +311,14 @@ export function DesignPanel({ bootstrap, onComplete, onCancel, onError }: Design
           clearInterval(pollRef.current!);
           pollRef.current = null;
           if (isMountedRef.current) {
-            setIsGenerating(false);
+            onIsGeneratingChange(false);
           }
         }
       }, 2000);
     } catch (err) {
       if (isMountedRef.current) {
         onError(err instanceof Error ? err.message : "Failed to start solver.");
-        setIsGenerating(false);
+        onIsGeneratingChange(false);
       }
     }
   }
@@ -196,10 +329,11 @@ export function DesignPanel({ bootstrap, onComplete, onCancel, onError }: Design
       clearInterval(pollRef.current);
       pollRef.current = null;
     }
-    setIsGenerating(false);
+    onIsGeneratingChange(false);
     const activeJob = designJobRef.current;
     if (activeJob && (activeJob.status === "queued" || activeJob.status === "running")) {
       void apiClient.cancelDesignJob(activeJob.jobId).catch(() => undefined);
+      onDesignJobChange(null);
     }
     onCancel();
   }
@@ -221,6 +355,7 @@ export function DesignPanel({ bootstrap, onComplete, onCancel, onError }: Design
     designJob?.status === "completed" ? (designJob.layoutPreview ?? undefined) : undefined;
   const designPhase = designJob?.phase ?? "queued";
   const runningLabel = designPhase === "preflight" ? "Checking inputs…" : "Solving…";
+  const exportSpec = solvedPreview ? buildDesignExportSpec(solvedPreview, designConfig) : null;
 
   return (
     <section className="panel-surface dp-panel">
@@ -243,7 +378,7 @@ export function DesignPanel({ bootstrap, onComplete, onCancel, onError }: Design
         <div className="dp-col-config">
           <PlateConfigPanel
             config={designConfig}
-            onChange={setDesignConfig}
+            onChange={onDesignConfigChange}
             targetPlateOptions={bootstrap.targetPlateDefinitions}
           />
         </div>
@@ -290,6 +425,38 @@ export function DesignPanel({ bootstrap, onComplete, onCancel, onError }: Design
               )}
             </div>
           )}
+
+          {solvedPreview && exportSpec && (
+            <div className="plate-export-actions dp-export-actions" data-export-ignore="true">
+              <p className="section-kicker">Export</p>
+              <div className="plate-export-btns">
+                <button
+                  type="button"
+                  className="plate-export-btn"
+                  onClick={() => downloadPlateCsv(solvedPreview, buildExportFilename("PLAID_Core design layout", "csv"))}
+                  title="Download layout as CSV"
+                >
+                  <span className="plate-export-icon">⬇</span> CSV
+                </button>
+                <button
+                  type="button"
+                  className="plate-export-btn"
+                  onClick={() => downloadPlateSvg(exportSpec, buildExportFilename("PLAID_Core design layout", "svg"))}
+                  title="Download plate figure as SVG"
+                >
+                  <span className="plate-export-icon">⬇</span> SVG
+                </button>
+                <button
+                  type="button"
+                  className="plate-export-btn"
+                  onClick={() => downloadPlatePng(exportSpec, buildExportFilename("PLAID_Core design layout", "png"))}
+                  title="Download plate figure as PNG"
+                >
+                  <span className="plate-export-icon">⬇</span> PNG
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right: compounds + solvents + generate */}
@@ -299,8 +466,8 @@ export function DesignPanel({ bootstrap, onComplete, onCancel, onError }: Design
             solvents={designConfig.solvents}
             validationMessages={validationMessages}
             usableWells={usableWells}
-            onCompoundsChange={(c) => setDesignConfig((dc) => ({ ...dc, compounds: c }))}
-            onSolventsChange={(solvents) => setDesignConfig((dc) => ({ ...dc, solvents }))}
+            onCompoundsChange={(c) => onDesignConfigChange((dc) => ({ ...dc, compounds: c }))}
+            onSolventsChange={(solvents) => onDesignConfigChange((dc) => ({ ...dc, solvents }))}
             onGenerate={handleGenerate}
             isGenerating={isGenerating}
             canGenerate={canGenerate}

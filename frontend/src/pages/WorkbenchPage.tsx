@@ -9,13 +9,14 @@ import { PlateViewerPanel } from "../components/workbench/PlateViewerPanel";
 import { RunConfigPanel, numericFields } from "../components/workbench/RunConfigPanel";
 import { WorkbenchHero } from "../components/workbench/WorkbenchHero";
 import { DesignPanel } from "../components/design/DesignPanel";
+import { defaultDesignConfig } from "../components/design/designUtils";
 import { apiClient } from "../services/apiClient";
 import type {
-  BootstrapResponse,
   LayoutPreview,
   RunConfig,
   TargetPlateDefinition,
 } from "../types";
+import { useWorkbenchField } from "../workbenchState";
 import "../styles/WorkbenchPage.css";
 
 // ---------------------------------------------------------------------------
@@ -81,31 +82,31 @@ export function WorkbenchPage() {
   const navigate = useNavigate();
 
   // ----- shared -----
-  const [bootstrap, setBootstrap] = useState<BootstrapResponse | null>(null);
-  const [config, setConfig] = useState<RunConfig | null>(null);
-  const [loadingBootstrap, setLoadingBootstrap] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [bootstrap, setBootstrap] = useWorkbenchField("bootstrap");
+  const [config, setConfig] = useWorkbenchField("config");
+  const [loadingBootstrap, setLoadingBootstrap] = useWorkbenchField("loadingBootstrap");
+  const [errorMessage, setErrorMessage] = useWorkbenchField("errorMessage");
 
   // ----- upload mode -----
-  const [layoutFile, setLayoutFile] = useState<File | null>(null);
-  const [metaFile, setMetaFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<LayoutPreview | null>(null);
-  const [processing, setProcessing] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [workingPreview, setWorkingPreview] = useState<LayoutPreview | null>(null);
-  const [showConfirmRun, setShowConfirmRun] = useState(false);
-  const [revertKey, setRevertKey] = useState(0);
-  const [showClearLayoutWarning, setShowClearLayoutWarning] = useState(false);
-  const [layoutInputKey, setLayoutInputKey] = useState(0);
-  const [metaInputKey, setMetaInputKey] = useState(0);
-  const [viewerPlateTypeId, setViewerPlateTypeId] = useState<string>("MWP 384");
-  const [customRows, setCustomRows] = useState<number>(16);
-  const [customCols, setCustomCols] = useState<number>(24);
+  const [layoutFile, setLayoutFile] = useWorkbenchField("layoutFile");
+  const [metaFile, setMetaFile] = useWorkbenchField("metaFile");
+  const [preview, setPreview] = useWorkbenchField("preview");
+  const [processing, setProcessing] = useWorkbenchField("processing");
+  const [isEditMode, setIsEditMode] = useWorkbenchField("isEditMode");
+  const [workingPreview, setWorkingPreview] = useWorkbenchField("workingPreview");
+  const [showConfirmRun, setShowConfirmRun] = useWorkbenchField("showConfirmRun");
+  const [revertKey, setRevertKey] = useWorkbenchField("revertKey");
+  const [showClearLayoutWarning, setShowClearLayoutWarning] = useWorkbenchField("showClearLayoutWarning");
+  const [layoutInputKey, setLayoutInputKey] = useWorkbenchField("layoutInputKey");
+  const [metaInputKey, setMetaInputKey] = useWorkbenchField("metaInputKey");
+  const [viewerPlateTypeId, setViewerPlateTypeId] = useWorkbenchField("viewerPlateTypeId");
+  const [customRows, setCustomRows] = useWorkbenchField("customRows");
+  const [customCols, setCustomCols] = useWorkbenchField("customCols");
 
   // ----- file source tracking -----
   // Tracks how the current layout/meta files were set so we can warn on conflict.
-  const [layoutSource, setLayoutSource] = useState<"upload" | "design" | null>(null);
-  const [metaSource, setMetaSource] = useState<"upload" | "created" | null>(null);
+  const [layoutSource, setLayoutSource] = useWorkbenchField("layoutSource");
+  const [metaSource, setMetaSource] = useWorkbenchField("metaSource");
 
   // ----- conflict warning state -----
   const [conflictWarning, setConflictWarning] = useState<{ message: string; onConfirm: () => void } | null>(null);
@@ -114,11 +115,14 @@ export function WorkbenchPage() {
   const pendingMetaFileRef   = useRef<File | null>(null);
 
   // ----- design mode -----
-  const [designActive, setDesignActive] = useState(false);
+  const [designActive, setDesignActive] = useWorkbenchField("designActive");
+  const [designConfig, setDesignConfig] = useWorkbenchField("designConfig");
+  const [designJob, setDesignJob] = useWorkbenchField("designJob");
+  const [designIsGenerating, setDesignIsGenerating] = useWorkbenchField("designIsGenerating");
 
   // ----- meta creator -----
-  const [metaCreatorOpen, setMetaCreatorOpen] = useState(false);
-  const [metaCreatorRows, setMetaCreatorRows] = useState<MetaCompoundRow[]>([]);
+  const [metaCreatorOpen, setMetaCreatorOpen] = useWorkbenchField("metaCreatorOpen");
+  const [metaCreatorRows, setMetaCreatorRows] = useWorkbenchField("metaCreatorRows");
 
   function handleMetaFile(file: File, rows: MetaCompoundRow[]) {
     setMetaFile(file);
@@ -130,6 +134,8 @@ export function WorkbenchPage() {
 
   // Bootstrap
   useEffect(() => {
+    if (bootstrap || !loadingBootstrap) return;
+
     async function load() {
       try {
         const payload = await apiClient.getBootstrap();
@@ -141,8 +147,15 @@ export function WorkbenchPage() {
         setLoadingBootstrap(false);
       }
     }
+
     void load();
-  }, []);
+  }, [bootstrap, loadingBootstrap]);
+
+  useEffect(() => {
+    if (!bootstrap || designConfig) return;
+    const p384 = bootstrap.targetPlateDefinitions.find((plate) => plate.wells === 384);
+    setDesignConfig(defaultDesignConfig(p384?.rows ?? 16, p384?.cols ?? 24));
+  }, [bootstrap, designConfig]);
 
   // ---------------------------------------------------------------------------
   // Upload mode handlers
@@ -295,6 +308,7 @@ export function WorkbenchPage() {
     const activeLayoutFile = workingPreview ? previewToCSVFile(workingPreview) : layoutFile!;
     try {
       const job = await apiClient.createRun({ layoutFile: activeLayoutFile, metaFile, config });
+      setProcessing(false);
       navigate(`/runs/${job.jobId}`);
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Failed to create pipeline run.");
@@ -387,12 +401,29 @@ export function WorkbenchPage() {
 
         {/* Centre area: design panel OR plate viewer */}
         {designActive ? (
-          <DesignPanel
-            bootstrap={bootstrap}
-            onComplete={handleDesignComplete}
-            onCancel={() => setDesignActive(false)}
-            onError={setErrorMessage}
-          />
+          designConfig ? (
+            <DesignPanel
+              bootstrap={bootstrap}
+              designConfig={designConfig}
+              onDesignConfigChange={(nextValue) => {
+                setDesignConfig((currentValue) => {
+                  const activeConfig = currentValue ?? designConfig;
+                  return typeof nextValue === "function"
+                    ? nextValue(activeConfig)
+                    : nextValue;
+                });
+              }}
+              designJob={designJob}
+              onDesignJobChange={setDesignJob}
+              isGenerating={designIsGenerating}
+              onIsGeneratingChange={setDesignIsGenerating}
+              onComplete={handleDesignComplete}
+              onCancel={() => setDesignActive(false)}
+              onError={setErrorMessage}
+            />
+          ) : (
+            <section className="page-state">Preparing designer…</section>
+          )
         ) : (
           <PlateViewerPanel
             preview={activePreview}
@@ -457,4 +488,3 @@ export function WorkbenchPage() {
     </div>
   );
 }
-

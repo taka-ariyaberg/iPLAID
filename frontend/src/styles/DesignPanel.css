@@ -121,6 +121,10 @@
   border: 1px solid var(--icell-border);
 }
 
+.dp-export-actions {
+  padding-top: 0;
+}
+
 /* Status pills */
 .dp-pill {
   display: inline-flex;
