@@ -11,6 +11,18 @@ import type {
   TargetPlateDefinition,
 } from "../../types";
 import { parseLiquidName } from "../../utils/liquidUtils";
+import { canonicalWellId, normalizeWellKey } from "../../utils/wellUtils";
+
+function normalizeTargetMap(targetMap: Record<string, string[]> | undefined): Map<string, string[]> {
+  const normalized = new Map<string, string[]>();
+  for (const [sourceWell, targetWells] of Object.entries(targetMap ?? {})) {
+    normalized.set(
+      normalizeWellKey(sourceWell),
+      targetWells.map((well) => canonicalWellId(well)),
+    );
+  }
+  return normalized;
+}
 
 function buildSourcePlatePreview(
   liquidsPreview: Array<Record<string, string | number | boolean>>,
@@ -42,7 +54,7 @@ function buildSourcePlatePreview(
     }
 
     const plateId = String(row["Source Plate"] ?? "");
-    const wellStr = String(row["Source Well"] ?? "");
+    const wellStr = canonicalWellId(String(row["Source Well"] ?? ""));
 
     const match = wellStr.match(/^([A-Za-z]+)(\d+)$/);
     if (!match) continue;
@@ -108,21 +120,21 @@ export function SourcePlatePanel({ job, plateDef }: SourcePlatePanelProps) {
       const rawStock = row["stock_mM"];
       const parsed = typeof rawStock === "number" ? rawStock : parseFloat(String(rawStock));
       const isControlLiquid = Boolean(row["is_control_liquid"]) || (!isNaN(parsed) && parsed === 0);
-      wellInfoMap.set(sourceWell, {
+      wellInfoMap.set(normalizeWellKey(sourceWell), {
         compound,
         stockMM: isControlLiquid ? null : (isNaN(parsed) ? null : parsed),
         isControlLiquid,
       });
     }
-    const targetMap = job.sourceWellTargetMap ?? {};
+    const targetMap = normalizeTargetMap(job.sourceWellTargetMap);
 
     return (wellId: string): ReactNode | null => {
       const colonIdx = wellId.indexOf(":");
-      const wellName = wellId.slice(colonIdx + 1);
-      const info = wellInfoMap.get(wellName);
+      const wellName = canonicalWellId(wellId.slice(colonIdx + 1));
+      const info = wellInfoMap.get(normalizeWellKey(wellName));
       if (!info) return null;
       const { compound, stockMM, isControlLiquid } = info;
-      const targetWells: string[] = targetMap[wellName] ?? [];
+      const targetWells = targetMap.get(normalizeWellKey(wellName)) ?? [];
       const MAX_SHOWN = 30;
       return (
         <>
@@ -147,11 +159,11 @@ export function SourcePlatePanel({ job, plateDef }: SourcePlatePanelProps) {
   }, [job.liquidsPreview, job.sourceWellTargetMap]);
 
   const concBlockExtras = useMemo(() => {
-    const targetMap = job.sourceWellTargetMap ?? {};
+    const targetMap = normalizeTargetMap(job.sourceWellTargetMap);
     // Build (compound::concLabel) → targetWells[] from the liquids rows
     const concToTargets = new Map<string, string[]>();
     for (const row of job.liquidsPreview) {
-      const sourceWell = String(row["Source Well"] ?? "");
+      const sourceWell = normalizeWellKey(String(row["Source Well"] ?? ""));
       if (!sourceWell) continue;
       const compound = String(row["compound"] ?? "");
       const rawStock = row["stock_mM"];
@@ -161,7 +173,7 @@ export function SourcePlatePanel({ job, plateDef }: SourcePlatePanelProps) {
       const concLabel = stockMM === null ? "No concentration" : String(stockMM);
       const key = `${compound}::${concLabel}`;
       if (!concToTargets.has(key)) {
-        concToTargets.set(key, targetMap[sourceWell] ?? []);
+        concToTargets.set(key, targetMap.get(sourceWell) ?? []);
       }
     }
     const MAX_SHOWN = 20;

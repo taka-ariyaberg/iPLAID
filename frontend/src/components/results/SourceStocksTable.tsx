@@ -1,5 +1,6 @@
 import type { JobRecord } from "../../types";
 import { parseLiquidName } from "../../utils/liquidUtils";
+import { canonicalWellId } from "../../utils/wellUtils";
 import "./SourceStocksTable.css";
 
 type SourceStocksTableProps = {
@@ -46,7 +47,7 @@ export function SourceStocksTable({ job }: SourceStocksTableProps) {
                 <tr key={`${index}-${liquidName}`}>
                   <td>{compound}</td>
                   <td>{stockMM != null ? `${stockMM} mM` : "—"}</td>
-                  <td className="mono">{String(row["Source Well"] ?? "")}</td>
+                  <td className="mono">{canonicalWellId(String(row["Source Well"] ?? ""))}</td>
                   <td>{stockMatch != null ? String(stockMatch.count) : "—"}</td>
                 </tr>
               );
