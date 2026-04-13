@@ -26,6 +26,7 @@ import {
   downloadPlateSvg,
   type PlateExportSpec,
 } from "../../utils/plateExport";
+import { formatWellId, normalizeWellKey } from "../../utils/wellUtils";
 import "../../styles/DesignMode.css";
 import "../../styles/DesignPanel.css";
 
@@ -78,10 +79,6 @@ function buildValidationMessages(dc: DesignConfig) {
   return msgs;
 }
 
-function normalizeWellName(well: string): string {
-  return well.replace(/^([A-Za-z]+)0*(\d+)$/, "$1$2");
-}
-
 function buildDesignExportSpec(preview: LayoutPreview, config: DesignConfig): PlateExportSpec {
   const compoundOrder = new Map<string, number>();
   config.compounds.forEach((compound, index) => {
@@ -90,14 +87,14 @@ function buildDesignExportSpec(preview: LayoutPreview, config: DesignConfig): Pl
 
   const plates = preview.plates.map((plate) => {
     const wellMap = new Map(
-      plate.wells.map((well) => [normalizeWellName(well.well), well]),
+      plate.wells.map((well) => [normalizeWellKey(well.well), well]),
     );
     const allWells: PlateExportSpec["plates"][number]["allWells"] = [];
 
     plate.rowLabels.forEach((rowLabel) => {
       plate.columnLabels.forEach((column) => {
-        const wellName = `${rowLabel}${column}`;
-        const well = wellMap.get(wellName);
+        const wellName = formatWellId(rowLabel, column);
+        const well = wellMap.get(normalizeWellKey(wellName));
         allWells.push({
           well: wellName,
           compound: well?.compound ?? null,

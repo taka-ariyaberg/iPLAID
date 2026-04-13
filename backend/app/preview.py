@@ -6,6 +6,7 @@ import tempfile
 from pathlib import Path
 
 from src.iplaid.loaders import load_layout_csv, normalize_layout_df
+from src.iplaid.wells import canonical_well_name
 
 
 WELL_PATTERN = re.compile(r"^([A-Za-z]+)(\d+)$")
@@ -41,7 +42,7 @@ def build_layout_preview_from_dataframe(df) -> dict:
 
     for row in df.itertuples(index=False):
         plate_id = str(getattr(row, "plateID", "plate_1"))
-        well = str(getattr(row, "well", ""))
+        well = canonical_well_name(str(getattr(row, "well", "")))
         compound = str(getattr(row, "cmpdname", "Unknown")).strip()
         concentration = _normalize_number(getattr(row, "CONCuM", None))
         explicit_is_control = getattr(row, "is_solvent_control", None)

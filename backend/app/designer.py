@@ -18,6 +18,7 @@ except ImportError:
     from src.plaid_core.config import Compound, Control, PlateConfig
     from src.plaid_core.designer import PlateDesigner
     from src.plaid_core.validators import validate_plate_config
+from src.iplaid.wells import canonical_well_name
 
 if TYPE_CHECKING:
     from .models import DesignConfigModel
@@ -142,7 +143,7 @@ def layout_to_csv_bytes(layout, cfg: "DesignConfigModel") -> bytes:
         clean_name = _suffix_re.sub("", internal_name)
         writer.writerow([
             row.get("plateID", "plate_1"),
-            row.get("well", ""),
+            canonical_well_name(row.get("well", "")),
             clean_name,
             conc_um,
             row.get("cmpdnum", ""),

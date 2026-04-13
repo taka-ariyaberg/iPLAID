@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 
 from src.iplaid.solvents import clean_label, get_solvent_cap_pct
+from src.iplaid.wells import compact_well_name
 
 
 # Stock finding utilities
@@ -52,7 +53,7 @@ def remove_leading_zero(well_name: str) -> str:
     Returns:
         Formatted well name
     """
-    return well_name[0] + well_name[1:3].lstrip("0")
+    return compact_well_name(well_name)
 
 
 def volume_from_stock(concUM: float, stock_conc_mM: float, working_volume_ul: float) -> float:

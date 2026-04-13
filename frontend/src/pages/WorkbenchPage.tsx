@@ -16,6 +16,7 @@ import type {
   RunConfig,
   TargetPlateDefinition,
 } from "../types";
+import { canonicalWellId } from "../utils/wellUtils";
 import { useWorkbenchField } from "../workbenchState";
 import "../styles/WorkbenchPage.css";
 
@@ -67,7 +68,12 @@ function previewToCSVFile(preview: LayoutPreview): File {
   preview.plates.forEach((plate) => {
     plate.wells.forEach((well) => {
       rows.push(
-        [csvQuote(plate.plateId), csvQuote(well.well), csvQuote(well.compound), csvQuote(well.concentration)].join(",")
+        [
+          csvQuote(plate.plateId),
+          csvQuote(canonicalWellId(well.well)),
+          csvQuote(well.compound),
+          csvQuote(well.concentration),
+        ].join(",")
       );
     });
   });

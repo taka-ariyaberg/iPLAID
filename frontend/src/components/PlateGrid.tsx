@@ -4,6 +4,7 @@ import type { LayoutPreview, TargetPlateDefinition } from "../types";
 import "../styles/PlateViewer.css";
 import { DMSO_COLOR, EMPTY_COLOR, getConcColor, getCompoundColor } from "../utils/colorUtils";
 import { downloadPlatePng, downloadPlateSvg, downloadPlateCsv, buildExportFilename } from "../utils/plateExport";
+import { canonicalWellId, formatWellId, normalizeWellKey } from "../utils/wellUtils";
 
 function buildRowLabels(count: number): string[] {
   return Array.from({ length: count }, (_, index) => {
@@ -232,18 +233,18 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
   const renderedPlates = useMemo(() => {
     return displayPreview.plates.map((plate) => {
       const frame = getPlateFrame(plateDef, plate);
-      // Normalize keys: strip leading zeros from the column part so "D04" → "D4",
-      // matching the wellName constructed below as `${rowLabel}${column}` (a plain number).
+      // Store lookup keys in compact form so uploads with "B2" and "B02" map to
+      // the same logical cell while the UI consistently renders padded well IDs.
       const wellMap = new Map(
-        plate.wells.map((well) => [well.well.replace(/^([A-Za-z]+)0*(\d+)$/, "$1$2"), well]),
+        plate.wells.map((well) => [normalizeWellKey(well.well), well]),
       );
 
       const allWells: WellRecord[] = [];
       const wellLookup = new Map<string, WellRecord>();
       frame.rowLabels.forEach((rowLabel) => {
         frame.columnLabels.forEach((column) => {
-          const wellName = `${rowLabel}${column}`;
-          const well = wellMap.get(wellName);
+          const wellName = formatWellId(rowLabel, column);
+          const well = wellMap.get(normalizeWellKey(wellName));
           const record = {
             plateId: plate.plateId,
             well: wellName,
@@ -589,8 +590,7 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
     const newPlates = preview.plates.map((plate) => ({
       ...plate,
       wells: plate.wells.filter((w) => {
-        const norm = w.well.replace(/^([A-Za-z]+)0*(\d+)$/, "$1$2");
-        return !selectedSet.has(`${plate.plateId}:${norm}`);
+        return !selectedSet.has(`${plate.plateId}:${canonicalWellId(w.well)}`);
       }),
     }));
     const newWellCount = newPlates.reduce((sum, p) => sum + p.wells.length, 0);
@@ -618,17 +618,17 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
     const concLabel = editConc.trim().toLowerCase() === "no concentration" ? null : (isNaN(concNumeric!) ? null : concNumeric);
     const newPlates = preview.plates.map((plate) => {
       const wellsMap = new Map(
-        plate.wells.map((w) => [w.well.replace(/^([A-Za-z]+)0*(\d+)$/, "$1$2"), w]),
+        plate.wells.map((w) => [normalizeWellKey(w.well), w]),
       );
       selectedSet.forEach((sid) => {
         const colonIdx = sid.indexOf(":");
         const sidPlate = sid.slice(0, colonIdx);
-        const sidWell = sid.slice(colonIdx + 1);
+        const sidWell = canonicalWellId(sid.slice(colonIdx + 1));
         if (sidPlate !== plate.plateId) return;
         const existingRecord = selectionLookup.get(sid);
         if (skipFilled && existingRecord?.isFilled) return;
         const parsed = sidWell.match(/^([A-Za-z]+)(\d+)$/);
-        wellsMap.set(sidWell, {
+        wellsMap.set(normalizeWellKey(sidWell), {
           well: sidWell,
           rowLabel: parsed ? parsed[1].toUpperCase() : "",
           column: parsed ? parseInt(parsed[2], 10) : 0,
@@ -656,7 +656,7 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
     for (const w of filledSelected) {
       const rf = renderedPlates.find((rp) => rp.plateId === w.plateId);
       if (!rf) continue;
-      const norm = w.well.replace(/^([A-Za-z]+)0*(\d+)$/, "$1$2");
+      const norm = normalizeWellKey(w.well);
       const parsed = norm.match(/^([A-Za-z]+)(\d+)$/);
       if (!parsed) continue;
       const rowIdx = rf.rowLabels.indexOf(parsed[1].toUpperCase());
@@ -686,8 +686,8 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
     for (const id of targetIds) {
       const colonIdx = id.indexOf(":");
       const plateId = id.slice(0, colonIdx);
-      const wellName = id.slice(colonIdx + 1).replace(/^([A-Za-z]+)0*(\d+)$/, "$1$2");
-      const parsed = wellName.match(/^([A-Za-z]+)(\d+)$/);
+      const wellName = canonicalWellId(id.slice(colonIdx + 1));
+      const parsed = normalizeWellKey(wellName).match(/^([A-Za-z]+)(\d+)$/);
       if (!parsed) continue;
       if (!byPlate.has(plateId)) byPlate.set(plateId, []);
       byPlate.get(plateId)!.push({ rowLabel: parsed[1].toUpperCase(), col: parseInt(parsed[2], 10), wellName });
@@ -695,10 +695,11 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
     const newPlates = preview.plates.map((plate) => {
       const targets = byPlate.get(plate.plateId);
       if (!targets) return plate;
-      const wellsMap = new Map(plate.wells.map((w) => [w.well.replace(/^([A-Za-z]+)0*(\d+)$/, "$1$2"), w]));
+      const wellsMap = new Map(plate.wells.map((w) => [normalizeWellKey(w.well), w]));
       for (const { rowLabel, col, wellName } of targets) {
-        if (skipConflicts && wellsMap.has(wellName)) continue;
-        wellsMap.set(wellName, {
+        const wellKey = normalizeWellKey(wellName);
+        if (skipConflicts && wellsMap.has(wellKey)) continue;
+        wellsMap.set(wellKey, {
           well: wellName,
           rowLabel,
           column: col,
@@ -717,7 +718,7 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
     const [anchorPlateId, anchorWellName] = [anchorWellId.slice(0, anchorWellId.indexOf(":")), anchorWellId.slice(anchorWellId.indexOf(":") + 1)];
     const anchorRf = renderedPlates.find((rp) => rp.plateId === anchorPlateId);
     if (!anchorRf) return null;
-    const anchorNorm = anchorWellName.replace(/^([A-Za-z]+)0*(\d+)$/, "$1$2");
+    const anchorNorm = normalizeWellKey(anchorWellName);
     const anchorParsed = anchorNorm.match(/^([A-Za-z]+)(\d+)$/);
     if (!anchorParsed) return null;
     const anchorRowIdx = anchorRf.rowLabels.indexOf(anchorParsed[1].toUpperCase());
@@ -739,14 +740,15 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
       // Only paste into anchor's plate
       if (plate.plateId !== anchorPlateId) return plate;
       const rf = anchorRf;
-      const wellsMap = new Map(plate.wells.map((w) => [w.well.replace(/^([A-Za-z]+)0*(\d+)$/, "$1$2"), w]));
+      const wellsMap = new Map(plate.wells.map((w) => [normalizeWellKey(w.well), w]));
       for (const entry of clipboard) {
         const tr = anchorRowIdx + entry.rowOffset;
         const tc = anchorColIdx + entry.colOffset;
-        const targetWell = `${rf.rowLabels[tr]}${rf.columnLabels[tc]}`;
-        if (skipConflicts && wellsMap.has(targetWell)) continue;
+        const targetWell = formatWellId(rf.rowLabels[tr], rf.columnLabels[tc]);
+        const targetWellKey = normalizeWellKey(targetWell);
+        if (skipConflicts && wellsMap.has(targetWellKey)) continue;
         const parsed = targetWell.match(/^([A-Za-z]+)(\d+)$/);
-        wellsMap.set(targetWell, {
+        wellsMap.set(targetWellKey, {
           well: targetWell,
           rowLabel: parsed ? parsed[1].toUpperCase() : "",
           column: parsed ? parseInt(parsed[2], 10) : 0,
@@ -775,7 +777,7 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
         return true;
       });
       const conflictCount = conflictIds.length;
-      const conflictWells = conflictIds.map((id) => id.slice(id.indexOf(":") + 1).replace(/^([A-Za-z]+)0*(\d+)$/, "$1$2"));
+      const conflictWells = conflictIds.map((id) => canonicalWellId(id.slice(id.indexOf(":") + 1)));
       if (conflictCount > 0) {
         const overwrite = buildFloodFillPlates(selectedWellIds, false)!;
         const skip = buildFloodFillPlates(selectedWellIds, true)!;
@@ -795,7 +797,7 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
     const [anchorPlateId, anchorWellName] = [anchorWellId.slice(0, anchorWellId.indexOf(":")), anchorWellId.slice(anchorWellId.indexOf(":") + 1)];
     const anchorRf = renderedPlates.find((rp) => rp.plateId === anchorPlateId);
     if (!anchorRf) return;
-    const anchorNorm = anchorWellName.replace(/^([A-Za-z]+)0*(\d+)$/, "$1$2");
+    const anchorNorm = normalizeWellKey(anchorWellName);
     const anchorParsed = anchorNorm.match(/^([A-Za-z]+)(\d+)$/);
     if (!anchorParsed) return;
     const anchorRowIdx = anchorRf.rowLabels.indexOf(anchorParsed[1].toUpperCase());
@@ -815,13 +817,13 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
     // Find conflicts: clipboard targets that already have wells
     const targetPlate = preview.plates.find((p) => p.plateId === anchorPlateId);
     if (!targetPlate) return;
-    const existingWells = new Set(targetPlate.wells.map((w) => w.well.replace(/^([A-Za-z]+)0*(\d+)$/, "$1$2")));
+    const existingWells = new Set(targetPlate.wells.map((w) => normalizeWellKey(w.well)));
     const conflictWells: string[] = [];
     for (const entry of clipboard) {
       const tr = anchorRowIdx + entry.rowOffset;
       const tc = anchorColIdx + entry.colOffset;
-      const targetWell = `${anchorRf.rowLabels[tr]}${anchorRf.columnLabels[tc]}`;
-      if (existingWells.has(targetWell)) conflictWells.push(targetWell);
+      const targetWell = formatWellId(anchorRf.rowLabels[tr], anchorRf.columnLabels[tc]);
+      if (existingWells.has(normalizeWellKey(targetWell))) conflictWells.push(targetWell);
     }
     const conflictCount = conflictWells.length;
 
@@ -868,8 +870,8 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
       const rf = renderedPlates.find((rp) => rp.plateId === plate.plateId);
       if (!rf) continue;
       for (const well of plate.wells) {
-        const norm = well.well.replace(/^([A-Za-z]+)0*(\d+)$/, "$1$2");
-        const shouldMove = moveAll || selectedFilledIds.has(`${plate.plateId}:${norm}`);
+        const norm = normalizeWellKey(well.well);
+        const shouldMove = moveAll || selectedFilledIds.has(`${plate.plateId}:${canonicalWellId(well.well)}`);
         if (!shouldMove) continue;
         const parsed = norm.match(/^([A-Za-z]+)(\d+)$/);
         if (!parsed) continue;
@@ -902,14 +904,14 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
       const rf = renderedPlates.find((rp) => rp.plateId === plate.plateId);
       if (!rf) return plate;
       const newWells = plate.wells.map((well) => {
-        const norm = well.well.replace(/^([A-Za-z]+)0*(\d+)$/, "$1$2");
-        const shouldMove = moveAll || selectedFilledIds.has(`${plate.plateId}:${norm}`);
+        const norm = normalizeWellKey(well.well);
+        const shouldMove = moveAll || selectedFilledIds.has(`${plate.plateId}:${canonicalWellId(well.well)}`);
         if (!shouldMove) return well;
         const parsed = norm.match(/^([A-Za-z]+)(\d+)$/)!;
         const newRowIdx = rf.rowLabels.indexOf(parsed[1].toUpperCase()) + rowOffset;
         const newColIdx = rf.columnLabels.indexOf(parseInt(parsed[2], 10)) + colOffset;
-        const newWellName = `${rf.rowLabels[newRowIdx]}${rf.columnLabels[newColIdx]}`;
-        idMap.set(`${plate.plateId}:${norm}`, `${plate.plateId}:${newWellName}`);
+        const newWellName = formatWellId(rf.rowLabels[newRowIdx], rf.columnLabels[newColIdx]);
+        idMap.set(`${plate.plateId}:${canonicalWellId(well.well)}`, `${plate.plateId}:${newWellName}`);
         return { ...well, well: newWellName };
       });
       return { ...plate, wells: newWells };
@@ -973,7 +975,7 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
     const ids: string[] = [];
     for (let r = minRow; r <= maxRow; r++) {
       for (let c = minCol; c <= maxCol; c++) {
-        ids.push(`${plate.plateId}:${plate.rowLabels[r]}${plate.columnLabels[c]}`);
+        ids.push(`${plate.plateId}:${formatWellId(plate.rowLabels[r], plate.columnLabels[c])}`);
       }
     }
     return ids;
@@ -1196,7 +1198,7 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
                       <Fragment key={`${plate.plateId}-row-${rowLabel}`}>
                         <div className="plate-grid-label">{rowLabel}</div>
                         {plate.columnLabels.map((column) => {
-                          const wellName = `${rowLabel}${column}`;
+                          const wellName = formatWellId(rowLabel, column);
                           const well = plate.wellLookup.get(wellName);
                           const wellId = `${plate.plateId}:${wellName}`;
                           const isSelected = selectedWellIds.includes(wellId);

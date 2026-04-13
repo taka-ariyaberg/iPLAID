@@ -10,6 +10,7 @@
  */
 
 import type { LayoutPreview, TargetPlateDefinition } from "../types";
+import { canonicalWellId, formatWellId, normalizeWellKey } from "./wellUtils";
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
@@ -160,7 +161,7 @@ export function renderPlateExport(spec: PlateExportSpec): HTMLCanvasElement {
     // Build well lookup (normalise key: strip leading zeros from column number)
     const wellMap = new Map<string, ExportWell>();
     for (const w of plate.allWells) {
-      const key = w.well.replace(/^([A-Za-z]+)0*(\d+)$/, "$1$2");
+      const key = normalizeWellKey(w.well);
       wellMap.set(key, w);
     }
 
@@ -191,8 +192,8 @@ export function renderPlateExport(spec: PlateExportSpec): HTMLCanvasElement {
 
       // Wells
       for (let ci = 0; ci < plate.columnLabels.length; ci++) {
-        const wellName = `${rowLabel}${plate.columnLabels[ci]}`;
-        const well     = wellMap.get(wellName);
+        const wellName = formatWellId(rowLabel, plate.columnLabels[ci]);
+        const well     = wellMap.get(normalizeWellKey(wellName));
         const wx       = GRID_X + ci * CELL;
         const wy       = rowY;
 
@@ -381,7 +382,7 @@ export function downloadPlateCsv(preview: LayoutPreview, filename: string): void
     plate.wells.forEach((well) => {
       const conc    = well.concentration ?? 0;
       const cmpdnum = `${well.compound}_${conc}`;
-      rows.push(`${plate.plateId},${well.well},${well.compound},${conc},${cmpdnum}`);
+      rows.push(`${plate.plateId},${canonicalWellId(well.well)},${well.compound},${conc},${cmpdnum}`);
     });
   });
   const blob = new Blob([rows.join("\n")], { type: "text/csv" });

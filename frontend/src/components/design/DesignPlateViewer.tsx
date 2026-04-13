@@ -9,6 +9,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { CompoundDef, DesignPhase, LayoutPreview, SolventDef } from "../../types";
 import { getConcColor, DMSO_COLOR, getStableCompoundColor } from "../../utils/colorUtils";
+import { formatWellId } from "../../utils/wellUtils";
 import { TrollOverlay, TrollStatusBar, useWaitingTroll } from "./WaitingTroll";
 import type { WellAssignment } from "./WaitingTroll";
 
@@ -47,7 +48,7 @@ function rowLabel(r: number): string {
 }
 
 function wellName(r: number, c: number): string {
-  return `${rowLabel(r)}${c + 1}`;
+  return formatWellId(rowLabel(r), c + 1);
 }
 
 // ---------------------------------------------------------------------------

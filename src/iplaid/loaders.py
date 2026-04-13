@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 
 from src.iplaid.solvents import clean_label, label_key
+from src.iplaid.wells import canonical_well_name
 
 
 def load_layout_csv(layout_path):
@@ -63,7 +64,7 @@ def normalize_layout_df(df):
         .replace({"Dimethyl sulfoxide": "DMSO"})
     )
     df["cmpdname_key"] = df["cmpdname"].map(label_key)
-    df["well"] = df["well"].astype(str).str.strip()
+    df["well"] = df["well"].astype(str).str.strip().map(canonical_well_name)
     df["plateID"] = df["plateID"].astype(str).str.strip()
 
     df["CONCuM"] = (
@@ -88,6 +89,21 @@ def normalize_layout_df(df):
     df.loc[is_named_dmso_control, "CONCuM"] = df.loc[is_named_dmso_control, "CONCuM"].fillna(0)
 
     df = df.dropna(subset=["well", "CONCuM"]).copy()
+
+    duplicate_wells = df.loc[
+        df.duplicated(subset=["plateID", "well"], keep=False),
+        ["plateID", "well"],
+    ].drop_duplicates()
+    if len(duplicate_wells) > 0:
+        duplicates = [
+            f'{row.plateID} / {row.well}'
+            for row in duplicate_wells.itertuples(index=False)
+        ]
+        raise ValueError(
+            "Layout contains duplicate target wells after normalizing well IDs:\n  - "
+            + "\n  - ".join(duplicates)
+        )
+
     return df, is_named_dmso_control
 
 
