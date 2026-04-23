@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, PlainTextResponse
 
 from .design_preflight import assess_design_preflight
 from .jobs import JobStore
@@ -12,6 +14,8 @@ from .preview import build_layout_preview_from_upload
 
 app = FastAPI(title="PLAID iDOT API", version="0.1.0")
 job_store = JobStore()
+repo_root = Path(__file__).resolve().parents[2]
+frontend_dist = repo_root / "frontend" / "dist"
 
 app.add_middleware(
     CORSMiddleware,
@@ -143,3 +147,43 @@ def download_design_artifact(job_id: str, artifact_name: str) -> FileResponse:
 @app.on_event("shutdown")
 def shutdown_event() -> None:
     job_store.shutdown()
+
+
+def _resolve_frontend_asset(path: str) -> Path | None:
+    if not frontend_dist.exists():
+        return None
+
+    candidate = (frontend_dist / path).resolve()
+    if candidate != frontend_dist and frontend_dist not in candidate.parents:
+        return None
+    if candidate.is_file():
+        return candidate
+    return None
+
+
+if frontend_dist.exists():
+    @app.get("/", include_in_schema=False)
+    def serve_frontend_index() -> FileResponse:
+        return FileResponse(frontend_dist / "index.html")
+
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def serve_frontend_app(full_path: str):
+        if full_path == "api" or full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="Not found")
+
+        asset = _resolve_frontend_asset(full_path)
+        if asset is not None:
+            return FileResponse(asset)
+
+        if "." in Path(full_path).name:
+            raise HTTPException(status_code=404, detail="Asset not found")
+
+        return FileResponse(frontend_dist / "index.html")
+else:
+    @app.get("/", include_in_schema=False)
+    def frontend_not_built() -> PlainTextResponse:
+        return PlainTextResponse(
+            "iPLAID frontend build not found. Build the frontend or run the Docker image.",
+            status_code=503,
+        )

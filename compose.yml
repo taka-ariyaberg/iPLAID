@@ -1,0 +1,40 @@
+services:
+  iplaid:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: iplaid:latest
+    ports:
+      - "${IPLAID_PORT:-8000}:8000"
+    volumes:
+      - ./backend/data/jobs:/app/backend/data/jobs
+      - ./outputs:/app/outputs
+      - ./config:/app/config
+      - ./inputs:/app/inputs
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health').read()"
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  notebook:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: notebook
+    image: iplaid-notebook:latest
+    ports:
+      - "${IPLAID_NOTEBOOK_PORT:-8888}:8888"
+    volumes:
+      - ./notebooks:/app/notebooks
+      - ./inputs:/app/inputs
+      - ./outputs:/app/outputs
+      - ./config:/app/config
+    profiles:
+      - notebook
