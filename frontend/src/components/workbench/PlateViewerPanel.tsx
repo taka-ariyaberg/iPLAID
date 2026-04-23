@@ -13,6 +13,7 @@ type PlateViewerPanelProps = {
   customCols: number;
   onCustomColsChange: (n: number) => void;
   plateDef: TargetPlateDefinition | undefined;
+  exportProjectDetails?: string | string[];
   plateTooSmall: boolean;
   maxDataRows: number;
   maxDataCols: number;
@@ -35,6 +36,7 @@ export function PlateViewerPanel({
   customCols,
   onCustomColsChange,
   plateDef,
+  exportProjectDetails,
   plateTooSmall,
   maxDataRows,
   maxDataCols,
@@ -55,6 +57,8 @@ export function PlateViewerPanel({
       originalPreview={originalPreview ?? undefined}
       title="Plate viewer"
       plateDef={plateDef}
+      exportProjectDetails={exportProjectDetails}
+      exportScope="workbench"
       isEditMode={isEditMode}
       revertKey={revertKey}
       onEditChange={onEditChange}

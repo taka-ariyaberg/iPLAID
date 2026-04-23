@@ -12,5 +12,5 @@
   "dilution_solvent": "DMSO",
   "source_well_fill_pct": 0.70,
   "standard_prep_volume_uL": 1000.0,
-  "output_timestamp_format": "%Y%m%d_%H%M%S"
+  "output_timestamp_format": "%y-%m-%d-%H-%M-%S"
 }

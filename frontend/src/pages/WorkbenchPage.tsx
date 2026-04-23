@@ -345,6 +345,7 @@ export function WorkbenchPage() {
   }
 
   const activePreview = workingPreview ?? preview;
+  const downloadProjectDetails: string[] = [config.user_name, config.protocol_name];
 
   const viewerPlateDef: TargetPlateDefinition | undefined =
     viewerPlateTypeId === "custom"
@@ -423,6 +424,7 @@ export function WorkbenchPage() {
               onDesignJobChange={setDesignJob}
               isGenerating={designIsGenerating}
               onIsGeneratingChange={setDesignIsGenerating}
+              projectDetails={downloadProjectDetails}
               onComplete={handleDesignComplete}
               onCancel={() => setDesignActive(false)}
               onError={setErrorMessage}
@@ -442,6 +444,7 @@ export function WorkbenchPage() {
             customCols={customCols}
             onCustomColsChange={setCustomCols}
             plateDef={viewerPlateDef}
+            exportProjectDetails={downloadProjectDetails}
             plateTooSmall={plateTooSmall}
             maxDataRows={maxDataRows}
             maxDataCols={maxDataCols}
@@ -479,6 +482,7 @@ export function WorkbenchPage() {
       {metaCreatorOpen && (
         <MetaCreatorModal
           initialRows={metaCreatorRows}
+          projectDetails={downloadProjectDetails}
           onClose={() => setMetaCreatorOpen(false)}
           onApply={handleMetaFile}
         />

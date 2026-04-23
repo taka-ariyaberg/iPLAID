@@ -163,7 +163,7 @@ Minimal example:
   "dilution_solvent": "DMSO",
   "source_well_fill_pct": 0.7,
   "standard_prep_volume_uL": 1000.0,
-  "output_timestamp_format": "%Y%m%d_%H%M%S"
+  "output_timestamp_format": "%y-%m-%d-%H-%M-%S"
 }
 ```
 
@@ -293,9 +293,9 @@ Direct pipeline runs write to `outputs/results/`:
 
 ```text
 outputs/results/
-  {User}_{Protocol}_protocol_{timestamp}.csv
-  {User}_{Protocol}_liquids_{timestamp}.csv
-  {User}_{Protocol}_source_plate_prep_{timestamp}.txt
+  iPLAID_{User}_{Protocol}_idot_protocol_{yy-mm-dd-hh-mm-ss}.csv
+  iPLAID_{User}_{Protocol}_liquids_map_{yy-mm-dd-hh-mm-ss}.csv
+  iPLAID_{User}_{Protocol}_source_plate_prep_{yy-mm-dd-hh-mm-ss}.txt
 ```
 
 ### Web-app outputs

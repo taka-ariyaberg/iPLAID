@@ -19,13 +19,13 @@ import type {
   LayoutPreview,
 } from "../../types";
 import { DMSO_COLOR, getConcColor, getStableCompoundColor } from "../../utils/colorUtils";
+import { buildDesignExportFilename } from "../../utils/downloadFilenames";
 import {
-  buildExportFilename,
   downloadPlateCsv,
   downloadPlatePng,
   downloadPlateSvg,
-  type PlateExportSpec,
 } from "../../utils/plateExport";
+import type { PlateExportSpec } from "../../utils/plateExport";
 import { formatWellId, normalizeWellKey } from "../../utils/wellUtils";
 import "../../styles/DesignMode.css";
 import "../../styles/DesignPanel.css";
@@ -225,6 +225,7 @@ interface DesignPanelProps {
   onDesignJobChange: Dispatch<SetStateAction<DesignJob | null>>;
   isGenerating: boolean;
   onIsGeneratingChange: Dispatch<SetStateAction<boolean>>;
+  projectDetails?: string | string[];
   onComplete: (layoutFile: File, preview: LayoutPreview) => void;
   onCancel: () => void;
   onError: (msg: string) => void;
@@ -238,6 +239,7 @@ export function DesignPanel({
   onDesignJobChange,
   isGenerating,
   onIsGeneratingChange,
+  projectDetails = "plate_design",
   onComplete,
   onCancel,
   onError,
@@ -337,11 +339,14 @@ export function DesignPanel({
 
   async function handleUseLayout() {
     if (!designJob || designJob.status !== "completed" || !designJob.layoutPreview) return;
-    const layoutUrl = apiClient.designArtifactUrl(designJob.jobId, "designed_layout.csv");
+    const layoutFilename =
+      designJob.artifacts.find((artifact) => artifact.label === "Layout CSV")?.name ??
+      "designed_layout.csv";
+    const layoutUrl = apiClient.designArtifactUrl(designJob.jobId, layoutFilename);
     try {
       const lr = await fetch(layoutUrl);
       const layoutBlob = await lr.blob();
-      const lf = new File([layoutBlob], "designed_layout.csv", { type: "text/csv" });
+      const lf = new File([layoutBlob], buildDesignExportFilename(projectDetails, "csv"), { type: "text/csv" });
       onComplete(lf, designJob.layoutPreview);
     } catch (err) {
       onError(err instanceof Error ? err.message : "Failed to load generated layout file.");
@@ -430,7 +435,7 @@ export function DesignPanel({
                 <button
                   type="button"
                   className="plate-export-btn"
-                  onClick={() => downloadPlateCsv(solvedPreview, buildExportFilename("PLAID_Core design layout", "csv"))}
+                  onClick={() => downloadPlateCsv(solvedPreview, buildDesignExportFilename(projectDetails, "csv"))}
                   title="Download layout as CSV"
                 >
                   <span className="plate-export-icon">⬇</span> CSV
@@ -438,7 +443,7 @@ export function DesignPanel({
                 <button
                   type="button"
                   className="plate-export-btn"
-                  onClick={() => downloadPlateSvg(exportSpec, buildExportFilename("PLAID_Core design layout", "svg"))}
+                  onClick={() => downloadPlateSvg(exportSpec, buildDesignExportFilename(projectDetails, "svg"))}
                   title="Download plate figure as SVG"
                 >
                   <span className="plate-export-icon">⬇</span> SVG
@@ -446,7 +451,7 @@ export function DesignPanel({
                 <button
                   type="button"
                   className="plate-export-btn"
-                  onClick={() => downloadPlatePng(exportSpec, buildExportFilename("PLAID_Core design layout", "png"))}
+                  onClick={() => downloadPlatePng(exportSpec, buildDesignExportFilename(projectDetails, "png"))}
                   title="Download plate figure as PNG"
                 >
                   <span className="plate-export-icon">⬇</span> PNG

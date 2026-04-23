@@ -128,4 +128,4 @@ class RunConfigModel(BaseModel):
     dilution_solvent: str = Field(default="DMSO")
     source_well_fill_pct: float = Field(default=0.70, gt=0)
     standard_prep_volume_uL: float = Field(default=1000.0, gt=0)
-    output_timestamp_format: str = Field(default="%Y%m%d_%H%M%S")
+    output_timestamp_format: str = Field(default="%y-%m-%d-%H-%M-%S")

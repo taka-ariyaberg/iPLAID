@@ -211,6 +211,8 @@ export function ResultsPage() {
         preview={targetPreview}
         title={job.status === "completed" ? "Processed target plate layout" : "Submitted target plate layout"}
         plateDef={targetPlateDef}
+        exportProjectDetails={[job.config.user_name, job.config.protocol_name]}
+        exportScope="target"
         showDefaultTooltip
       />
 

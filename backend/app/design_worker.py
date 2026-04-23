@@ -14,6 +14,7 @@ from .design_preflight import DesignPreflightError, assess_design_preflight
 from .designer import layout_to_csv_bytes, run_design
 from .models import DesignConfigModel
 from .preview import build_layout_preview_from_dataframe
+from src.iplaid.download_filenames import build_design_layout_filename
 
 
 def _now() -> str:
@@ -81,7 +82,11 @@ def main(argv: list[str]) -> int:
         layout, _plate_cfg = run_design(cfg)
         layout_bytes = layout_to_csv_bytes(layout, cfg)
 
-        layout_path = outputs_dir / "designed_layout.csv"
+        layout_filename = build_design_layout_filename(
+            plate_rows=cfg.plate_rows,
+            plate_cols=cfg.plate_cols,
+        )
+        layout_path = outputs_dir / layout_filename
         layout_path.write_bytes(layout_bytes)
 
         df = pd.read_csv(io.BytesIO(layout_bytes))
@@ -97,7 +102,7 @@ def main(argv: list[str]) -> int:
                 "workerPid": None,
                 "layoutPreview": preview,
                 "artifacts": [
-                    {"name": "designed_layout.csv", "label": "Layout CSV"},
+                    {"name": layout_filename, "label": "Layout CSV"},
                 ],
                 "numPlates": layout.num_plates,
                 "numWells": len(layout.wells),

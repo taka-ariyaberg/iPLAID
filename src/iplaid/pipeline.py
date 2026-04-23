@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import datetime
 from pathlib import Path
 
+from src.iplaid.download_filenames import build_source_prep_output_path
 from src.iplaid.io import (
     load_config,
     validate_config_dict,
@@ -42,35 +42,6 @@ from src.iplaid.output import (
 from src.iplaid.validators import validate_export_file, validate_solvent_normalization
 from src.iplaid.validators_preflight import PreflightAssessmentError, run_preflight_validation
 from src.iplaid import source_plate_prep
-
-
-def generate_timestamped_filename(
-    base_name: str,
-    protocol_name: str,
-    user_name: str,
-    layout_tag: str,
-    timestamp_format: str,
-    file_type_suffix: str = "",
-) -> str:
-    """
-    Generate timestamped output filename with standard naming convention.
-    
-    Format: {user_name}_{protocol_name}_{description}_{timestamp}.{ext}
-    
-    Args:
-        base_name: File description (e.g., "protocol", "liquids", "source_plate_prep")
-        protocol_name: Protocol identifier
-        user_name: User name
-        layout_tag: Layout identifier (e.g., "Layout_1") - currently unused
-        timestamp_format: Datetime format string
-        file_type_suffix: Optional suffix (".txt" or ".csv"), defaults to ".csv"
-        
-    Returns:
-        Timestamped filename
-    """
-    timestamp = datetime.datetime.now().strftime(timestamp_format)
-    ext = ".txt" if file_type_suffix == "prep" else ".csv"
-    return f"{user_name}_{protocol_name}_{base_name}_{timestamp}{ext}"
 
 
 def run_pipeline(project_root=None, include_source_prep=True):
@@ -132,7 +103,6 @@ def run_pipeline_with_inputs(
         "out_idot": output_paths["out_idot"],
         "out_liquids": output_paths["out_liquids"],
         "run_timestamp": str(output_paths["run_timestamp"]),
-        "layout_tag": explicit_layout_path.stem,
     }
 
     return _run_pipeline_with_resolved_inputs(
@@ -251,15 +221,15 @@ def _run_pipeline_with_resolved_inputs(*, root: Path, cfg: dict, paths: dict, in
     print("\n" + "="*90)
     print("SUMMARY: How stock assignments work")
     print("="*90)
-    print("""
+    print(f"""
 ✓ The stockfinder successfully assigned stocks to achieve ALL target concentrations
 ✓ Multiple target concentrations can use the SAME source stock at DIFFERENT volumes
 ✓ Example: Etoposide 0.03 µM and 0.1 µM both use 0.1 mM stock, just different volumes
 ✓ Protocol shows [Compound][StockConcentration] NOT [Compound][TargetConcentration]
 ✓ The dispense volume column determines final target concentration in well
 
-If you see fewer unique liquids than target concentrations, this is EXPECTED and CORRECT!
-All 13 target concentrations are handled by the 8 unique source stocks shown above.
+If you see fewer unique liquids than compound/target pairs, this can be EXPECTED and CORRECT.
+This run has {input_unique_pairs} unique compound/target pairs and {len(liquid_names)} unique source liquids.
     """)
     print()
     
@@ -312,16 +282,11 @@ All 13 target concentrations are handled by the 8 unique source stocks shown abo
             liquids_csv_path=paths["out_liquids"],
         )
         
-        # Write source prep instructions
-        prep_filename = generate_timestamped_filename(
-            base_name="source_plate_prep",
-            protocol_name=cfg["protocol_name"],
-            user_name=cfg["user_name"],
-            layout_tag=paths["layout_tag"],
-            timestamp_format=cfg["output_timestamp_format"],
-            file_type_suffix="prep",
+        prep_outfile = build_source_prep_output_path(
+            Path(paths["out_idot"]).parent,
+            cfg,
+            timestamp=str(paths["run_timestamp"]),
         )
-        prep_outfile = Path(paths["out_idot"]).parent / prep_filename
         with open(prep_outfile, 'w', encoding='utf-8') as f:
             f.write(source_prep_instructions)
         paths["out_source_prep"] = prep_outfile

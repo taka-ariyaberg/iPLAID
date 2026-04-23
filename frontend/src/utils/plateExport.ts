@@ -347,12 +347,6 @@ function strokeRr(
 
 // ── Download helpers ──────────────────────────────────────────────────────────
 
-export function buildExportFilename(title: string, ext: string): string {
-  const base = title.replace(/\s+/g, "_").replace(/[^\w-]/g, "");
-  const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-  return `${base}_${date}.${ext}`;
-}
-
 export function downloadPlatePng(spec: PlateExportSpec, filename: string): void {
   const canvas  = renderPlateExport(spec);
   const dataUrl = canvas.toDataURL("image/png");

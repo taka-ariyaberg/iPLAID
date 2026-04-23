@@ -13,6 +13,12 @@ from typing import Dict, List, Tuple, Optional
 import pandas as pd
 import numpy as np
 
+from src.iplaid.download_filenames import (
+    build_project_details,
+    build_source_prep_output_path,
+    find_latest_download_artifact,
+)
+
 
 def parse_liquid_name(liquid_name: str) -> Tuple[str, float]:
     """
@@ -369,7 +375,26 @@ def generate_source_plate_prep_instructions(
     """
     # Use provided paths or auto-detect based on naming convention
     if idot_csv_path is None or liquids_csv_path is None:
-        layout_base = Path(layout_file).stem  # e.g., "Layout_1"
+        project_details = build_project_details(
+            config.get("user_name", "user"),
+            protocol_name,
+        )
+        if idot_csv_path is None:
+            idot_csv_path = find_latest_download_artifact(
+                output_dir,
+                artifact="idot_protocol",
+                extension=".csv",
+                project_details=project_details,
+            )
+        if liquids_csv_path is None:
+            liquids_csv_path = find_latest_download_artifact(
+                output_dir,
+                artifact="liquids_map",
+                extension=".csv",
+                project_details=project_details,
+            )
+
+        layout_base = Path(layout_file).stem
         if idot_csv_path is None:
             idot_csv_path = output_dir / f"IDOT_{protocol_name}__{layout_base}.csv"
         if liquids_csv_path is None:
@@ -433,7 +458,7 @@ def run(project_root: Path) -> None:
     )
     
     # Write to output file
-    output_file = output_dir / f"source_plate_prep_{config['protocol_name']}__{Path(config['layout_file']).stem}.txt"
+    output_file = build_source_prep_output_path(output_dir, config)
     with open(output_file, 'w') as f:
         f.write(instructions)
     
