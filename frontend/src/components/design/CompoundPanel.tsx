@@ -121,6 +121,9 @@ function CompoundEntryEditor({ color, entry, onChange, onRemove }: CompoundEntry
       });
       return;
     }
+    setDupConflict((current) => (
+      current?.sourceIdx === index ? null : current
+    ));
     const next = [...entries];
     next[index] = { ...next[index], value_um };
     onChange({ ...entry, conc_entries: next });

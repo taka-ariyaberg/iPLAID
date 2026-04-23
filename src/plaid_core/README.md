@@ -22,6 +22,10 @@ For full repo setup instructions, start with the root [README.md](/Users/takar83
 
 ## Install inside this repo
 
+For normal iPLAID usage, Docker handles installation automatically — no manual steps needed. See the root [README.md](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/README.md).
+
+For direct Python scripting outside Docker:
+
 ```bash
 pip install -e /path/to/iPLAID
 ```
@@ -84,12 +88,13 @@ The frontend `DesignPanel` uses these endpoints and returns the accepted layout 
 
 ## Docs in this folder
 
-- [INSTALLATION.md](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/src/plaid_core/INSTALLATION.md): MiniZinc and package setup notes
-- [API_REFERENCE.md](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/src/plaid_core/API_REFERENCE.md): Python API details
-- [examples/basic_usage.py](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/src/plaid_core/examples/basic_usage.py): basic example
-- [examples/advanced_usage.py](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/src/plaid_core/examples/advanced_usage.py): advanced example
-
-Files in this folder with `MIGRATION` in the name are historical integration notes, not the recommended setup path for this repository.
+- [INSTALLATION.md](INSTALLATION.md): MiniZinc and package setup notes
+- [API_REFERENCE.md](API_REFERENCE.md): Python API details
+- [INTEGRATION_GUIDE.md](INTEGRATION_GUIDE.md): how plaid_core wires into the iPLAID backend
+- [PACKAGE_STRUCTURE.md](PACKAGE_STRUCTURE.md): directory map
+- [QUICK_START.md](QUICK_START.md): minimal usage pointer
+- [examples/basic_usage.py](examples/basic_usage.py): basic example
+- [examples/advanced_usage.py](examples/advanced_usage.py): advanced example
 
 ## License
 

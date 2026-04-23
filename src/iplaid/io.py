@@ -10,10 +10,11 @@ Consolidates all project initialization and configuration:
 
 from __future__ import annotations
 
-import datetime
 import json
 from pathlib import Path
 from typing import Dict, Any
+
+from src.iplaid.download_filenames import build_run_artifact_paths
 
 
 # Configuration loading
@@ -91,20 +92,7 @@ def build_output_paths(
     Returns:
         Dictionary containing resolved output paths and run timestamp
     """
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    run_timestamp = timestamp or datetime.datetime.now().strftime(
-        config.get("output_timestamp_format", "%Y%m%d_%H%M%S")
-    )
-    protocol_name = config["protocol_name"]
-    user_name = config.get("user_name", "User")
-
-    return {
-        "out_idot": output_dir / f"{user_name}_{protocol_name}_protocol_{run_timestamp}.csv",
-        "out_liquids": output_dir / f"{user_name}_{protocol_name}_liquids_{run_timestamp}.csv",
-        "run_timestamp": run_timestamp,
-    }
+    return build_run_artifact_paths(output_dir, config, timestamp=timestamp)
 
 
 # Path resolution
@@ -153,7 +141,6 @@ def resolve_project_paths(project_root: Path, config: Dict[str, Any]) -> Dict[st
     meta_path = project_root / "inputs" / "meta" / config["meta_file"]
     plate_specs_path = project_root / "data" / "source_plate_specs.json"
 
-    layout_tag = Path(config["layout_file"]).stem
     output_paths = build_output_paths(project_root / "outputs" / "results", config)
 
     return {
@@ -164,7 +151,6 @@ def resolve_project_paths(project_root: Path, config: Dict[str, Any]) -> Dict[st
         "out_idot": output_paths["out_idot"],
         "out_liquids": output_paths["out_liquids"],
         "run_timestamp": str(output_paths["run_timestamp"]),
-        "layout_tag": layout_tag,
     }
 
 

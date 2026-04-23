@@ -3,7 +3,8 @@ import { Fragment, ReactNode, useEffect, useMemo, useRef, useState } from "react
 import type { LayoutPreview, TargetPlateDefinition } from "../types";
 import "../styles/PlateViewer.css";
 import { DMSO_COLOR, EMPTY_COLOR, getConcColor, getCompoundColor } from "../utils/colorUtils";
-import { downloadPlatePng, downloadPlateSvg, downloadPlateCsv, buildExportFilename } from "../utils/plateExport";
+import { buildPlateExportFilename } from "../utils/downloadFilenames";
+import { downloadPlatePng, downloadPlateSvg, downloadPlateCsv } from "../utils/plateExport";
 import { canonicalWellId, formatWellId, normalizeWellKey } from "../utils/wellUtils";
 
 function buildRowLabels(count: number): string[] {
@@ -51,6 +52,8 @@ type PlateGridProps = {
   title: string;
   plateDef?: TargetPlateDefinition;
   concentrationUnit?: string;
+  exportProjectDetails?: string | string[];
+  exportScope?: "target" | "source" | "workbench";
   children?: ReactNode;
   isEditMode?: boolean;
   originalPreview?: LayoutPreview;
@@ -176,7 +179,24 @@ function EditCombobox({ value, onChange, options, placeholder, onClear }: EditCo
   );
 }
 
-export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM", children, isEditMode = false, originalPreview, revertKey, onEditChange, onSaveEdits, onRevertAll, wellTooltipContent, showDefaultTooltip = false, concBlockExtras }: PlateGridProps) {
+export function PlateGrid({
+  preview,
+  title,
+  plateDef,
+  concentrationUnit = "µM",
+  exportProjectDetails,
+  exportScope = "workbench",
+  children,
+  isEditMode = false,
+  originalPreview,
+  revertKey,
+  onEditChange,
+  onSaveEdits,
+  onRevertAll,
+  wellTooltipContent,
+  showDefaultTooltip = false,
+  concBlockExtras,
+}: PlateGridProps) {
   const [selectedWellIds, setSelectedWellIds] = useState<string[]>([]);
   // key = `${compound}::${concLabel}` of the hovered concentration subgroup in the info panel
   const [hoveredConcKey, setHoveredConcKey] = useState<string | null>(null);
@@ -221,6 +241,7 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
   const dragBaseSelectionRef = useRef<string[]>([]);
   // Stable compound→index map so that adding new compounds never shifts existing colors.
   const compoundColorIndexRef = useRef<Map<string, number>>(new Map());
+  const resolvedExportProjectDetails = exportProjectDetails ?? title;
 
   if (!preview.plates.length) {
     return null;
@@ -1605,13 +1626,28 @@ export function PlateGrid({ preview, title, plateDef, concentrationUnit = "µM",
       <div className="plate-export-actions" data-export-ignore="true">
         <p className="section-kicker">Export</p>
         <div className="plate-export-btns">
-          <button type="button" className="plate-export-btn" onClick={() => downloadPlateCsv(preview, buildExportFilename(title, "csv"))} title="Download layout as CSV (re-uploadable format)">
+          <button
+            type="button"
+            className="plate-export-btn"
+            onClick={() => downloadPlateCsv(preview, buildPlateExportFilename(resolvedExportProjectDetails, exportScope, "csv"))}
+            title="Download layout as CSV (re-uploadable format)"
+          >
             <span className="plate-export-icon">⬇</span> CSV
           </button>
-          <button type="button" className="plate-export-btn" onClick={() => downloadPlateSvg(buildExportSpec(), buildExportFilename(title, "svg"))} title="Download plate figure as SVG">
+          <button
+            type="button"
+            className="plate-export-btn"
+            onClick={() => downloadPlateSvg(buildExportSpec(), buildPlateExportFilename(resolvedExportProjectDetails, exportScope, "svg"))}
+            title="Download plate figure as SVG"
+          >
             <span className="plate-export-icon">⬇</span> SVG
           </button>
-          <button type="button" className="plate-export-btn" onClick={() => downloadPlatePng(buildExportSpec(), buildExportFilename(title, "png"))} title="Download plate figure as PNG (2×)">
+          <button
+            type="button"
+            className="plate-export-btn"
+            onClick={() => downloadPlatePng(buildExportSpec(), buildPlateExportFilename(resolvedExportProjectDetails, exportScope, "png"))}
+            title="Download plate figure as PNG (2×)"
+          >
             <span className="plate-export-icon">⬇</span> PNG
           </button>
         </div>

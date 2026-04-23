@@ -9,6 +9,7 @@
 import { Fragment, useMemo, useState } from "react";
 import { SpinInput } from "../design/SpinInput";
 import { getStableCompoundColor } from "../../utils/colorUtils";
+import { buildMetaExportFilename } from "../../utils/downloadFilenames";
 import "./MetaCreatorModal.css";
 
 // ---------------------------------------------------------------------------
@@ -31,6 +32,7 @@ type ValidationResult = { ok: boolean; message: string };
 
 interface MetaCreatorModalProps {
   initialRows?: CompoundRow[];
+  projectDetails?: string | string[];
   onClose: () => void;
   onApply: (file: File, rows: CompoundRow[]) => void;
 }
@@ -241,7 +243,12 @@ function MetaEntryEditor({
 // Component
 // ---------------------------------------------------------------------------
 
-export function MetaCreatorModal({ initialRows, onClose, onApply }: MetaCreatorModalProps) {
+export function MetaCreatorModal({
+  initialRows,
+  projectDetails = "metadata_builder",
+  onClose,
+  onApply,
+}: MetaCreatorModalProps) {
   const seededRows = useMemo(() => {
     if (!initialRows || initialRows.length === 0) return [mkRow(), mkSolventRow()];
     const nextSeed: CompoundRow[] = initialRows.map((row) => ({
@@ -342,7 +349,8 @@ export function MetaCreatorModal({ initialRows, onClose, onApply }: MetaCreatorM
   function handleApply() {
     const csv = buildCSV(normalizedRows);
     const blob = new Blob([csv], { type: "text/csv" });
-    const file = new File([blob], "cmpd_info.csv", { type: "text/csv" });
+    const filename = buildMetaExportFilename(projectDetails);
+    const file = new File([blob], filename, { type: "text/csv" });
     onApply(file, normalizedRows);
   }
 
@@ -352,7 +360,7 @@ export function MetaCreatorModal({ initialRows, onClose, onApply }: MetaCreatorM
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "cmpd_info.csv";
+    a.download = buildMetaExportFilename(projectDetails);
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

@@ -11,92 +11,116 @@ iPLAID converts screening layouts into iDOT Assay Studio dispense outputs. It ca
 - generate iDOT dispense and liquids CSVs,
 - generate source-plate preparation instructions.
 
-This README is the main operator guide for setting up and running the project on a new machine.
+This repository now has one supported setup path for new machines: **Docker**.
 
 ## What is in this repo
 
 - `src/iplaid/`: the pipeline that turns a layout + metadata into iDOT outputs.
 - `src/plaid_core/`: the bundled plate-layout design engine used by the web designer.
 - `backend/`: FastAPI backend for the web workbench.
-- `frontend/`: React + Vite frontend for the web workbench.
+- `frontend/`: React frontend that is built and served by the backend in Docker.
 
-## System requirements
+## Supported setup
 
-### Required for all usage modes
+### Host requirements
 
-- Python 3.11+
-- `pip`
-- `pandas`, `numpy`, and other Python dependencies installed through this repo
+You only need:
 
-### Required for the web workbench
+- Docker
+- Docker Compose v2 (`docker compose`)
 
-- Node.js + npm
+You do **not** need to install Python, Node.js, Conda, npm, or MiniZinc on the host machine for normal iPLAID usage.
 
-### Required for "Design with PLAID"
+### What the Docker image includes
 
-- MiniZinc 2.6+ with a working solver such as Gecode
+The Docker image builds and runs:
 
-If MiniZinc is missing, the upload-based workflow still works, but the PLAID designer will fail.
+- the FastAPI backend,
+- the production frontend bundle,
+- all Python dependencies,
+- MiniZinc for the PLAID designer.
 
-## Quick install
+## Quick start
 
-### Option A: Conda
-
-```bash
-conda env create -f environment.yml
-conda activate PLAID
-pip install -e .
-```
-
-### Option B: Virtual environment
+Build the image:
 
 ```bash
-python3.11 -m venv .venv
-source .venv/bin/activate
-pip install --upgrade pip
-pip install -e .
-pip install -r backend/requirements.txt
+docker compose build
 ```
 
-### Frontend dependencies
+Start iPLAID:
 
 ```bash
-cd frontend
-npm install
-cd ..
+docker compose up
 ```
 
-### MiniZinc
+Then open:
 
-Install MiniZinc separately if you want to use the layout designer.
+- `http://127.0.0.1:8000`
 
-- macOS: `brew install minizinc` or install from `https://www.minizinc.org/`
-- Ubuntu/Debian: `sudo apt-get install minizinc`
-- Windows: install from `https://www.minizinc.org/`
-
-Verify:
+Useful commands:
 
 ```bash
-minizinc --version
-minizinc --solvers
+docker compose logs -f iplaid
+docker compose down
 ```
 
-On macOS, if MiniZinc was installed through the app bundle and is not on `PATH`, the code also checks `/Applications/MiniZincIDE.app/Contents/Resources/minizinc`.
-
-## First-run verification
-
-Run these checks before trying a real workflow:
+If you change code and want the container to pick it up, rebuild:
 
 ```bash
-python -c "import iplaid, plaid_core; print('Python packages OK')"
-cd frontend && npm run build && cd ..
+docker compose up --build
 ```
 
-If you want to use the designer:
+## Persistent data
+
+The compose setup keeps user-editable and generated data on the host:
+
+- `config/` is mounted into the container
+- `inputs/` is mounted into the container
+- `outputs/` is mounted into the container
+- `backend/data/jobs/` is mounted into the container
+
+That means uploaded runs, generated artifacts, and direct pipeline outputs survive container restarts and rebuilds.
+
+## Running the notebook
+
+The Jupyter notebook in `notebooks/` runs the same pipeline interactively and can be started through Docker without installing anything on the host.
+
+Build and start the notebook server:
 
 ```bash
-minizinc --version
+docker compose --profile notebook up --build notebook
 ```
+
+Then open the URL printed in the terminal (e.g. `http://127.0.0.1:8888`). Authentication is disabled, so the browser opens directly. The notebook mounts `config/`, `inputs/`, and `outputs/` from the host, so changes persist after the container stops.
+
+Stop the notebook server:
+
+```bash
+docker compose --profile notebook down
+```
+
+The notebook and web app are independent — run whichever you need.
+
+## Running the direct pipeline
+
+The web app is the main workflow, but the direct pipeline is still supported through the same Docker setup.
+
+Run the pipeline against `config/config.json` and the files under `inputs/`:
+
+```bash
+docker compose run --rm iplaid python scripts/run_pipeline.py
+```
+
+Skip source-plate preparation instructions if needed:
+
+```bash
+docker compose run --rm iplaid python scripts/run_pipeline.py --skip-source-prep
+```
+
+Direct pipeline outputs are written to:
+
+- `outputs/results/`
 
 ## Input files
 
@@ -111,7 +135,7 @@ The pipeline expects a target-layout CSV with these columns:
 | compound column | Compound name |
 | concentration column | Target concentration in µM |
 
-In practice, the loaders normalize common layout column names. The examples under `inputs/layouts/` show the accepted shape.
+In practice, the loaders normalize common layout column names. `inputs/layouts/compound_layout_example.csv` shows the accepted shape.
 
 ### Metadata CSV
 
@@ -144,7 +168,7 @@ Internally, the design solver still receives these solvent entries as PLAID_Core
 
 ## Configuration
 
-The root pipeline uses `config/config.json`. The full template is in [config/config.template.json](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/config/config.template.json).
+The direct pipeline reads `config/config.json`. The template lives in `config/config.template.json`.
 
 Minimal example:
 
@@ -152,8 +176,8 @@ Minimal example:
 {
   "user_name": "YourName",
   "protocol_name": "MyExperiment",
-  "layout_file": "Layout_1.csv",
-  "meta_file": "cmpd_info.csv",
+  "layout_file": "compound_layout_example.csv",
+  "meta_file": "meta_example.csv",
   "sourceplate_type": "S.100 Plate",
   "target_plate_type": "MWP 384",
   "working_volume_ul": 40,
@@ -163,7 +187,7 @@ Minimal example:
   "dilution_solvent": "DMSO",
   "source_well_fill_pct": 0.7,
   "standard_prep_volume_uL": 1000.0,
-  "output_timestamp_format": "%Y%m%d_%H%M%S"
+  "output_timestamp_format": "%y-%m-%d-%H-%M-%S"
 }
 ```
 
@@ -179,95 +203,17 @@ Important fields:
 | `max_dmso_pct` | Default maximum solvent percentage used when no solvent-specific override is provided |
 | `solvent_caps_pct` | Optional per-solvent percentage limits, for example `{ "DMSO": 0.1, "Ethanol": 0.2 }` |
 
-## Running iPLAID
-
-### 1. Direct Python pipeline
-
-This is the canonical non-web entrypoint:
-
-```python
-from src.iplaid.pipeline import run_pipeline
-
-run_pipeline(project_root=".", include_source_prep=True)
-```
-
-This reads:
-
-- `config/config.json`
-- `inputs/layouts/<layout_file>`
-- `inputs/meta/<meta_file>`
-
-and writes outputs to:
-
-- `outputs/results/`
-
-### 2. Notebook
-
-```bash
-jupyter lab
-```
-
-Then open:
-
-- `notebooks/01_plaid_idot_pipeline.ipynb`
-
-### 3. Web workbench
-
-Launch both backend and frontend:
-
-```bash
-bash scripts/start_web_app.sh
-```
-
-On macOS you can also auto-open the browser:
-
-```bash
-bash scripts/start_web_app.sh --open
-```
-
-The launcher script:
-
-- finds a usable Python interpreter,
-- installs missing backend Python packages if needed,
-- installs the repo in editable mode if needed,
-- installs frontend dependencies if `frontend/node_modules` is missing,
-- starts backend on `127.0.0.1:8000`,
-- starts frontend on `127.0.0.1:5173`,
-- writes logs to `outputs/logs/`.
-
-Services:
-
-| Service | URL |
-|---------|-----|
-| Frontend | `http://127.0.0.1:5173` |
-| Backend API | `http://127.0.0.1:8000` |
-| Backend health | `http://127.0.0.1:8000/api/health` |
-
-Logs:
-
-- `outputs/logs/backend-dev.log`
-- `outputs/logs/frontend-dev.log`
-
-### Frontend API base URL override
-
-The frontend uses `http://localhost:8000` by default. To point it at another backend, set:
-
-```bash
-VITE_API_BASE_URL=http://your-host:8000
-```
-
-before running the frontend, or put it in a frontend `.env` file if you are managing the dev server manually.
-
 ## Web workbench workflow
 
 ### Upload workflow
 
-1. Upload a layout CSV.
-2. Upload a metadata CSV, or build one with the metadata creator.
-3. Inspect the previewed plate map.
-4. Adjust run settings.
-5. Submit the run.
-6. Review results and download artifacts.
+1. Open the app at `http://127.0.0.1:8000`.
+2. Upload a layout CSV.
+3. Upload a metadata CSV, or build one with the metadata creator.
+4. Inspect the previewed plate map.
+5. Adjust run settings.
+6. Submit the run.
+7. Review results and download artifacts.
 
 ### Design workflow
 
@@ -293,9 +239,9 @@ Direct pipeline runs write to `outputs/results/`:
 
 ```text
 outputs/results/
-  {User}_{Protocol}_protocol_{timestamp}.csv
-  {User}_{Protocol}_liquids_{timestamp}.csv
-  {User}_{Protocol}_source_plate_prep_{timestamp}.txt
+  iPLAID_{User}_{Protocol}_idot_protocol_{yy-mm-dd-hh-mm-ss}.csv
+  iPLAID_{User}_{Protocol}_liquids_map_{yy-mm-dd-hh-mm-ss}.csv
+  iPLAID_{User}_{Protocol}_source_plate_prep_{yy-mm-dd-hh-mm-ss}.txt
 ```
 
 ### Web-app outputs
@@ -312,7 +258,7 @@ The UI downloads result files through the backend artifact endpoints rather than
 
 ## Backend API
 
-All endpoints are served by the FastAPI app in [backend/app/main.py](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/backend/app/main.py).
+All endpoints are served by the FastAPI app in `backend/app/main.py`.
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -344,37 +290,41 @@ iPLAID/
 │   ├── iplaid/
 │   └── plaid_core/
 ├── tests/
-├── environment.yml
+├── .dockerignore
+├── Dockerfile
+├── compose.yml
 ├── pyproject.toml
 └── README.md
 ```
 
 Key files:
 
-- [src/iplaid/pipeline.py](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/src/iplaid/pipeline.py): direct pipeline entrypoint
-- [scripts/start_web_app.sh](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/scripts/start_web_app.sh): launch script for frontend + backend
-- [backend/app/main.py](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/backend/app/main.py): API routes
-- [frontend/src/services/apiClient.ts](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/frontend/src/services/apiClient.ts): frontend API wiring
+- `Dockerfile`: multi-stage build — `runtime` (web app) and `notebook` targets
+- `compose.yml`: operator entrypoint; the `notebook` service requires `--profile notebook`
+- `scripts/run_pipeline.py`: direct pipeline runner inside the container
+- `notebooks/01_plaid_idot_pipeline.ipynb`: interactive pipeline notebook
+- `backend/app/main.py`: API routes and frontend serving
+- `frontend/src/services/apiClient.ts`: frontend API wiring
 
 ## Troubleshooting
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
-| `ModuleNotFoundError: iplaid` or `plaid_core` | Repo not installed in environment | Run `pip install -e .` from repo root |
-| `minizinc` not found | MiniZinc not installed or not on `PATH` | Install MiniZinc and verify `minizinc --version` |
-| Designer fails but upload workflow works | MiniZinc missing or solver unavailable | Install MiniZinc/Gecode; upload workflow does not require the solver |
-| Frontend loads but API calls fail | Backend not running or wrong API base URL | Check `http://127.0.0.1:8000/api/health`; verify `VITE_API_BASE_URL` |
+| `docker: command not found` | Docker is not installed | Install Docker Desktop or Docker Engine + Compose |
+| `Cannot connect to the Docker daemon` | Docker is installed but not running | Start Docker and rerun `docker compose up --build` |
+| `bind: address already in use` on port 8000 | Another process is using port 8000 | Stop the conflicting process or run `IPLAID_PORT=8001 docker compose up` |
+| Designer fails unexpectedly | Container image is stale or MiniZinc runtime is unhealthy | Rebuild with `docker compose up --build`; verify with `docker compose run --rm iplaid minizinc --version` |
+| Frontend loads but API calls fail | Container is not healthy yet | Check `docker compose logs -f iplaid` and verify `/api/health` |
 | Layout preview or run fails with missing compounds | Layout names do not match metadata names | Ensure `cmpdname` matches exactly |
 | Pre-flight validation fails | Requested concentrations are infeasible under the DMSO limit | Reduce target concentration or adjust config after reviewing feasibility |
-| Solver timeout | Design is too constrained or too large | Increase `timeout_seconds`, reduce replicate count, or relax constraints |
-| Port already in use | Another process is using 5173 or 8000 | Stop the conflicting process or launch the services manually on different ports |
+| Code changes do not appear | Running image was not rebuilt | Rerun `docker compose up --build` |
 
-## Notes on bundled PLAID_Core docs
+## Notes on bundled PLAID_Core
 
-`src/plaid_core/` is already bundled inside this repo. You do not need to copy it into iPLAID or install it as a separate standalone project when working from this repository.
+`src/plaid_core/` is bundled inside this repo. You do not need to copy it in or install it separately — `docker compose build` handles everything.
 
-The bundled package docs are intended to explain the design engine itself. For actual setup and operation of this repository, use this root README first.
+The docs under `src/plaid_core/` explain the design engine itself (Python API, MiniZinc solver, layout logic). For setup and operation of iPLAID as a whole, this root README is the authoritative source.
 
 ## License
 
-MIT. See [LICENSE.md](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/LICENSE.md).
+MIT. See `LICENSE.md`.

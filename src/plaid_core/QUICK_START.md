@@ -4,11 +4,12 @@ This file is kept as a short pointer for developers browsing `src/plaid_core/`.
 
 ## Recommended setup path
 
-If you are using this repository:
+If you are using this repository, Docker is the supported setup — follow the root [README.md](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/README.md). Docker installs all Python dependencies and MiniZinc automatically.
 
-1. Follow the root [README.md](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/README.md).
-2. Install the repo with `pip install -e .`.
-3. Install MiniZinc if you want to use the solver.
+For direct Python scripting outside Docker:
+
+1. `pip install -e /path/to/iPLAID`
+2. Install MiniZinc separately if you want to use the solver.
 
 ## Minimal direct usage
 

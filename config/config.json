@@ -1,8 +1,8 @@
 {
-  "user_name": "Taka",
-  "protocol_name": "TIMED_CLEO_EXP01_Plate_3",
-  "layout_file": "timed_cleos_exp_01_plate_3.csv",
-  "meta_file": "timed_cleos_exp_01_cmpd_info.csv",
+  "user_name": "YourName",
+  "protocol_name": "MyExperiment",
+  "layout_file": "compound_layout_example.csv",
+  "meta_file": "meta_example.csv",
   "sourceplate_type": "S.100 Plate",
   "target_plate_type": "MWP 384",
   "working_volume_ul": 40,
@@ -12,5 +12,5 @@
   "dilution_solvent": "DMSO",
   "source_well_fill_pct": 0.70,
   "standard_prep_volume_uL": 1000.0,
-  "output_timestamp_format": "%Y%m%d_%H%M%S"
+  "output_timestamp_format": "%y-%m-%d-%H-%M-%S"
 }

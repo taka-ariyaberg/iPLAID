@@ -199,6 +199,8 @@ export function SourcePlatePanel({ job, plateDef }: SourcePlatePanelProps) {
       preview={sourcePlatePreview}
       title="Source plate layout"
       plateDef={plateDef}
+      exportProjectDetails={[job.config.user_name, job.config.protocol_name]}
+      exportScope="source"
       concentrationUnit="mM"
       wellTooltipContent={wellTooltipContent}
       concBlockExtras={concBlockExtras}
