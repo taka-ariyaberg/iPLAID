@@ -16,17 +16,17 @@ Shared vault:  `/Users/takar834/Documents/UU/TIMED/Tools/Nexus_OV/_Commons_OV/`
 ---
 
 ## Session Start Ritual
-1. Read `../Nexus_OV/iPLAID_OV/Home.md` — master index
-2. Read `../Nexus_OV/iPLAID_OV/Current.md` — **live focus; trust this over Home.md**
+1. Read `../Nexus_OV/iPLAID_OV/iPLAID_Home.md` — master index
+2. Read `../Nexus_OV/iPLAID_OV/iPLAID_Current.md` — **live focus; trust this over Home.md**
 3. Read the most recent file in `../Nexus_OV/iPLAID_OV/Sessions/` for context continuity
-4. Skim `../Nexus_OV/_Commons_OV/Home.md` for cross-project patterns
+4. Skim `../Nexus_OV/_Commons_OV/Commons_Home.md` for cross-project patterns
 5. Do NOT re-read the whole repo from scratch — the vault is the cached understanding
 
 ---
 
 ## Session End Ritual
-1. Append a dated note to `../Nexus_OV/iPLAID_OV/Sessions/` using `Templates/Session Note.md`
-2. Update `../Nexus_OV/iPLAID_OV/Current.md` if focus, blockers, or next steps shifted
+1. Append a dated note to `../Nexus_OV/iPLAID_OV/Sessions/` using `Templates/iPLAID_Session_Note.md`
+2. Update `../Nexus_OV/iPLAID_OV/iPLAID_Current.md` if focus, blockers, or next steps shifted
 3. Add to `../Nexus_OV/iPLAID_OV/Decisions/` for any architectural choice made today
 4. Escalate generalizable learnings to `../Nexus_OV/_Commons_OV/`
 
