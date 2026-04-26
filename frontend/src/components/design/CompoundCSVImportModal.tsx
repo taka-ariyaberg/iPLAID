@@ -212,7 +212,7 @@ export function CompoundCSVImportModal({
           <button
             type="button"
             className="ci-confirm-btn"
-            disabled={hasHardErrors}
+            disabled={hasHardErrors || (usableWells > 0 && needed > usableWells)}
             onClick={handleConfirm}
           >
             Confirm Import ({rows.length} rows)

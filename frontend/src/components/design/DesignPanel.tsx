@@ -269,13 +269,22 @@ export function DesignPanel({
     };
   }, []);
 
-  const validationMessages = buildValidationMessages(designConfig);
-  const canGenerate = validationMessages.every((m) => m.level !== "error");
   const usableWells = Math.max(
     0,
     (designConfig.plate_rows - 2 * designConfig.empty_edge) *
       (designConfig.plate_cols - 2 * designConfig.empty_edge)
   );
+  const neededWells = totalWellsNeeded(designConfig.compounds, designConfig.solvents);
+
+  // When every well is assigned there are no empty wells to allow — auto-disable.
+  useEffect(() => {
+    if (usableWells > 0 && neededWells >= usableWells && designConfig.allow_empty_wells) {
+      onDesignConfigChange((dc) => ({ ...dc, allow_empty_wells: false }));
+    }
+  }, [neededWells, usableWells]);
+
+  const validationMessages = buildValidationMessages(designConfig);
+  const canGenerate = validationMessages.every((m) => m.level !== "error");
 
   async function handleGenerate() {
     if (!canGenerate) return;
