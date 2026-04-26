@@ -1,0 +1,45 @@
+compound_name,concentration_uM,replicate_number,role
+GSK2110183 / Afuresertib,13.3,7,treatment
+CCT128930,13.3,7,treatment
+AZD5363 / Capivasertib,13.3,7,treatment
+Ipatasertib,13.3,7,treatment
+Miransertib,13.3,7,treatment
+Uprosertib,4.2,7,treatment
+AR-12,13.3,7,treatment
+Aminopurvalanol A,4.2,7,treatment
+Abemaciclib,4.2,7,treatment
+LY2857785,4.2,7,treatment
+RGB-286638,4.2,7,treatment
+TG-02,1.7,7,treatment
+BMS-265246,13.3,7,treatment
+Palbociclib,4.2,7,treatment
+M344,1.7,7,treatment
+Chidamide,4.2,7,treatment
+Scriptaid,4.2,7,treatment
+Pyroxamide,4.2,7,treatment
+Ricolinostat,4.2,7,treatment
+Abexinostat,1.7,7,treatment
+Droxinostat,13.3,7,treatment
+Binimetinib,4.2,7,treatment
+Trametinib,4.2,7,treatment
+Cobimetinib,1.7,7,treatment
+Ulixertinib,4.2,7,treatment
+TAK-715,13.3,7,treatment
+PH-797804,13.3,7,treatment
+LY2228820,13.3,7,treatment
+Talazoparib,4.2,7,treatment
+Rucaparib,4.2,7,treatment
+Niraparib,4.2,7,treatment
+AZD2461,13.3,7,treatment
+Veliparib,13.3,7,treatment
+E7449 / Stenoparib,13.3,7,treatment
+ME0328,13.3,7,treatment
+Albendazole,4.2,7,treatment
+Nocodazole,1.7,7,treatment
+Paclitaxel,4.2,7,treatment
+Vinblastine sulfate,1.7,7,treatment
+Vincristine sulfate,1.7,7,treatment
+Colchicine,13.3,7,treatment
+Parbendazole,4.2,7,treatment
+DMSO,0,14,solvent
+
