@@ -4,21 +4,21 @@
 # MiniZinc/Gecode strategy
 # ─────────────────────────
 # MiniZinc publishes only x86_64 Linux bundles (confirmed to v2.9.6 — no ARM64).
-# The IDE bundle is a desktop GUI package: it carries Qt5/libGL/libsystemd that
-# have no place in a headless server container and cause cascading lib errors.
+# The IDE bundle carries Qt5/libGL/libsystemd dependencies absent in headless
+# containers. Building the solver stack from source gives native ARM64, no GUI.
 #
-# Fix: build the solver stack from source — native ARM64, zero GUI deps.
-#
-#   Gecode 6.3.0  — branch release/6.3.0 of https://github.com/Gecode/gecode
-#                   (never got a release tag; confirmed as the exact version used
-#                   by MiniZinc 2.6.1 via the minizinc-vendor submodule config)
+#   Gecode 6.3.0   — branch release/6.3.0 of https://github.com/Gecode/gecode
+#                    (never received a release tag; this is the exact version used
+#                    by MiniZinc 2.6.1, confirmed via minizinc-vendor submodule)
 #   MiniZinc 2.6.1 — https://github.com/MiniZinc/libminizinc tag 2.6.1
-#                    (needs Gecode ≥6.3 for its find_package check; needs ≥2.6.0
-#                    for the `default` keyword used in plate-design.mzn)
 #
-# First build compiles from source and takes ~20-40 min on Apple Silicon.
-# Docker caches each stage independently, so only a version change triggers
-# a rebuild of that stage and everything downstream.
+# FindGecode.cmake in libminizinc searches ${PROJECT_SOURCE_DIR}/vendor/gecode
+# first. We build Gecode in Stage 1, then copy it into that vendor path before
+# cmake runs in Stage 2 so detection is guaranteed without any cmake flag hacks.
+#
+# First build takes ~20-40 min (compiling Gecode + MiniZinc from source).
+# Each stage is independently cached — only a version change triggers a rebuild
+# of that stage and its dependents.
 #
 # Pinned versions — change deliberately, test after every bump:
 #   Gecode     branch release/6.3.0  (commit eebbc1bfaef1decd3ab6a3c583c7b55f5fe29600)
@@ -31,13 +31,12 @@
 # ── Stage 1: build Gecode 6.3.0 from source ──────────────────────────────────
 FROM debian:bookworm-slim AS gecode-builder
 
-# libmpfr-dev: Gecode float support (used by the plate-design model)
+# libmpfr-dev: Gecode float-constraint support (used in plate-design.mzn)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
        build-essential cmake git ca-certificates libmpfr-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Gecode 6.3.0 — lives on a branch, no release tag
 RUN git clone --branch release/6.3.0 --depth 1 \
     https://github.com/Gecode/gecode.git /src/gecode
 
@@ -45,32 +44,37 @@ RUN cmake -S /src/gecode -B /build/gecode \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_INSTALL_PREFIX=/opt/gecode \
         -DENABLE_GIST=OFF \
-        -DENABLE_CPPROFILER=OFF \
-    && cmake --build /build/gecode --parallel "$(nproc)" \
-    && cmake --install /build/gecode
+        -DENABLE_CPPROFILER=OFF
+RUN cmake --build /build/gecode --parallel "$(nproc)"
+RUN cmake --install /build/gecode
 
 
 # ── Stage 2: build MiniZinc 2.6.1 from source ────────────────────────────────
 FROM debian:bookworm-slim AS minizinc-builder
 
+# libmpfr-dev needed here too: FindGecode.cmake links MPFR into the mzn library
+# if Gecode was built with MPFR support (GECODE_HAS_MPFR in config.hpp)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       build-essential cmake git ca-certificates \
+       build-essential cmake git ca-certificates libmpfr-dev \
     && rm -rf /var/lib/apt/lists/*
-
-# Pull in the built Gecode so cmake can detect it
-COPY --from=gecode-builder /opt/gecode /opt/gecode
 
 RUN git clone --branch 2.6.1 --depth 1 \
     https://github.com/MiniZinc/libminizinc.git /src/libminizinc
 
+# FindGecode.cmake searches ${PROJECT_SOURCE_DIR}/vendor/gecode first.
+# Placing our built Gecode there is the only reliable detection path —
+# -DGECODE_HOME and -DGecode_ROOT are not used by libminizinc's FindGecode.cmake.
+RUN mkdir -p /src/libminizinc/vendor/gecode
+COPY --from=gecode-builder /opt/gecode/. /src/libminizinc/vendor/gecode/
+
+# Split into separate RUN commands so Docker reports which step fails
 RUN cmake -S /src/libminizinc -B /build/minizinc \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_INSTALL_PREFIX=/opt/minizinc \
-        -DBUILD_TESTING=OFF \
-        -DGECODE_HOME=/opt/gecode \
-    && cmake --build /build/minizinc --parallel "$(nproc)" \
-    && cmake --install /build/minizinc
+        -DBUILD_TESTING=OFF
+RUN cmake --build /build/minizinc --parallel "$(nproc)"
+RUN cmake --install /build/minizinc
 
 
 # ── Stage 3: build React frontend ────────────────────────────────────────────
@@ -93,9 +97,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Solver stack: native ARM64, no Qt, no OpenGL, no emulation
-COPY --from=gecode-builder  /opt/gecode   /opt/gecode
-COPY --from=minizinc-builder /opt/minizinc /opt/minizinc
+# Copy solver stack — native ARM64, no GUI deps, no apt solver packages needed
+COPY --from=gecode-builder  /opt/gecode    /opt/gecode
+COPY --from=minizinc-builder /opt/minizinc  /opt/minizinc
 
 COPY pyproject.toml README.md LICENSE.md ./
 COPY src ./src
