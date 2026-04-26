@@ -18,7 +18,7 @@ WORKDIR /app
 
 ARG MINIZINC_VERSION=2.6.1
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends wget ca-certificates \
+    && apt-get install -y --no-install-recommends wget ca-certificates libgl1 \
     && wget -qO /tmp/minizinc.tgz \
        "https://github.com/MiniZinc/MiniZincIDE/releases/download/${MINIZINC_VERSION}/MiniZincIDE-${MINIZINC_VERSION}-bundle-linux-x86_64.tgz" \
     && mkdir -p /opt/minizinc \
