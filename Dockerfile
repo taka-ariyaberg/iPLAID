@@ -12,8 +12,7 @@ RUN npm run build
 FROM --platform=linux/amd64 python:3.11-slim-bookworm AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    LD_LIBRARY_PATH=/opt/minizinc/lib
+    PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
@@ -24,7 +23,9 @@ RUN apt-get update \
        "https://github.com/MiniZinc/MiniZincIDE/releases/download/${MINIZINC_VERSION}/MiniZincIDE-${MINIZINC_VERSION}-bundle-linux-x86_64.tgz" \
     && mkdir -p /opt/minizinc \
     && tar -xzf /tmp/minizinc.tgz -C /opt/minizinc --strip-components=1 \
-    && ln -s /opt/minizinc/bin/minizinc /usr/local/bin/minizinc \
+    && printf '#!/bin/sh\nexport LD_LIBRARY_PATH=/opt/minizinc/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}\nexec /opt/minizinc/bin/minizinc "$@"\n' \
+       > /usr/local/bin/minizinc \
+    && chmod +x /usr/local/bin/minizinc \
     && rm /tmp/minizinc.tgz \
     && apt-get purge -y wget \
     && rm -rf /var/lib/apt/lists/*
