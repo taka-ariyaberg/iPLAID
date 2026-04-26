@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from src.iplaid.download_filenames import build_source_prep_output_path
-from src.iplaid.io import (
+from .download_filenames import build_source_prep_output_path
+from .io import (
     load_config,
     validate_config_dict,
     find_project_root,
@@ -12,14 +12,14 @@ from src.iplaid.io import (
     load_source_plate_specs,
     get_source_plate_spec,
 )
-from src.iplaid.loaders import (
+from .loaders import (
     load_layout_csv,
     normalize_layout_df,
     load_meta_csv,
     normalize_meta_df,
     merge_layout_with_meta,
 )
-from src.iplaid.calculations import (
+from .calculations import (
     stockfinder,
     stockfinder_safe,
     remove_leading_zero,
@@ -27,21 +27,22 @@ from src.iplaid.calculations import (
     assign_stock_concentrations,
     make_stock_summary,
 )
-from src.iplaid.normalization import (
+from .normalization import (
     add_target_and_volume_columns,
     enforce_solvent_volume_cap,
     normalize_solvent_topup,
 )
-from src.iplaid.output import (
+from .output import (
     build_compound_and_topup_rows,
     build_liquid_table,
     attach_and_sort_dispense_rows,
     build_full_protocol,
     write_outputs,
 )
-from src.iplaid.validators import validate_export_file, validate_solvent_normalization
-from src.iplaid.validators_preflight import PreflightAssessmentError, run_preflight_validation
-from src.iplaid import source_plate_prep
+from .validators import validate_export_file, validate_solvent_normalization
+from .validators_preflight import PreflightAssessmentError, run_preflight_validation
+from . import source_plate_prep
+from .imeta import build_imeta_dataframe
 
 
 def run_pipeline(project_root=None, include_source_prep=True):
@@ -102,6 +103,7 @@ def run_pipeline_with_inputs(
         "plate_specs_path": explicit_plate_specs_path,
         "out_idot": output_paths["out_idot"],
         "out_liquids": output_paths["out_liquids"],
+        "out_imeta": output_paths["out_imeta"],
         "run_timestamp": str(output_paths["run_timestamp"]),
     }
 
@@ -252,6 +254,10 @@ This run has {input_unique_pairs} unique compound/target pairs and {len(liquid_n
         out_liquids=paths["out_liquids"],
     )
 
+    # iMETA export: one row per final protocol dispense, including solvent top-ups.
+    imeta_df = build_imeta_dataframe(df, all_rows, cfg)
+    imeta_df.to_csv(paths["out_imeta"], index=False)
+
     # Validation
     preview_df, header_row_idx = validate_export_file(
         paths["out_idot"],
@@ -308,6 +314,7 @@ This run has {input_unique_pairs} unique compound/target pairs and {len(liquid_n
         "liquid_table": liquid_table,
         "liquid_table_export": liquid_table_export,
         "fullprotocol": fullprotocol,
+        "imeta_df": imeta_df,
         "preview_df": preview_df,
         "header_row_idx": header_row_idx,
         "is_solvent_control_count": int(df["is_solvent_control"].fillna(False).astype(bool).sum()),

@@ -100,6 +100,12 @@ def build_run_artifact_paths(
             extension=".csv",
             timestamp=run_timestamp,
         ),
+        "out_imeta": output_dir / build_download_filename(
+            project_details=project_details,
+            artifact="imeta",
+            extension=".csv",
+            timestamp=run_timestamp,
+        ),
         "run_timestamp": run_timestamp,
     }
 

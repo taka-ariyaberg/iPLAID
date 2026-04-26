@@ -15,6 +15,11 @@ from typing import Optional
 import pandas as pd
 
 
+def format_protocol_volume_ul(volume_ul: float) -> str:
+    """Format a dispense volume exactly as written to the iDOT protocol CSV."""
+    return f"{float(volume_ul):05.2f}"
+
+
 def build_compound_and_topup_rows(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Build separate compound and solvent top-up dispense rows.
@@ -207,7 +212,7 @@ def build_full_protocol(
                 continue
 
             body = dfx[["Source Well", "Target Well", "Volume [uL]", "Liquid Name"]].copy()
-            body["Volume [uL]"] = body["Volume [uL]"].map(lambda v: f"{float(v):05.2f}")
+            body["Volume [uL]"] = body["Volume [uL]"].map(format_protocol_volume_ul)
 
             body = body.reindex(columns=[*body.columns.tolist(), "", "", "", ""], fill_value="")
             body = pd.concat([body.columns.to_frame().T, body], ignore_index=True)

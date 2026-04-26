@@ -9,6 +9,7 @@ iPLAID converts screening layouts into iDOT Assay Studio dispense outputs. It ca
 - match compounds to stock concentrations,
 - normalize solvent-family carrier volumes,
 - generate iDOT dispense and liquids CSVs,
+- generate an iMETA CSV for downstream run metadata,
 - generate source-plate preparation instructions.
 
 This repository now has one supported setup path for new machines: **Docker**.
@@ -213,7 +214,7 @@ Important fields:
 4. Inspect the previewed plate map.
 5. Adjust run settings.
 6. Submit the run.
-7. Review results and download artifacts.
+7. Review results and download the protocol, liquids, iMETA, and source-prep artifacts.
 
 ### Design workflow
 
@@ -241,8 +242,25 @@ Direct pipeline runs write to `outputs/results/`:
 outputs/results/
   iPLAID_{User}_{Protocol}_idot_protocol_{yy-mm-dd-hh-mm-ss}.csv
   iPLAID_{User}_{Protocol}_liquids_map_{yy-mm-dd-hh-mm-ss}.csv
+  iPLAID_{User}_{Protocol}_imeta_{yy-mm-dd-hh-mm-ss}.csv
   iPLAID_{User}_{Protocol}_source_plate_prep_{yy-mm-dd-hh-mm-ss}.txt
 ```
+
+### iMETA CSV
+
+Each pipeline run now writes an iMETA CSV from the finalized protocol dispense rows.
+It has one row per actual dispense event, including solvent top-ups and solvent-control wells, so it matches the iDOT protocol rather than only the input layout.
+
+The export includes:
+
+- software and protocol provenance,
+- target plate and well,
+- source plate and well,
+- compound and solvent identity,
+- compound stock and source-plate concentration,
+- dispensed volume rounded the same way as the iDOT protocol CSV,
+- working volume and calculated target concentration,
+- dispense role: `compound`, `solvent_topup`, or `solvent_control`.
 
 ### Web-app outputs
 
@@ -254,6 +272,7 @@ backend/data/jobs/<job_id>/
 
 with uploaded files, status JSON, and generated artifacts under that job directory.
 
+Completed jobs expose the same run artifacts through the backend: Protocol CSV, Liquids CSV, iMETA CSV, and Source Prep TXT.
 The UI downloads result files through the backend artifact endpoints rather than from `outputs/results/`.
 
 ## Backend API
@@ -302,6 +321,7 @@ Key files:
 - `Dockerfile`: multi-stage build — `runtime` (web app) and `notebook` targets
 - `compose.yml`: operator entrypoint; the `notebook` service requires `--profile notebook`
 - `scripts/run_pipeline.py`: direct pipeline runner inside the container
+- `src/iplaid/imeta.py`: iMETA CSV export builder
 - `notebooks/01_plaid_idot_pipeline.ipynb`: interactive pipeline notebook
 - `backend/app/main.py`: API routes and frontend serving
 - `frontend/src/services/apiClient.ts`: frontend API wiring

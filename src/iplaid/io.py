@@ -14,7 +14,7 @@ import json
 from pathlib import Path
 from typing import Dict, Any
 
-from src.iplaid.download_filenames import build_run_artifact_paths
+from .download_filenames import build_run_artifact_paths
 
 
 # Configuration loading
@@ -150,6 +150,7 @@ def resolve_project_paths(project_root: Path, config: Dict[str, Any]) -> Dict[st
         "plate_specs_path": plate_specs_path,
         "out_idot": output_paths["out_idot"],
         "out_liquids": output_paths["out_liquids"],
+        "out_imeta": output_paths["out_imeta"],
         "run_timestamp": str(output_paths["run_timestamp"]),
     }
 

@@ -3,6 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: runtime
     image: iplaid:latest
     ports:
       - "${IPLAID_PORT:-8000}:8000"

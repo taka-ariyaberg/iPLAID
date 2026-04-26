@@ -4,8 +4,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from src.iplaid.solvents import clean_label, label_key
-from src.iplaid.wells import canonical_well_name
+from .solvents import clean_label, label_key
+from .wells import canonical_well_name
 
 
 def load_layout_csv(layout_path):

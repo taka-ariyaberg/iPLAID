@@ -13,7 +13,7 @@ from typing import Dict, List, Tuple, Optional
 import pandas as pd
 import numpy as np
 
-from src.iplaid.download_filenames import (
+from .download_filenames import (
     build_project_details,
     build_source_prep_output_path,
     find_latest_download_artifact,

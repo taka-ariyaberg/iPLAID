@@ -177,6 +177,7 @@ class JobStore:
             for key, label in [
                 ("out_idot", "Protocol CSV"),
                 ("out_liquids", "Liquids CSV"),
+                ("out_imeta", "iMETA CSV"),
                 ("out_source_prep", "Source Prep TXT"),
             ]:
                 artifact_path = result["paths"].get(key)

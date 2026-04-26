@@ -13,7 +13,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from src.iplaid.solvents import clean_label, get_solvent_cap_pct, label_key
+from .solvents import clean_label, get_solvent_cap_pct, label_key
 
 
 class PreflightAssessmentError(ValueError):

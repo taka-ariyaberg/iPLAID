@@ -5,7 +5,7 @@
 **Stack:** Python 3.11, FastAPI, uvicorn, numpy, pandas, Pydantic, React, TypeScript, Vite, MiniZinc, Docker
 **Domain:** Lab automation — iDOT liquid handler protocol generation
 
-iPLAID (iDOT Protocol Layout & Assay Integration Dispatcher) converts compound screening layouts into iDOT Assay Studio dispense outputs. It can accept an existing layout CSV or design a new one using PLAID_Core (a constraint-solver-backed layout engine using MiniZinc). It handles compound-to-stock matching, solvent-family carrier volume normalization, and produces the iDOT dispense + liquids CSVs. Its output (`iPLAID_..._idot_protocol.csv`) is one of three input files consumed by iMETA.
+iPLAID (iDOT Protocol Layout & Assay Integration Dispatcher) converts compound screening layouts into iDOT Assay Studio dispense outputs. It can accept an existing layout CSV or design a new one using PLAID_Core (a constraint-solver-backed layout engine using MiniZinc). It handles compound-to-stock matching, solvent-family carrier volume normalization, and produces the iDOT protocol CSV, liquids map CSV, iMETA CSV, and source-plate preparation instructions.
 
 ---
 
@@ -67,13 +67,15 @@ docker compose up
 | `backend/` | FastAPI backend for the web workbench |
 | `frontend/src/` | React + TypeScript UI |
 | `compose.yml` | Docker Compose config |
+| `src/iplaid/imeta.py` | iMETA CSV export from finalized protocol dispense rows |
 
 ---
 
 ## Known Issues / Gotchas
 - MiniZinc is bundled in Docker only — not available on host
 - `plaid_core` constraint solver: logic errors produce valid-looking but wrong layouts — always verify output visually
-- iDOT protocol header row must use physical plate barcode (not logical name like `plate_1`) — iMETA's parser guards against this
+- iDOT protocol header row must use physical plate barcode (not logical name like `plate_1`)
+- iMETA CSV rows are generated from finalized protocol dispense rows; keep volume rounding aligned with `format_protocol_volume_ul`
 
 ---
 
