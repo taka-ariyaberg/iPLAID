@@ -309,6 +309,7 @@ export function CompoundPanel({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
+  const [csvLoaded, setCsvLoaded] = useState(false);
 
   function handleUploadClick() {
     fileInputRef.current?.click();
@@ -329,6 +330,13 @@ export function CompoundPanel({
     onCompoundsChange(newCompounds);
     onSolventsChange(newSolvents);
     setParseResult(null);
+    setCsvLoaded(true);
+  }
+
+  function handleDeleteCSV() {
+    onCompoundsChange([]);
+    onSolventsChange([]);
+    setCsvLoaded(false);
   }
   const hasErrors = validationMessages.some((message) => message.level === "error");
 
@@ -429,13 +437,23 @@ export function CompoundPanel({
         >
           Add Compound
         </button>
-        <button
-          type="button"
-          className="design-add-btn cp-upload-csv-btn"
-          onClick={handleUploadClick}
-        >
-          ↑ Upload CSV
-        </button>
+        {csvLoaded ? (
+          <button
+            type="button"
+            className="design-add-btn cp-delete-csv-btn"
+            onClick={handleDeleteCSV}
+          >
+            ✕ Delete CSV
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="design-add-btn cp-upload-csv-btn"
+            onClick={handleUploadClick}
+          >
+            ↑ Upload CSV
+          </button>
+        )}
         <input
           ref={fileInputRef}
           type="file"
