@@ -32,6 +32,28 @@ export function CompoundCSVImportModal({
   const pct = usableWells > 0 ? Math.round((needed / usableWells) * 100) : 0;
   const hasHardErrors = parseErrors.length > 0;
 
+  const validationMsgs: Array<{ level: "error" | "warning"; text: string }> = [];
+  rows.forEach((row) => {
+    if (row.role === "treatment" && row.concentration_uM === 0) {
+      validationMsgs.push({
+        level: "error",
+        text: `${row.compound_name || "A compound"} has a blank concentration.`,
+      });
+    }
+  });
+  if (usableWells > 0 && needed > usableWells) {
+    validationMsgs.push({
+      level: "error",
+      text: `Too many entries: ${needed} wells assigned, only ${usableWells} available.`,
+    });
+  } else if (usableWells > 0 && needed > usableWells * 0.9) {
+    validationMsgs.push({
+      level: "warning",
+      text: `Tight fit: ${needed}/${usableWells} wells used (>90%).`,
+    });
+  }
+  const hasValidationErrors = validationMsgs.some((m) => m.level === "error");
+
   function updateRow(id: string, patch: Partial<FlatRow>) {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   }
@@ -96,6 +118,21 @@ export function CompoundCSVImportModal({
             </div>
           )}
         </div>
+
+        {validationMsgs.length > 0 && (
+          <div className="design-validation-strip">
+            {validationMsgs.map((m, i) => (
+              <div key={i} className={`design-validation-msg design-validation-${m.level}`}>
+                {m.level === "error" ? "✗" : "⚠"} {m.text}
+              </div>
+            ))}
+          </div>
+        )}
+        {!hasValidationErrors && rows.length > 0 && needed > 0 && (
+          <div className="design-validation-strip">
+            <div className="design-validation-msg design-validation-ok">✓ Configuration looks good</div>
+          </div>
+        )}
 
         <div className="ci-table-wrapper">
           <table className="ci-table">
