@@ -9,6 +9,8 @@ import type { CompoundDef, SolventDef } from "../../types";
 import { getConcColor, DMSO_COLOR, getStableCompoundColor } from "../../utils/colorUtils";
 import { SpinInput } from "./SpinInput";
 import { totalWellsNeeded } from "./designUtils";
+import { parseCSVText, type ParseResult } from "../../utils/parseCompoundCSV";
+import { CompoundCSVImportModal } from "./CompoundCSVImportModal";
 
 type ValidationEntry = { level: "error" | "warning"; text: string };
 
@@ -304,6 +306,30 @@ export function CompoundPanel({
 }: CompoundPanelProps) {
   const needed = totalWellsNeeded(compounds, solvents);
   const pct = usableWells > 0 ? Math.round((needed / usableWells) * 100) : 0;
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [parseResult, setParseResult] = useState<ParseResult | null>(null);
+
+  function handleUploadClick() {
+    fileInputRef.current?.click();
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setParseResult(parseCSVText(ev.target?.result as string));
+      e.target.value = "";
+    };
+    reader.readAsText(file);
+  }
+
+  function handleImportConfirm(newCompounds: CompoundDef[], newSolvents: SolventDef[]) {
+    onCompoundsChange(newCompounds);
+    onSolventsChange(newSolvents);
+    setParseResult(null);
+  }
   const hasErrors = validationMessages.some((message) => message.level === "error");
 
   const duplicateCompoundIndices = getDuplicateIndices(compounds.map((compound) => compound.name));
@@ -403,6 +429,20 @@ export function CompoundPanel({
         >
           Add Compound
         </button>
+        <button
+          type="button"
+          className="design-add-btn cp-upload-csv-btn"
+          onClick={handleUploadClick}
+        >
+          ↑ Upload CSV
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".csv"
+          style={{ display: "none" }}
+          onChange={handleFileChange}
+        />
 
         <div className="design-section-header" style={{ marginTop: 16 }}>
           <span className="design-section-title">Solvents</span>
@@ -460,6 +500,18 @@ export function CompoundPanel({
           {isGenerating ? "Generating…" : "Generate Layout ▶"}
         </button>
       </div>
+
+      {parseResult !== null && (
+        <CompoundCSVImportModal
+          initialRows={parseResult.rows}
+          parseErrors={parseResult.errors}
+          parseWarnings={parseResult.warnings}
+          usableWells={usableWells}
+          hasExistingData={compounds.length > 0 || solvents.length > 0}
+          onConfirm={handleImportConfirm}
+          onCancel={() => setParseResult(null)}
+        />
+      )}
 
       {isOverflow && !popupDismissed && (
         <div className="dpv-overflow-popup" role="alert">

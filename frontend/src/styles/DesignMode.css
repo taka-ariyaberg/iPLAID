@@ -430,6 +430,21 @@ details[open] > .design-config-section-title::before {
   background: #33c9ff;
 }
 
+/* Upload CSV button — secondary variant of design-add-btn */
+.cp-upload-csv-btn {
+  color: var(--icell-text-muted);
+  border-color: rgba(255, 255, 255, 0.09);
+  font-size: 12px;
+  padding: 7px 14px;
+  margin-top: 4px;
+}
+
+.cp-upload-csv-btn:hover {
+  color: var(--icell-accent);
+  border-color: rgba(129, 140, 248, 0.30);
+  background: rgba(129, 140, 248, 0.06);
+}
+
 /* ── Entry card — mirrors info-group-card from plate viewer ──────────────── */
 
 .cp-entry {
