@@ -32,9 +32,9 @@ CompoundB,50,3,treatment
 DMSO,0,14,solvent
 ```
 
-Accepted file types: `.csv`, `.xlsx`.
+Accepted file type: `.csv`.
 
-Test fixture: `inputs/plaid_feeder/plaid_compound_feeder.xlsx`
+Test fixture: `inputs/plaid_feeder/plaid_compound_feeder.csv`
 
 ---
 
@@ -83,7 +83,7 @@ Rules:
 - Non-numeric `concentration_uM` or `replicate_number` → error on that row.
 - Empty `compound_name` → row skipped with warning.
 - Unknown `role` values → row skipped with warning.
-- XLSX support: convert to CSV text before passing in using **SheetJS** (`xlsx` npm package — standard browser-side XLSX reader, no openpyxl).
+- CSV only. No XLSX support needed.
 
 ---
 
@@ -91,7 +91,7 @@ Rules:
 
 ### Trigger
 
-An **"Upload CSV"** button is added in the Compounds section of `CompoundPanel`, beneath the "Add Compound" button. It activates a hidden `<input type="file" accept=".csv,.xlsx">`. The button is always visible regardless of whether compounds already exist.
+An **"Upload CSV"** button is added in the Compounds section of `CompoundPanel`, beneath the "Add Compound" button. It activates a hidden `<input type="file" accept=".csv">`. The button is always visible regardless of whether compounds already exist.
 
 ### Modal layout
 
