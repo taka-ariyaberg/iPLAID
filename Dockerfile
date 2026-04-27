@@ -31,10 +31,13 @@
 # ── Stage 1: build Gecode 6.3.0 from source ──────────────────────────────────
 FROM debian:bookworm-slim AS gecode-builder
 
-# libmpfr-dev: Gecode float-constraint support (used in plate-design.mzn)
+# No libmpfr-dev: plate-design.mzn uses `float` only as parameter data, never as
+# a solver decision variable. Building without MPFR keeps libgecodefloat.a free
+# of external MPFR symbols, which avoids a linker bug in libminizinc 2.6.1 where
+# FindGecode.cmake never propagates MPFR into Gecode::Float's INTERFACE_LINK_LIBRARIES.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       build-essential cmake git ca-certificates libmpfr-dev \
+       build-essential cmake git ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 RUN git clone --branch release/6.3.0 --depth 1 \
@@ -52,15 +55,19 @@ RUN cmake --install /build/gecode
 # ── Stage 2: build MiniZinc 2.6.1 from source ────────────────────────────────
 FROM debian:bookworm-slim AS minizinc-builder
 
-# libmpfr-dev needed here too: FindGecode.cmake links MPFR into the mzn library
-# if Gecode was built with MPFR support (GECODE_HAS_MPFR in config.hpp)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       build-essential cmake git ca-certificates libmpfr-dev \
+       build-essential cmake git ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 RUN git clone --branch 2.6.1 --depth 1 \
     https://github.com/MiniZinc/libminizinc.git /src/libminizinc
+
+# utils.hh uses std::unique_ptr but omits #include <memory> — GCC 12 (Bookworm)
+# does not pull it in transitively, causing a compile error in every translation
+# unit that includes utils.hh (including the CPLEX plugin wrapper).
+RUN sed -i 's|#include <vector>|#include <memory>\n#include <vector>|' \
+    /src/libminizinc/include/minizinc/utils.hh
 
 # FindGecode.cmake searches ${PROJECT_SOURCE_DIR}/vendor/gecode first.
 # Placing our built Gecode there is the only reliable detection path —
@@ -92,14 +99,23 @@ FROM python:3.11-slim-bookworm AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PATH="/opt/minizinc/bin:/opt/gecode/bin:$PATH" \
-    LD_LIBRARY_PATH="/opt/gecode/lib:/opt/minizinc/lib"
+    PATH="/opt/minizinc/bin:/opt/gecode/bin:$PATH"
 
 WORKDIR /app
 
 # Copy solver stack — native ARM64, no GUI deps, no apt solver packages needed
 COPY --from=gecode-builder  /opt/gecode    /opt/gecode
 COPY --from=minizinc-builder /opt/minizinc  /opt/minizinc
+
+# Register Gecode as a MiniZinc solver.
+# fzn-gecode is built by Gecode itself (not libminizinc), so libminizinc's cmake
+# never installs a solver config for it. We create the .msc descriptor manually.
+# "executable": "fzn-gecode" is found via PATH (/opt/gecode/bin).
+RUN mkdir -p /opt/minizinc/share/minizinc/solvers && \
+    printf '{\n  "id": "org.gecode.gecode",\n  "name": "Gecode",\n  "description": "Gecode Constraint Solving Toolkit",\n  "version": "6.3.0",\n  "mznlib": "/opt/gecode/share/minizinc/gecode",\n  "executable": "fzn-gecode",\n  "tags": ["cp","int","float","set","default"],\n  "stdFlags": ["-a","-n","-f","-p","-s","-r","-v","-t"],\n  "supportsMzn": false,\n  "supportsFzn": true,\n  "needsSolns2Out": true,\n  "needsMznExecutable": false,\n  "needsStdlibDir": false,\n  "isGUIApplication": false\n}\n' \
+    > /opt/minizinc/share/minizinc/solvers/gecode.msc && \
+    printf '%% sliding_among stub -- gecode.mzn includes this file but plate-design.mzn\n%% never calls among_seq, so these native predicate declarations are never invoked.\npredicate sliding_among(int: mn, int: mx, int: l, array[int] of var int: x, set of int: S);\npredicate sliding_among(int: mn, int: mx, int: l, array[int] of var bool: x, bool: b);\n' \
+    > /opt/gecode/share/minizinc/gecode/sliding_among.mzn
 
 COPY pyproject.toml README.md LICENSE.md ./
 COPY src ./src
