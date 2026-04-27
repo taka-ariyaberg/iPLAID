@@ -21,15 +21,24 @@
 # of that stage and its dependents.
 #
 # Pinned versions — change deliberately, test after every bump:
-#   Gecode     branch release/6.3.0  (commit eebbc1bfaef1decd3ab6a3c583c7b55f5fe29600)
+#   Gecode     commit eebbc1bfaef1decd3ab6a3c583c7b55f5fe29600  (release/6.3.0 tip)
 #   MiniZinc   tag    2.6.1
-#   Python     3.11   python:3.11-slim-bookworm
-#   Node       22     node:22-bookworm-slim
+#   Python deps  requirements.lock (pip-compile --generate-hashes pyproject.toml)
+#   debian:bookworm-slim      sha256:f9c6a2fd2ddbc23e336b6257a5245e31f996953ef06cd13a59fa0a1df2d5c252
+#   python:3.11-slim-bookworm sha256:ee710afcfb733f4a750d9be683cf054b5cd247b6c5f5237a6849ea568b90ab15
+#   node:22-bookworm-slim     sha256:d415caac2f1f77b98caaf9415c5f807e14bc8d7bdea62561ea2fef4fbd08a73c
+#
+# To regenerate lock files after changing pyproject.toml:
+#   docker run --rm -v $(pwd):/app -w /app \
+#     python:3.11-slim-bookworm@sha256:ee710afcfb733f4a750d9be683cf054b5cd247b6c5f5237a6849ea568b90ab15 \
+#     sh -c "pip install pip-tools && \
+#            pip-compile pyproject.toml --output-file requirements.lock --generate-hashes && \
+#            pip-compile --extra notebook pyproject.toml --output-file requirements-notebook.lock --generate-hashes"
 # ─────────────────────────────────────────────────────────────────────────────
 
 
 # ── Stage 1: build Gecode 6.3.0 from source ──────────────────────────────────
-FROM debian:bookworm-slim AS gecode-builder
+FROM debian:bookworm-slim@sha256:f9c6a2fd2ddbc23e336b6257a5245e31f996953ef06cd13a59fa0a1df2d5c252 AS gecode-builder
 
 # No libmpfr-dev: plate-design.mzn uses `float` only as parameter data, never as
 # a solver decision variable. Building without MPFR keeps libgecodefloat.a free
@@ -40,8 +49,13 @@ RUN apt-get update \
        build-essential cmake git ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-RUN git clone --branch release/6.3.0 --depth 1 \
-    https://github.com/Gecode/gecode.git /src/gecode
+# Fetch exact commit rather than branch tip — branch can be force-pushed;
+# commit SHA is immutable. GitHub supports fetching arbitrary SHAs.
+RUN git init /src/gecode && \
+    git -C /src/gecode fetch --depth 1 \
+        https://github.com/Gecode/gecode.git \
+        eebbc1bfaef1decd3ab6a3c583c7b55f5fe29600 && \
+    git -C /src/gecode checkout FETCH_HEAD
 
 RUN cmake -S /src/gecode -B /build/gecode \
         -DCMAKE_BUILD_TYPE=Release \
@@ -53,7 +67,7 @@ RUN cmake --install /build/gecode
 
 
 # ── Stage 2: build MiniZinc 2.6.1 from source ────────────────────────────────
-FROM debian:bookworm-slim AS minizinc-builder
+FROM debian:bookworm-slim@sha256:f9c6a2fd2ddbc23e336b6257a5245e31f996953ef06cd13a59fa0a1df2d5c252 AS minizinc-builder
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -85,7 +99,7 @@ RUN cmake --install /build/minizinc
 
 
 # ── Stage 3: build React frontend ────────────────────────────────────────────
-FROM node:22-bookworm-slim AS frontend-builder
+FROM node:22-bookworm-slim@sha256:d415caac2f1f77b98caaf9415c5f807e14bc8d7bdea62561ea2fef4fbd08a73c AS frontend-builder
 
 WORKDIR /build/frontend
 COPY frontend/package.json frontend/package-lock.json ./
@@ -95,7 +109,7 @@ RUN npm run build
 
 
 # ── Stage 4: runtime ─────────────────────────────────────────────────────────
-FROM python:3.11-slim-bookworm AS runtime
+FROM python:3.11-slim-bookworm@sha256:ee710afcfb733f4a750d9be683cf054b5cd247b6c5f5237a6849ea568b90ab15 AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -117,10 +131,11 @@ RUN mkdir -p /opt/minizinc/share/minizinc/solvers && \
     printf '%% sliding_among stub -- gecode.mzn includes this file but plate-design.mzn\n%% never calls among_seq, so these native predicate declarations are never invoked.\npredicate sliding_among(int: mn, int: mx, int: l, array[int] of var int: x, set of int: S);\npredicate sliding_among(int: mn, int: mx, int: l, array[int] of var bool: x, bool: b);\n' \
     > /opt/gecode/share/minizinc/gecode/sliding_among.mzn
 
-COPY pyproject.toml README.md LICENSE.md ./
+COPY pyproject.toml README.md LICENSE.md requirements.lock ./
 COPY src ./src
 RUN python -m pip install --upgrade pip \
-    && python -m pip install .
+    && python -m pip install --require-hashes -r requirements.lock \
+    && python -m pip install --no-deps .
 
 COPY backend ./backend
 COPY config ./config
@@ -138,7 +153,9 @@ CMD ["python", "-m", "uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--
 # ── Stage 5: notebook variant (extends runtime) ───────────────────────────────
 FROM runtime AS notebook
 
-RUN python -m pip install ".[notebook]"
+COPY requirements-notebook.lock ./
+RUN python -m pip install --require-hashes -r requirements-notebook.lock \
+    && python -m pip install --no-deps ".[notebook]"
 COPY notebooks ./notebooks
 
 EXPOSE 8888
