@@ -391,6 +391,7 @@ export function DesignPanel({
             config={designConfig}
             onChange={onDesignConfigChange}
             targetPlateOptions={bootstrap.targetPlateDefinitions}
+            solverCpus={bootstrap.solverCpus}
           />
         </div>
 

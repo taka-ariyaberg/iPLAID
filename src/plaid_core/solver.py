@@ -8,6 +8,7 @@ import tempfile
 from pathlib import Path
 from typing import Optional, Tuple
 import shutil
+import multiprocessing
 
 # Support both package and direct imports
 try:
@@ -91,13 +92,18 @@ class MiniZincSolver:
             dzn_file = f.name
         
         try:
+            # Clamp threads to available CPUs — Gecode crashes with =====ERROR=====
+            # if asked for more workers than the OS can schedule.
+            available_cpus = multiprocessing.cpu_count()
+            threads = min(config.num_threads, available_cpus)
+
             # Build command
             cmd = [
                 self.minizinc_path,
                 "--solver", "Gecode",
                 str(mzn_file),
                 dzn_file,
-                "-p", str(config.num_threads),
+                "-p", str(threads),
                 "-t", str(config.timeout_seconds * 1000),
             ]
             
@@ -123,16 +129,25 @@ class MiniZincSolver:
                     "MiniZinc solver could not find a solution within timeout. "
                     "Try reducing constraints or increasing timeout."
                 )
-            
-            if result.returncode != 0:
-                raise SolverError(
-                    f"MiniZinc solver failed: {result.stderr}"
+
+            if "=====UNSATISFIABLE=====" in result.stdout:
+                raise NoSolutionFoundError(
+                    "No valid plate layout exists with the given constraints. "
+                    "Try relaxing constraints (e.g. allow empty wells, reduce replicates)."
                 )
-            
+
+            if "=====ERROR=====" in result.stdout or result.returncode != 0:
+                # MiniZinc writes errors to stdout, not stderr
+                detail = (result.stdout.strip() or result.stderr.strip() or
+                          f"exit code {result.returncode}")
+                raise SolverError(f"MiniZinc solver failed: {detail}")
+
             return result.stdout.strip()
         
         except subprocess.TimeoutExpired:
             raise TimeoutError(f"Solver exceeded timeout of {config.timeout_seconds}s")
+        except (SolverError, NoSolutionFoundError, TimeoutError):
+            raise
         except Exception as e:
             raise SolverError(f"Solver error: {str(e)}")
         finally:

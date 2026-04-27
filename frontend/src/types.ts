@@ -254,4 +254,5 @@ export type BootstrapResponse = {
   sourcePlateDefinitions: TargetPlateDefinition[];
   targetPlateTypes: string[];
   targetPlateDefinitions: TargetPlateDefinition[];
+  solverCpus: number;
 };

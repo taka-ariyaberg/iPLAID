@@ -19,8 +19,8 @@ export function defaultDesignConfig(rows = 16, cols = 24): DesignConfig {
     force_spread_concentrations: false,
     horizontal_cell_lines: 1,
     vertical_cell_lines: 1,
-    timeout_seconds: 30,
-    num_threads: 4,
+    timeout_seconds: 120,
+    num_threads: 8,
     random_seed: null,
   };
 }

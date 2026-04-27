@@ -12,6 +12,8 @@ interface PlateConfigPanelProps {
   onChange: (updated: DesignConfig) => void;
   /** Plate type options from bootstrap (uses rows/cols, not as source plate) */
   targetPlateOptions: Array<{ id: string; label: string; rows: number; cols: number }>;
+  /** Available solver CPUs reported by the backend at startup */
+  solverCpus: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -99,7 +101,7 @@ function Section({
 // Main
 // ---------------------------------------------------------------------------
 
-export function PlateConfigPanel({ config, onChange, targetPlateOptions }: PlateConfigPanelProps) {
+export function PlateConfigPanel({ config, onChange, targetPlateOptions, solverCpus }: PlateConfigPanelProps) {
   const patch = useCallback(
     (updates: Partial<DesignConfig>) => onChange({ ...config, ...updates }),
     [config, onChange]
@@ -273,7 +275,7 @@ export function PlateConfigPanel({ config, onChange, targetPlateOptions }: Plate
           hint="Maximum solver runtime in seconds"
           value={config.timeout_seconds}
           min={1}
-          max={120}
+          max={3600}
           onChange={(v) => patch({ timeout_seconds: v })}
         />
         <NumberField
@@ -281,7 +283,7 @@ export function PlateConfigPanel({ config, onChange, targetPlateOptions }: Plate
           hint="Parallel solver threads (Gecode)"
           value={config.num_threads}
           min={1}
-          max={8}
+          max={solverCpus}
           onChange={(v) => patch({ num_threads: v })}
         />
         <label className="design-num-row">

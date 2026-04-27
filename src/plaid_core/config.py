@@ -83,10 +83,10 @@ class PlateConfig:
     vertical_cell_lines: int = 1
     
     # Solver parameters
-    timeout_seconds: int = 10
-    num_threads: int = 10
+    timeout_seconds: int = 120
+    num_threads: int = 8
     random_seed: Optional[int] = None
-    
+
     # Testing mode
     testing: bool = False  # Enable testing mode debug output
     sorted_compounds: Optional[bool] = None  # Optional sorting of compounds
@@ -154,8 +154,8 @@ class PlateConfigJSON(BaseModel):
     force_spread_concentrations: bool = False
     horizontal_cell_lines: int = 1
     vertical_cell_lines: int = 1
-    timeout_seconds: int = 10
-    num_threads: int = 10
+    timeout_seconds: int = 120
+    num_threads: int = 8
     random_seed: Optional[int] = None
     testing: bool = False
     sorted_compounds: Optional[bool] = None

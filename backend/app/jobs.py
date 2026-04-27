@@ -27,6 +27,7 @@ class JobStore:
         self._design_workers: dict[str, subprocess.Popen[bytes] | subprocess.Popen[str]] = {}
 
     def bootstrap_payload(self) -> dict:
+        import multiprocessing
         config_template_path = self.repo_root / "config" / "config.template.json"
         plate_specs_path = self.repo_root / "data" / "source_plate_specs.json"
         target_plate_types_path = self.repo_root / "data" / "target_plate_types.json"
@@ -52,6 +53,7 @@ class JobStore:
             "sourcePlateDefinitions": source_plate_definitions,
             "targetPlateTypes": [p["id"] for p in target_plate_types],
             "targetPlateDefinitions": target_plate_types,
+            "solverCpus": multiprocessing.cpu_count(),
         }
 
     def create_job(

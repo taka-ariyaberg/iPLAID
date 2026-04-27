@@ -56,8 +56,8 @@ class DesignConfigModel(BaseModel):
     horizontal_cell_lines: int = Field(default=1, ge=1)
     vertical_cell_lines: int = Field(default=1, ge=1)
     # Solver
-    timeout_seconds: int = Field(default=30, ge=1, le=120)
-    num_threads: int = Field(default=4, ge=1, le=8)
+    timeout_seconds: int = Field(default=120, ge=1, le=3600)
+    num_threads: int = Field(default=8, ge=1, le=64)
     random_seed: Optional[int] = None
 
     @model_validator(mode="before")
