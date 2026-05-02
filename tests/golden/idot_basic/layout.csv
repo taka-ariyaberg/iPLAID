@@ -1,0 +1,106 @@
+﻿plateID,well,cmpdname,CONCuM,cmpdnum
+plate_1,D04,Tetrandrine,3,Tetrandrine_ 3
+plate_1,D05,Dasatinib,0.3,Dasatinib_ 0.3
+plate_1,D06,Etoposide,30,Etoposide_ 30
+plate_1,D07,Nocodazole,0.3,Nocodazole_ 0.3
+plate_1,D09,DMSO,0,DMSO_0
+plate_1,D13,Nocodazole,0.3,Nocodazole_ 0.3
+plate_1,D14,Tetrandrine,1,Tetrandrine_1
+plate_1,D15,Nocodazole,0.3,Nocodazole_ 0.3
+plate_1,D16,Tetrandrine,3,Tetrandrine_ 3
+plate_1,D20,DMSO,0,DMSO_0
+plate_1,E05,DMSO,0,DMSO_0
+plate_1,E06,Tetrandrine,3,Tetrandrine_ 3
+plate_1,E09,Nocodazole,0.1,Nocodazole_0.1
+plate_1,E10,Tetrandrine,3,Tetrandrine_ 3
+plate_1,E12,Tetrandrine,10,Tetrandrine_ 10
+plate_1,E13,DMSO,0,DMSO_0
+plate_1,E14,Etoposide,3,Etoposide_3
+plate_1,E16,Dasatinib,1,Dasatinib_ 1
+plate_1,E17,Etoposide,10,Etoposide_ 10
+plate_1,E18,Tetrandrine,1,Tetrandrine_1
+plate_1,F04,Etoposide,10,Etoposide_ 10
+plate_1,F05,Dasatinib,0.3,Dasatinib_ 0.3
+plate_1,F07,DMSO,0,DMSO_0
+plate_1,F11,Nocodazole,0.1,Nocodazole_0.1
+plate_1,F12,Etoposide,10,Etoposide_ 10
+plate_1,F13,Dasatinib,1,Dasatinib_ 1
+plate_1,F15,DMSO,0,DMSO_0
+plate_1,F16,Tetrandrine,10,Tetrandrine_ 10
+plate_1,F17,Nocodazole,1,Nocodazole_ 1
+plate_1,F21,Dasatinib,0.3,Dasatinib_ 0.3
+plate_1,G04,Nocodazole,0.1,Nocodazole_0.1
+plate_1,G05,Tetrandrine,10,Tetrandrine_ 10
+plate_1,G07,Dasatinib,0.1,Dasatinib_0.1
+plate_1,G08,Etoposide,3,Etoposide_3
+plate_1,G09,Dasatinib,1,Dasatinib_ 1
+plate_1,G11,DMSO,0,DMSO_0
+plate_1,G15,Etoposide,30,Etoposide_ 30
+plate_1,G17,Dasatinib,0.1,Dasatinib_0.1
+plate_1,G18,DMSO,0,DMSO_0
+plate_1,G19,Nocodazole,0.3,Nocodazole_ 0.3
+plate_1,G20,Etoposide,10,Etoposide_ 10
+plate_1,G21,DMSO,0,DMSO_0
+plate_1,H06,DMSO,0,DMSO_0
+plate_1,H08,Nocodazole,0.1,Nocodazole_0.1
+plate_1,H10,Nocodazole,0.3,Nocodazole_ 0.3
+plate_1,H11,Dasatinib,0.3,Dasatinib_ 0.3
+plate_1,H12,Etoposide,10,Etoposide_ 10
+plate_1,H15,Dasatinib,1,Dasatinib_ 1
+plate_1,H16,DMSO,0,DMSO_0
+plate_1,H18,Tetrandrine,3,Tetrandrine_ 3
+plate_1,H19,Dasatinib,0.1,Dasatinib_0.1
+plate_1,H20,Tetrandrine,10,Tetrandrine_ 10
+plate_1,H21,Dasatinib,0.3,Dasatinib_ 0.3
+plate_1,I04,Etoposide,3,Etoposide_3
+plate_1,I07,Tetrandrine,1,Tetrandrine_1
+plate_1,I08,Dasatinib,0.3,Dasatinib_ 0.3
+plate_1,I11,DMSO,0,DMSO_0
+plate_1,I12,Nocodazole,0.1,Nocodazole_0.1
+plate_1,I13,Dasatinib,1,Dasatinib_ 1
+plate_1,I14,DMSO,0,DMSO_0
+plate_1,I15,Nocodazole,0.1,Nocodazole_0.1
+plate_1,I18,Nocodazole,1,Nocodazole_ 1
+plate_1,I20,Etoposide,30,Etoposide_ 30
+plate_1,J04,Nocodazole,1,Nocodazole_ 1
+plate_1,J06,Etoposide,3,Etoposide_3
+plate_1,J08,DMSO,0,DMSO_0
+plate_1,J10,Nocodazole,1,Nocodazole_ 1
+plate_1,J12,Etoposide,30,Etoposide_ 30
+plate_1,J13,Tetrandrine,3,Tetrandrine_ 3
+plate_1,J14,Etoposide,3,Etoposide_3
+plate_1,J15,Dasatinib,0.1,Dasatinib_0.1
+plate_1,J17,DMSO,0,DMSO_0
+plate_1,J18,Dasatinib,1,Dasatinib_ 1
+plate_1,J19,Tetrandrine,1,Tetrandrine_1
+plate_1,K05,Tetrandrine,1,Tetrandrine_1
+plate_1,K08,Etoposide,3,Etoposide_3
+plate_1,K09,Dasatinib,0.3,Dasatinib_ 0.3
+plate_1,K10,Etoposide,30,Etoposide_ 30
+plate_1,K12,DMSO,0,DMSO_0
+plate_1,K13,Nocodazole,0.3,Nocodazole_ 0.3
+plate_1,K15,DMSO,0,DMSO_0
+plate_1,K16,Etoposide,3,Etoposide_3
+plate_1,K17,Tetrandrine,10,Tetrandrine_ 10
+plate_1,K18,Etoposide,10,Etoposide_ 10
+plate_1,L05,Etoposide,30,Etoposide_ 30
+plate_1,L06,Nocodazole,1,Nocodazole_ 1
+plate_1,L07,Tetrandrine,1,Tetrandrine_1
+plate_1,L08,Nocodazole,0.1,Nocodazole_0.1
+plate_1,L10,DMSO,0,DMSO_0
+plate_1,L11,Dasatinib,0.1,Dasatinib_0.1
+plate_1,L14,Tetrandrine,1,Tetrandrine_1
+plate_1,L16,Nocodazole,1,Nocodazole_ 1
+plate_1,L17,Dasatinib,1,Dasatinib_ 1
+plate_1,L19,DMSO,0,DMSO_0
+plate_1,L21,Tetrandrine,3,Tetrandrine_ 3
+plate_1,M04,DMSO,0,DMSO_0
+plate_1,M06,Dasatinib,0.1,Dasatinib_0.1
+plate_1,M07,Etoposide,10,Etoposide_ 10
+plate_1,M09,Dasatinib,0.1,Dasatinib_0.1
+plate_1,M11,Tetrandrine,10,Tetrandrine_ 10
+plate_1,M13,DMSO,0,DMSO_0
+plate_1,M14,Nocodazole,1,Nocodazole_ 1
+plate_1,M19,Tetrandrine,10,Tetrandrine_ 10
+plate_1,M20,Etoposide,30,Etoposide_ 30
+plate_1,M21,Nocodazole,0.3,Nocodazole_ 0.3
