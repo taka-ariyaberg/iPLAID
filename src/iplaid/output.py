@@ -20,6 +20,7 @@ from .dispensers.idot import (
     write_liquids_file,
     write_outputs,
 )
+from .dispensers.base import SourceLayoutError
 
 
 def build_compound_and_topup_rows(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -58,10 +59,19 @@ def wells_96() -> list[str]:
 
 def build_liquid_table(
     all_rows: pd.DataFrame,
-    protocol_name: str
+    protocol_name: str,
+    *,
+    existing_layout: pd.DataFrame | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Build liquid table with source well assignments.
+
+    If existing_layout is None: auto-assign wells in deterministic order
+    (current behavior; A1..H12 of a 96-well plate).
+
+    If existing_layout is provided: validate completeness and map source
+    wells from it. Raises SourceLayoutError if any required Liquid Name
+    is missing or any well is duplicated.
     """
     liquid_table = all_rows[["Liquid Name"]].drop_duplicates().copy()
 
@@ -79,16 +89,48 @@ def build_liquid_table(
         kind="mergesort"
     ).reset_index(drop=True)
 
-    liquid_table["Source Plate"] = f"SRC_{protocol_name}"
-    avail = wells_96()
-    if len(liquid_table) > len(avail):
-        raise ValueError(
-            f"Too many unique liquids ({len(liquid_table)}) for one source plate ({len(avail)} wells)."
-        )
+    if existing_layout is None:
+        # Auto-assign (existing behavior).
+        liquid_table["Source Plate"] = f"SRC_{protocol_name}"
+        avail = wells_96()
+        if len(liquid_table) > len(avail):
+            raise ValueError(
+                f"Too many unique liquids ({len(liquid_table)}) for one source plate ({len(avail)} wells)."
+            )
+        liquid_table["Source Well"] = avail[:len(liquid_table)]
+    else:
+        # Validate the supplied layout and map wells from it.
+        layout = existing_layout.copy()
+        if "Source Well" not in layout.columns or "Liquid Name" not in layout.columns:
+            raise SourceLayoutError(
+                "existing_layout must have columns 'Source Well' and 'Liquid Name'"
+            )
+        if layout["Source Well"].duplicated().any():
+            dups = layout.loc[layout["Source Well"].duplicated(keep=False), "Source Well"].tolist()
+            raise SourceLayoutError(f"existing_layout has duplicate Source Wells: {dups}")
 
-    liquid_table["Source Well"] = avail[:len(liquid_table)]
+        required = set(liquid_table["Liquid Name"])
+        provided = set(layout["Liquid Name"])
+        missing = sorted(required - provided)
+        if missing:
+            raise SourceLayoutError(f"existing_layout missing required liquids: {missing}")
+
+        unused = sorted(provided - required)
+        if unused:
+            print(
+                f"WARN existing_layout has {len(unused)} unused "
+                f"entr{'y' if len(unused) == 1 else 'ies'}: {unused}"
+            )
+
+        well_map = dict(zip(layout["Liquid Name"], layout["Source Well"]))
+        liquid_table["Source Well"] = liquid_table["Liquid Name"].map(well_map)
+        if "Source Plate" in layout.columns:
+            plate_map = dict(zip(layout["Liquid Name"], layout["Source Plate"]))
+            liquid_table["Source Plate"] = liquid_table["Liquid Name"].map(plate_map)
+        else:
+            liquid_table["Source Plate"] = f"SRC_{protocol_name}"
+
     liquid_table_export = liquid_table[["Liquid Name", "Source Plate", "Source Well"]].copy()
-
     return liquid_table, liquid_table_export
 
 
