@@ -118,6 +118,8 @@ class RunConfigModel(BaseModel):
     protocol_name: str = Field(default="PLAID_RUN")
     layout_file: str = Field(default="layout.csv")
     meta_file: str = Field(default="meta.csv")
+    dispenser: Literal["idot", "echo"] = Field(default="idot")
+    source_layout_file: Optional[str] = Field(default=None)
     sourceplate_type: str = Field(default="S.100 Plate")
     target_plate_type: str = Field(default="MWP 384")
     working_volume_ul: float = Field(default=40.0, gt=0)
