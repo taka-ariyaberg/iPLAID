@@ -93,6 +93,8 @@ class JobStore:
         meta_bytes: bytes,
         meta_filename: str,
         config: dict,
+        source_layout_bytes: bytes | None = None,
+        source_layout_filename: str | None = None,
     ) -> dict:
         job_id = uuid.uuid4().hex[:12]
         job_dir = self.jobs_root / job_id
@@ -108,9 +110,17 @@ class JobStore:
         layout_path.write_bytes(layout_bytes)
         meta_path.write_bytes(meta_bytes)
 
+        source_layout_path: Path | None = None
+        if source_layout_bytes is not None:
+            safe_source_name = Path(source_layout_filename or "source_layout.csv").name
+            source_layout_path = uploads_dir / safe_source_name
+            source_layout_path.write_bytes(source_layout_bytes)
+
         run_config = dict(config)
         run_config["layout_file"] = safe_layout_name
         run_config["meta_file"] = safe_meta_name
+        if source_layout_path is not None:
+            run_config["source_layout_file"] = source_layout_path.name
 
         preview = build_layout_preview_from_path(layout_path)
         payload = {
@@ -139,6 +149,7 @@ class JobStore:
                 "meta_path": meta_path,
                 "outputs_dir": outputs_dir,
                 "config": run_config,
+                "source_layout_path": source_layout_path,
             },
             daemon=True,
         )
@@ -170,6 +181,7 @@ class JobStore:
         meta_path: Path,
         outputs_dir: Path,
         config: dict,
+        source_layout_path: Path | None = None,
     ) -> None:
         self._update_status(job_dir, {"status": "running", "updatedAt": self._now(), "startedAt": self._now()})
 
@@ -181,6 +193,7 @@ class JobStore:
                 output_dir=outputs_dir,
                 include_source_prep=True,
                 project_root=self.repo_root,
+                source_layout_path=source_layout_path,
             )
 
             summary = {

@@ -92,6 +92,9 @@ export function WorkbenchPage() {
   const [config, setConfig] = useWorkbenchField("config");
   const [loadingBootstrap, setLoadingBootstrap] = useWorkbenchField("loadingBootstrap");
   const [errorMessage, setErrorMessage] = useWorkbenchField("errorMessage");
+  // Optional pre-prepared source-plate layout (Liquid Name -> Source Well CSV).
+  // Lives in component state — not persisted across navigation, intentionally.
+  const [sourceLayoutFile, setSourceLayoutFile] = useState<File | null>(null);
 
   // ----- upload mode -----
   const [layoutFile, setLayoutFile] = useWorkbenchField("layoutFile");
@@ -327,7 +330,12 @@ export function WorkbenchPage() {
     setErrorMessage(null);
     const activeLayoutFile = workingPreview ? previewToCSVFile(workingPreview) : layoutFile!;
     try {
-      const job = await apiClient.createRun({ layoutFile: activeLayoutFile, metaFile, config });
+      const job = await apiClient.createRun({
+        layoutFile: activeLayoutFile,
+        metaFile,
+        config,
+        sourceLayoutFile,
+      });
       setProcessing(false);
       navigate(`/runs/${job.jobId}`);
     } catch (err) {
@@ -480,6 +488,11 @@ export function WorkbenchPage() {
             canProcess={Boolean(layoutFile && metaFile && preview)}
             onConfigChange={handleConfigChange}
             onProcess={() => { if (layoutFile && metaFile && config && preview) setShowConfirmRun(true); }}
+            sourceLayoutFile={sourceLayoutFile}
+            onSourceLayoutFileChange={(f) => {
+              setSourceLayoutFile(f);
+              setConfig((c) => (c ? { ...c, source_layout_file: f?.name ?? null } : c));
+            }}
           />
         )}
       </div>

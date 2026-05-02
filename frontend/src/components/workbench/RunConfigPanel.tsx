@@ -18,6 +18,8 @@ type RunConfigPanelProps = {
   canProcess: boolean;
   onConfigChange: (field: keyof RunConfig, value: string) => void;
   onProcess: () => void;
+  sourceLayoutFile?: File | null;
+  onSourceLayoutFileChange?: (file: File | null) => void;
 };
 
 type NumericFieldProps = {
@@ -52,6 +54,8 @@ export function RunConfigPanel({
   canProcess,
   onConfigChange,
   onProcess,
+  sourceLayoutFile,
+  onSourceLayoutFileChange,
 }: RunConfigPanelProps) {
   return (
     <section className="workbench-config panel-surface">
@@ -110,6 +114,29 @@ export function RunConfigPanel({
             )}
           </select>
         </label>
+
+        {onSourceLayoutFileChange && (
+          <label>
+            <span>Source plate layout (optional)</span>
+            <input
+              type="file"
+              accept=".csv,text/csv"
+              onChange={(e) => onSourceLayoutFileChange(e.target.files?.[0] ?? null)}
+            />
+            {sourceLayoutFile && (
+              <small style={{ display: "block", marginTop: 4, opacity: 0.7 }}>
+                Using {sourceLayoutFile.name}.{" "}
+                <button
+                  type="button"
+                  onClick={() => onSourceLayoutFileChange(null)}
+                  style={{ background: "none", border: "none", padding: 0, color: "inherit", cursor: "pointer", textDecoration: "underline" }}
+                >
+                  Clear
+                </button>
+              </small>
+            )}
+          </label>
+        )}
 
         <label>
           <span>Dilution solvent</span>

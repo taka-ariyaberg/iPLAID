@@ -55,11 +55,18 @@ async def create_run(
     layout_file: UploadFile = File(...),
     meta_file: UploadFile = File(...),
     config_json: str = Form(...),
+    source_layout_file: UploadFile | None = File(None),
 ) -> dict:
     try:
         config = RunConfigModel.model_validate_json(config_json).model_dump()
     except Exception as exc:
         raise HTTPException(status_code=422, detail=f"Invalid config payload: {exc}") from exc
+
+    source_layout_bytes = None
+    source_layout_filename = None
+    if source_layout_file is not None:
+        source_layout_bytes = await source_layout_file.read()
+        source_layout_filename = source_layout_file.filename or "source_layout.csv"
 
     try:
         return job_store.create_job(
@@ -68,6 +75,8 @@ async def create_run(
             meta_bytes=await meta_file.read(),
             meta_filename=meta_file.filename or "meta.csv",
             config=config,
+            source_layout_bytes=source_layout_bytes,
+            source_layout_filename=source_layout_filename,
         )
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
