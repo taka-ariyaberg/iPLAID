@@ -79,6 +79,40 @@ def test_idot_basic_imeta_byte_equal(tmp_path: Path, freeze_now) -> None:
     assert actual == expected
 
 
+def test_echo_smoke_produces_valid_csv(tmp_path: Path, freeze_now) -> None:
+    """Run the full pipeline with dispenser='echo' and verify the output validates."""
+    import pandas as pd
+
+    src = GOLDEN_DIR / "idot_basic"
+    work = tmp_path / "echo_smoke"
+    work.mkdir()
+    shutil.copy(src / "layout.csv", work / "layout.csv")
+    shutil.copy(src / "meta.csv", work / "meta.csv")
+    cfg = json.loads((src / "config.json").read_text())
+    cfg["dispenser"] = "echo"
+    cfg["sourceplate_type"] = "384PP_DMSO2"
+    cfg["target_plate_type"] = "Corning_384w_3784"
+    cfg["working_volume_ul"] = 50
+    out_dir = work / "out"
+    out_dir.mkdir()
+
+    result = run_pipeline_with_inputs(
+        config=cfg,
+        layout_path=work / "layout.csv",
+        meta_path=work / "meta.csv",
+        output_dir=out_dir,
+        include_source_prep=False,
+    )
+    out_path = Path(result["paths"]["out_idot"])
+    assert out_path.exists()
+    df = pd.read_csv(out_path)
+    assert len(df.columns) == 10
+    assert df.columns[0] == "Sample Name"
+    assert df.columns[5] == "Transfer Volume"
+    vols = pd.to_numeric(df["Transfer Volume"])
+    assert ((vols % 2.5).round(6) == 0).all()
+
+
 def test_idot_explicit_dispenser_field_byte_equal(tmp_path: Path, freeze_now) -> None:
     """cfg with dispenser='idot' produces identical output to cfg with no dispenser field."""
     src = GOLDEN_DIR / "idot_basic"

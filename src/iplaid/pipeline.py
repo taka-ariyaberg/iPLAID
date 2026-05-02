@@ -181,7 +181,11 @@ def _run_pipeline_with_resolved_inputs(*, root: Path, cfg: dict, paths: dict, in
 
     # Dispenser-specific volume rounding (no-op for iDOT; 2.5 nL for Echo).
     if disp.spec.min_increment_nL > 0:
-        df = apply_dispenser_increment(df, disp.spec.min_increment_nL)
+        df = apply_dispenser_increment(
+            df,
+            disp.spec.min_increment_nL,
+            working_volume_ul=float(cfg["working_volume_ul"]),
+        )
 
     df, solvent_caps = enforce_solvent_volume_cap(
         df,

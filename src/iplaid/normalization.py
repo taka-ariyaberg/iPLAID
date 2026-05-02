@@ -177,13 +177,17 @@ def enforce_solvent_volume_cap(
     return df, solvent_caps
 
 
-def apply_dispenser_increment(df, increment_nL: float):
+def apply_dispenser_increment(df, increment_nL: float, *, working_volume_ul=None):
     """Round transfer volumes to the dispenser increment and back-calc CONCuM.
 
     No-op when increment_nL == 0 (iDOT). For Echo (2.5 nL) each compound row
     is rounded to the nearest increment and CONCuM is recomputed from the
     rounded volume so iMETA reflects what was actually dispensed. Solvent rows
     (stock_conc_mM == 0) get volume rounding only.
+
+    Well volume comes from a per-row "well_vol_uL" column when present
+    (used by unit tests with synthetic data) or from the working_volume_ul
+    kwarg (used by the pipeline, which has a single working volume per run).
     """
     import pandas as pd
 
@@ -198,10 +202,20 @@ def apply_dispenser_increment(df, increment_nL: float):
 
     has_stock = df["stock_conc_mM"].fillna(0) > 0
     if has_stock.any():
+        if "well_vol_uL" in df.columns:
+            well_vol = df.loc[has_stock, "well_vol_uL"]
+        elif working_volume_ul is not None:
+            well_vol = float(working_volume_ul)
+        else:
+            raise ValueError(
+                "apply_dispenser_increment needs either a 'well_vol_uL' column "
+                "or working_volume_ul kwarg to back-calculate CONCuM."
+            )
+
         df.loc[has_stock, "CONCuM_requested"] = df.loc[has_stock, "CONCuM"]
         df.loc[has_stock, "CONCuM"] = (
             df.loc[has_stock, "Volume [uL]"] * df.loc[has_stock, "stock_conc_mM"]
-            * 1000.0 / df.loc[has_stock, "well_vol_uL"]
+            * 1000.0 / well_vol
         )
 
         deviation_pct = (
