@@ -293,10 +293,30 @@ This run has {input_unique_pairs} unique compound/target pairs and {len(liquid_n
     validated_target_dmso_ul = float(dmso_summary["targetSolventUl"]) if dmso_summary else 0.0
     validated_max_dmso_ul = float(dmso_summary["maxSolventUl"]) if dmso_summary else 0.0
 
-    # Source plate preparation (optional)
+    # Source plate preparation (optional).
+    # Currently iDOT-only: source_plate_prep reads the iDOT-shaped protocol CSV
+    # (skiprows=3 for the file header) and uses iDOT plate-spec keys. Echo
+    # support requires CSV-format-aware parsing and is deferred to v2 per spec
+    # §15. For non-iDOT dispensers we emit a placeholder note instead of
+    # crashing on the format mismatch.
     source_prep_volumes = None
     source_prep_instructions = None
-    if include_source_prep:
+    if include_source_prep and disp.spec.name != "idot":
+        source_prep_instructions = (
+            f"# Source-plate preparation instructions are not yet generated "
+            f"for the '{disp.spec.name}' dispenser.\n"
+            f"# v1 ships iDOT prep only; Echo prep is planned for v2.\n"
+            f"# The Echo protocol CSV at {paths['out_idot']} is ready to load.\n"
+        )
+        prep_outfile = build_source_prep_output_path(
+            Path(paths["out_idot"]).parent,
+            cfg,
+            timestamp=str(paths["run_timestamp"]),
+        )
+        with open(prep_outfile, "w", encoding="utf-8") as f:
+            f.write(source_prep_instructions)
+        paths["out_source_prep"] = prep_outfile
+    elif include_source_prep:
         source_prep_volumes, source_prep_instructions = source_plate_prep.generate_source_plate_prep_instructions(
             Path(paths["project_root"]) / "outputs" / "results",
             cfg,
