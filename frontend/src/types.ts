@@ -94,11 +94,15 @@ export type DesignJob = {
 // Existing pipeline types (unchanged)
 // ---------------------------------------------------------------------------
 
+export type DispenserName = "idot" | "echo";
+
 export type RunConfig = {
   user_name: string;
   protocol_name: string;
   layout_file: string;
   meta_file: string;
+  dispenser: DispenserName;
+  source_layout_file?: string | null;
   sourceplate_type: string;
   target_plate_type: string;
   working_volume_ul: number;
@@ -248,6 +252,14 @@ export type TargetPlateDefinition = {
   wells: number;
 };
 
+export type DispenserMeta = {
+  name: DispenserName;
+  display_name: string;
+  default_sourceplate_type: string;
+  default_target_plate_type: string;
+  min_increment_nL: number;
+};
+
 export type BootstrapResponse = {
   configTemplate: RunConfig;
   sourcePlateTypes: string[];
@@ -255,4 +267,6 @@ export type BootstrapResponse = {
   targetPlateTypes: string[];
   targetPlateDefinitions: TargetPlateDefinition[];
   solverCpus: number;
+  dispensers: DispenserMeta[];
+  plate_types_by_dispenser: Record<string, string[]>;
 };
