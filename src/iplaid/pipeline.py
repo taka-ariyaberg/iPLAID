@@ -30,6 +30,7 @@ from .normalization import (
     add_target_and_volume_columns,
     enforce_solvent_volume_cap,
     normalize_solvent_topup,
+    apply_dispenser_increment,
 )
 from .output import (
     build_compound_and_topup_rows,
@@ -177,6 +178,10 @@ def _run_pipeline_with_resolved_inputs(*, root: Path, cfg: dict, paths: dict, in
         volume_from_stock_fn=volume_from_stock,
         working_volume_ul=float(cfg["working_volume_ul"]),
     )
+
+    # Dispenser-specific volume rounding (no-op for iDOT; 2.5 nL for Echo).
+    if disp.spec.min_increment_nL > 0:
+        df = apply_dispenser_increment(df, disp.spec.min_increment_nL)
 
     df, solvent_caps = enforce_solvent_volume_cap(
         df,
