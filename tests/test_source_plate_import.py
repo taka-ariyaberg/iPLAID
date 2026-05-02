@@ -57,6 +57,38 @@ def test_build_liquid_table_rejects_duplicate_wells() -> None:
         build_liquid_table(_all_rows(), "PROTO", existing_layout=layout)
 
 
+def test_echo_with_supplied_layout_byte_equal(tmp_path: Path) -> None:
+    """Echo + supplied layout reproduces echo_basic byte-equal.
+
+    The supplied layout matches the auto-assignment for this fixture so the
+    output is byte-identical to the echo_basic golden. This proves the
+    layout-import code path doesn't perturb the protocol when wells happen
+    to coincide.
+    """
+    import json
+    import shutil
+    from iplaid.pipeline import run_pipeline_with_inputs
+
+    src = Path(__file__).parent / "golden" / "echo_with_layout"
+    work = tmp_path / "echo_layout"
+    work.mkdir()
+    shutil.copy(src / "layout.csv", work / "layout.csv")
+    shutil.copy(src / "meta.csv", work / "meta.csv")
+    cfg = json.loads((src / "config.json").read_text())
+    out_dir = work / "out"
+    out_dir.mkdir()
+    r = run_pipeline_with_inputs(
+        config=cfg,
+        layout_path=work / "layout.csv",
+        meta_path=work / "meta.csv",
+        output_dir=out_dir,
+        include_source_prep=False,
+        source_layout_path=src / "source_layout.csv",
+    )
+    expected = (src / "expected_protocol.csv").read_bytes()
+    assert Path(r["paths"]["out_idot"]).read_bytes() == expected
+
+
 def test_pipeline_with_existing_source_layout_idot(tmp_path: Path) -> None:
     """Round-trip: capture iDOT goldens layout, then re-run with it as input → byte-equal."""
     import datetime as _dt
