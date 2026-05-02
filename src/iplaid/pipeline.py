@@ -76,6 +76,7 @@ def run_pipeline_with_inputs(
     include_source_prep: bool = True,
     project_root: str | Path | None = None,
     plate_specs_path: str | Path | None = None,
+    source_layout_path: str | Path | None = None,
 ):
     """
     Execute the pipeline against explicit input files and output directory.
@@ -106,15 +107,28 @@ def run_pipeline_with_inputs(
         "run_timestamp": str(output_paths["run_timestamp"]),
     }
 
+    existing_layout_df = None
+    if source_layout_path is not None:
+        import pandas as pd
+        existing_layout_df = pd.read_csv(source_layout_path)
+
     return _run_pipeline_with_resolved_inputs(
         root=Path(root),
         cfg=cfg,
         paths=paths,
         include_source_prep=include_source_prep,
+        existing_layout=existing_layout_df,
     )
 
 
-def _run_pipeline_with_resolved_inputs(*, root: Path, cfg: dict, paths: dict, include_source_prep: bool):
+def _run_pipeline_with_resolved_inputs(
+    *,
+    root: Path,
+    cfg: dict,
+    paths: dict,
+    include_source_prep: bool,
+    existing_layout=None,
+):
     """Execute the shared pipeline workflow once config and file paths are resolved."""
 
     disp = get_dispenser(cfg.get("dispenser", "idot"))
@@ -202,7 +216,11 @@ def _run_pipeline_with_resolved_inputs(*, root: Path, cfg: dict, paths: dict, in
 
     # Protocol building
     compound_rows, topup_rows, all_rows = build_compound_and_topup_rows(df)
-    liquid_table, liquid_table_export = build_liquid_table(all_rows, str(cfg["protocol_name"]))
+    liquid_table, liquid_table_export = build_liquid_table(
+        all_rows,
+        str(cfg["protocol_name"]),
+        existing_layout=existing_layout,
+    )
     
     # Diagnostic: Report final liquid table
     print("\n" + "="*90)
