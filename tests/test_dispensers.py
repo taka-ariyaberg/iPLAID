@@ -34,3 +34,21 @@ def test_list_dispensers_returns_specs() -> None:
     specs = list_dispensers()
     assert len(specs) >= 1
     assert all(isinstance(s, DispenserSpec) for s in specs)
+
+
+def test_each_registered_dispenser_satisfies_protocol() -> None:
+    """Every registered dispenser must implement the Dispenser Protocol."""
+    from iplaid.dispensers import _REGISTRY
+
+    assert len(_REGISTRY) > 0, "Registry must have at least one dispenser"
+    for name, disp in _REGISTRY.items():
+        assert isinstance(disp, Dispenser), f"{name!r} does not implement Dispenser Protocol"
+        assert disp.spec.name == name, f"Spec name {disp.spec.name!r} != registry key {name!r}"
+        for method in [
+            "load_plate_specs",
+            "build_protocol",
+            "write_protocol",
+            "write_liquids",
+            "validate_export",
+        ]:
+            assert callable(getattr(disp, method)), f"{name}.{method} not callable"

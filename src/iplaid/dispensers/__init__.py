@@ -6,6 +6,11 @@ from .base import Dispenser, DispenserSpec, SourceLayoutError, UnknownDispenserE
 _REGISTRY: dict[str, Dispenser] = {}
 
 
+def _register(dispenser: Dispenser) -> None:
+    """Internal: register a dispenser instance under its spec.name."""
+    _REGISTRY[dispenser.spec.name] = dispenser
+
+
 def get_dispenser(name: str) -> Dispenser:
     if name not in _REGISTRY:
         raise UnknownDispenserError(
@@ -18,11 +23,6 @@ def list_dispensers() -> list[DispenserSpec]:
     return [d.spec for d in _REGISTRY.values()]
 
 
-def _register(dispenser: Dispenser) -> None:
-    """Internal: register a dispenser instance under its spec.name."""
-    _REGISTRY[dispenser.spec.name] = dispenser
-
-
 __all__ = [
     "Dispenser",
     "DispenserSpec",
@@ -31,3 +31,8 @@ __all__ = [
     "get_dispenser",
     "list_dispensers",
 ]
+
+
+# Auto-import dispenser implementations so they self-register on package import.
+# Imports are at the bottom so each module's `from . import _register` resolves.
+from . import idot  # noqa: E402, F401
