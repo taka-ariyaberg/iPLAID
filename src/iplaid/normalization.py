@@ -175,3 +175,46 @@ def enforce_solvent_volume_cap(
     ]
 
     return df, solvent_caps
+
+
+def apply_dispenser_increment(df, increment_nL: float):
+    """Round transfer volumes to the dispenser increment and back-calc CONCuM.
+
+    No-op when increment_nL == 0 (iDOT). For Echo (2.5 nL) each compound row
+    is rounded to the nearest increment and CONCuM is recomputed from the
+    rounded volume so iMETA reflects what was actually dispensed. Solvent rows
+    (stock_conc_mM == 0) get volume rounding only.
+    """
+    import pandas as pd
+
+    if increment_nL <= 0:
+        return df
+
+    df = df.copy()
+    vol_nL = df["Volume [uL]"].astype(float) * 1000.0
+    rounded_nL = (vol_nL / increment_nL).round() * increment_nL
+    df["Volume_nL_unrounded"] = vol_nL
+    df["Volume [uL]"] = rounded_nL / 1000.0
+
+    has_stock = df["stock_conc_mM"].fillna(0) > 0
+    if has_stock.any():
+        df.loc[has_stock, "CONCuM_requested"] = df.loc[has_stock, "CONCuM"]
+        df.loc[has_stock, "CONCuM"] = (
+            df.loc[has_stock, "Volume [uL]"] * df.loc[has_stock, "stock_conc_mM"]
+            * 1000.0 / df.loc[has_stock, "well_vol_uL"]
+        )
+
+        deviation_pct = (
+            (df.loc[has_stock, "CONCuM"] - df.loc[has_stock, "CONCuM_requested"]).abs()
+            / df.loc[has_stock, "CONCuM_requested"].replace(0, pd.NA)
+            * 100
+        )
+        n_over = int((deviation_pct > 5.0).sum())
+        if n_over > 0:
+            print(
+                f"WARN {n_over} wells have >5% concentration deviation after "
+                f"rounding to {increment_nL} nL increments. "
+                f"See CONCuM_requested in iMETA."
+            )
+
+    return df
