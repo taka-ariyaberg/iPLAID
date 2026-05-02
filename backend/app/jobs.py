@@ -28,14 +28,32 @@ class JobStore:
 
     def bootstrap_payload(self) -> dict:
         import multiprocessing
+        from src.iplaid.dispensers import list_dispensers
+
         config_template_path = self.repo_root / "config" / "config.template.json"
-        plate_specs_path = self.repo_root / "data" / "source_plate_specs.json"
         target_plate_types_path = self.repo_root / "data" / "target_plate_types.json"
 
         config_template = json.loads(config_template_path.read_text(encoding="utf-8"))
-        plate_specs = json.loads(plate_specs_path.read_text(encoding="utf-8"))
         target_plate_types = json.loads(target_plate_types_path.read_text(encoding="utf-8"))
 
+        # Load each registered dispenser's plate-spec catalog so the UI can
+        # show the right Source Plate options when the user picks a dispenser.
+        dispensers = list_dispensers()
+        plate_types_by_dispenser: dict[str, list[str]] = {}
+        plate_specs_by_dispenser: dict[str, dict] = {}
+        for d in dispensers:
+            specs_path = self.repo_root / "data" / d.plate_specs_path
+            if not specs_path.exists():
+                plate_types_by_dispenser[d.name] = []
+                plate_specs_by_dispenser[d.name] = {}
+                continue
+            specs = json.loads(specs_path.read_text(encoding="utf-8"))
+            plate_types_by_dispenser[d.name] = sorted(specs.keys())
+            plate_specs_by_dispenser[d.name] = specs
+
+        # Legacy: keep `sourcePlateTypes` and `sourcePlateDefinitions` keyed by
+        # the iDOT specs so existing frontend code continues to work.
+        idot_specs = plate_specs_by_dispenser.get("idot", {})
         source_plate_definitions = [
             {
                 "id": name,
@@ -44,16 +62,27 @@ class JobStore:
                 "cols": spec.get("cols", 12),
                 "wells": spec.get("wells", 96),
             }
-            for name, spec in plate_specs.items()
+            for name, spec in idot_specs.items()
         ]
 
         return {
             "configTemplate": config_template,
-            "sourcePlateTypes": sorted(plate_specs.keys()),
+            "sourcePlateTypes": sorted(idot_specs.keys()),
             "sourcePlateDefinitions": source_plate_definitions,
             "targetPlateTypes": [p["id"] for p in target_plate_types],
             "targetPlateDefinitions": target_plate_types,
             "solverCpus": multiprocessing.cpu_count(),
+            "dispensers": [
+                {
+                    "name": d.name,
+                    "display_name": d.display_name,
+                    "default_sourceplate_type": d.default_sourceplate_type,
+                    "default_target_plate_type": d.default_target_plate_type,
+                    "min_increment_nL": d.min_increment_nL,
+                }
+                for d in dispensers
+            ],
+            "plate_types_by_dispenser": plate_types_by_dispenser,
         }
 
     def create_job(
