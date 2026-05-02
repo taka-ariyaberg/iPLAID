@@ -1,0 +1,17 @@
+{
+  "user_name": "GoldenTest",
+  "protocol_name": "ECHO_BASIC_GOLDEN",
+  "layout_file": "layout.csv",
+  "meta_file": "meta.csv",
+  "dispenser": "echo",
+  "sourceplate_type": "384PP_DMSO2",
+  "target_plate_type": "Corning_384w_3784",
+  "working_volume_ul": 50,
+  "max_dmso_pct": 0.1,
+  "source_prep_overage_pct": 0.30,
+  "min_pipette_volume_uL": 1.0,
+  "dilution_solvent": "DMSO",
+  "source_well_fill_pct": 0.70,
+  "standard_prep_volume_uL": 1000.0,
+  "output_timestamp_format": "FROZEN-TIMESTAMP"
+}

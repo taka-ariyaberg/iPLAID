@@ -113,6 +113,13 @@ def test_echo_smoke_produces_valid_csv(tmp_path: Path, freeze_now) -> None:
     assert ((vols % 2.5).round(6) == 0).all()
 
 
+def test_echo_basic_byte_equal(tmp_path: Path, freeze_now) -> None:
+    result = _run_golden("echo_basic", tmp_path)
+    expected = (GOLDEN_DIR / "echo_basic" / "expected_protocol.csv").read_bytes()
+    actual = Path(result["paths"]["out_idot"]).read_bytes()
+    assert actual == expected, "Echo protocol CSV diverged from golden"
+
+
 def test_idot_explicit_dispenser_field_byte_equal(tmp_path: Path, freeze_now) -> None:
     """cfg with dispenser='idot' produces identical output to cfg with no dispenser field."""
     src = GOLDEN_DIR / "idot_basic"
