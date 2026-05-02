@@ -292,6 +292,20 @@ export function WorkbenchPage() {
   function handleConfigChange(field: keyof RunConfig, value: string) {
     setConfig((c) => {
       if (!c) return c;
+      // Switching dispenser must reset sourceplate_type to the new dispenser's
+      // default (otherwise an iDOT plate name leaks into an Echo run) and
+      // clear any uploaded source-layout file (different plates use different
+      // wells / liquid sets).
+      if (field === "dispenser" && bootstrap) {
+        const meta = bootstrap.dispensers?.find((d) => d.name === value);
+        return {
+          ...c,
+          dispenser: value as RunConfig["dispenser"],
+          sourceplate_type: meta?.default_sourceplate_type ?? c.sourceplate_type,
+          target_plate_type: meta?.default_target_plate_type ?? c.target_plate_type,
+          source_layout_file: null,
+        };
+      }
       return { ...c, [field]: numericFields.includes(field) ? Number(value) : value };
     });
   }

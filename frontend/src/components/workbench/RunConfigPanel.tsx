@@ -79,17 +79,35 @@ export function RunConfigPanel({
           />
         </label>
 
+        {bootstrap.dispensers && bootstrap.dispensers.length > 0 && (
+          <label>
+            <span>Dispenser</span>
+            <select
+              value={config.dispenser}
+              onChange={(e) => onConfigChange("dispenser", e.target.value)}
+            >
+              {bootstrap.dispensers.map((d) => (
+                <option key={d.name} value={d.name}>
+                  {d.display_name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
         <label>
           <span>Source plate</span>
           <select
             value={config.sourceplate_type}
             onChange={(e) => onConfigChange("sourceplate_type", e.target.value)}
           >
-            {bootstrap.sourcePlateTypes.map((plateType) => (
-              <option key={plateType} value={plateType}>
-                {plateType}
-              </option>
-            ))}
+            {(bootstrap.plate_types_by_dispenser?.[config.dispenser] ?? bootstrap.sourcePlateTypes).map(
+              (plateType) => (
+                <option key={plateType} value={plateType}>
+                  {plateType}
+                </option>
+              ),
+            )}
           </select>
         </label>
 
