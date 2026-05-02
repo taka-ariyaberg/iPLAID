@@ -44,14 +44,28 @@ def validate_config_dict(cfg: Dict[str, Any]) -> Dict[str, Any]:
         cfg: Configuration dictionary
 
     Returns:
-        The validated configuration dictionary
+        The validated configuration dictionary (with `dispenser` defaulted)
 
     Raises:
         KeyError: If required config keys are missing
+        ValueError: If `dispenser` is set to an unregistered name
     """
     missing = [k for k in REQUIRED_CONFIG_KEYS if k not in cfg]
     if missing:
         raise KeyError(f"Missing required config keys: {missing}")
+
+    # Local import avoids a circular dependency on iplaid.dispensers, which
+    # imports from iplaid.output (which imports nothing from io).
+    from .dispensers import get_dispenser, UnknownDispenserError
+
+    dispenser_name = cfg.get("dispenser", "idot")
+    try:
+        get_dispenser(dispenser_name)
+    except UnknownDispenserError as exc:
+        raise ValueError(
+            f"Invalid dispenser '{dispenser_name}'. Use 'idot' or 'echo'."
+        ) from exc
+    cfg["dispenser"] = dispenser_name
     return cfg
 
 

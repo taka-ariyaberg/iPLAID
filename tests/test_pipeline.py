@@ -77,3 +77,25 @@ def test_idot_basic_imeta_byte_equal(tmp_path: Path, freeze_now) -> None:
     expected = _read_bytes(GOLDEN_DIR / "idot_basic" / "expected_imeta.csv")
     actual = _read_bytes(result["paths"]["out_imeta"])
     assert actual == expected
+
+
+def test_idot_explicit_dispenser_field_byte_equal(tmp_path: Path, freeze_now) -> None:
+    """cfg with dispenser='idot' produces identical output to cfg with no dispenser field."""
+    src = GOLDEN_DIR / "idot_basic"
+    work = tmp_path / "explicit"
+    work.mkdir()
+    shutil.copy(src / "layout.csv", work / "layout.csv")
+    shutil.copy(src / "meta.csv", work / "meta.csv")
+    cfg = json.loads((src / "config.json").read_text())
+    cfg["dispenser"] = "idot"
+    out_dir = work / "out"
+    out_dir.mkdir()
+    result = run_pipeline_with_inputs(
+        config=cfg,
+        layout_path=work / "layout.csv",
+        meta_path=work / "meta.csv",
+        output_dir=out_dir,
+        include_source_prep=False,
+    )
+    expected = (GOLDEN_DIR / "idot_basic" / "expected_protocol.csv").read_bytes()
+    assert Path(result["paths"]["out_idot"]).read_bytes() == expected

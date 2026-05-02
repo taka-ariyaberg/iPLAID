@@ -9,7 +9,6 @@ from .io import (
     find_project_root,
     resolve_project_paths,
     build_output_paths,
-    load_source_plate_specs,
     get_source_plate_spec,
 )
 from .loaders import (
@@ -36,10 +35,9 @@ from .output import (
     build_compound_and_topup_rows,
     build_liquid_table,
     attach_and_sort_dispense_rows,
-    build_full_protocol,
-    write_outputs,
 )
-from .validators import validate_export_file, validate_solvent_normalization
+from .validators import validate_solvent_normalization
+from .dispensers import get_dispenser
 from .validators_preflight import PreflightAssessmentError, run_preflight_validation
 from . import source_plate_prep
 from .imeta import build_imeta_dataframe
@@ -118,7 +116,8 @@ def run_pipeline_with_inputs(
 def _run_pipeline_with_resolved_inputs(*, root: Path, cfg: dict, paths: dict, include_source_prep: bool):
     """Execute the shared pipeline workflow once config and file paths are resolved."""
 
-    specs = load_source_plate_specs(paths["plate_specs_path"])
+    disp = get_dispenser(cfg.get("dispenser", "idot"))
+    specs = disp.load_plate_specs(paths["project_root"])
     source_specs = get_source_plate_spec(specs, cfg["sourceplate_type"])
 
     # Load and normalize input data
@@ -237,29 +236,23 @@ This run has {input_unique_pairs} unique compound/target pairs and {len(liquid_n
     
     all_rows = attach_and_sort_dispense_rows(all_rows, liquid_table, liquid_table_export)
 
-    fullprotocol = build_full_protocol(
+    fullprotocol = disp.build_protocol(
         all_rows,
-        protocol_name=str(cfg["protocol_name"]),
-        user_name=str(cfg["user_name"]),
-        sourceplate_type=str(cfg["sourceplate_type"]),
-        target_plate_type=str(cfg["target_plate_type"]),
+        liquid_table,
+        cfg=cfg,
         source_specs=source_specs,
     )
 
-    # Write output files
-    write_outputs(
-        fullprotocol,
-        liquid_table_export,
-        out_protocol=paths["out_idot"],
-        out_liquids=paths["out_liquids"],
-    )
+    # Write output files via the dispenser
+    disp.write_protocol(fullprotocol, paths["out_idot"])
+    disp.write_liquids(liquid_table_export, paths["out_liquids"])
 
     # iMETA export: one row per final protocol dispense, including solvent top-ups.
     imeta_df = build_imeta_dataframe(df, all_rows, cfg)
     imeta_df.to_csv(paths["out_imeta"], index=False)
 
-    # Validation
-    preview_df, header_row_idx = validate_export_file(
+    # Validation via the dispenser
+    preview_df, header_row_idx = disp.validate_export(
         paths["out_idot"],
         protocol_name=str(cfg["protocol_name"]),
         user_name=str(cfg["user_name"]),
