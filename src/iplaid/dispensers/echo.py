@@ -64,8 +64,8 @@ class EchoDispenser:
         display_name="Echo",
         plate_specs_path="echo_plate_specs.json",
         min_increment_nL=2.5,
-        default_sourceplate_type="384PP_DMSO2",
-        default_target_plate_type="Corning_384w_3784",
+        default_sourceplate_type="384PP",
+        default_target_plate_type="MWP 384",
     )
 
     def load_plate_specs(self, project_root: Path) -> dict:

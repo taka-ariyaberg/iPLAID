@@ -1,15 +1,98 @@
 {
-  "384PP_DMSO2": {
+  "384PP": {
     "wells": 384,
     "rows": 16,
     "cols": 24,
-    "dispense_min_nL": 2.5,
-    "dispense_max_nL_dmso": 12000,
-    "dead_volume_uL_dmso": 15,
+    "dispense_min_nL_aq": 2.5,
+    "dispense_max_nL_aq": null,
+    "dead_volume_uL_aq_lt": null,
     "effective_reservoir_uL": 65,
     "x_offset": 1050,
     "y_offset": -1050,
-    "destination_plate_type_default": "Corning_384w_3784",
-    "notes": "Echo 384-well low dead volume DMSO source plate. X/Y offsets are vendor defaults; verify against your Echo software profile before first run."
+    "notes": "Echo Qualified 384-well polypropylene source. DMSO compatible. Beckman 001-14555/14615/14618."
+  },
+  "384LDV": {
+    "wells": 384,
+    "rows": 16,
+    "cols": 24,
+    "dispense_min_nL_aq": 2.5,
+    "dispense_max_nL_aq": 12000,
+    "dead_volume_uL_aq_lt": null,
+    "effective_reservoir_uL": 12,
+    "x_offset": 1050,
+    "y_offset": -1050,
+    "notes": "Echo Qualified 384-well low dead volume (cyclic olefin copolymer). DMSO working volume 3-12 uL. Beckman 001-12782/16128/6025."
+  },
+  "1536LDV": {
+    "wells": 1536,
+    "rows": 32,
+    "cols": 48,
+    "dispense_min_nL_aq": 2.5,
+    "dispense_max_nL_aq": null,
+    "dead_volume_uL_aq_lt": null,
+    "effective_reservoir_uL": 5.5,
+    "x_offset": null,
+    "y_offset": null,
+    "notes": "Echo Qualified 1536-well low dead volume (cyclic olefin copolymer). General working volume 1-5.5 uL. Beckman 001-6969/8768/7913. x/y offsets not yet calibrated."
+  },
+  "384PP_Amine_Coated": {
+    "wells": 384,
+    "rows": 16,
+    "cols": 24,
+    "dispense_min_nL_aq": 2.5,
+    "dispense_max_nL_aq": null,
+    "dead_volume_uL_aq_lt": null,
+    "effective_reservoir_uL": 65,
+    "x_offset": 1050,
+    "y_offset": -1050,
+    "notes": "Echo Qualified amine-coated 384-well polypropylene, sterile. Optimized for aqueous transfers on Echo 525. Beckman 001-14622."
+  },
+  "384LDV_Carboxyl_Coated": {
+    "wells": 384,
+    "rows": 16,
+    "cols": 24,
+    "dispense_min_nL_aq": 2.5,
+    "dispense_max_nL_aq": null,
+    "dead_volume_uL_aq_lt": null,
+    "effective_reservoir_uL": 14,
+    "x_offset": 1050,
+    "y_offset": -1050,
+    "notes": "Echo Qualified carboxyl-coated 384-well low dead volume, sterile. Optimized for aqueous transfers on Echo 525. Beckman 001-13070."
+  },
+  "Reservoir_2x3": {
+    "wells": 6,
+    "rows": 2,
+    "cols": 3,
+    "dispense_min_nL_aq": 2.5,
+    "dispense_max_nL_aq": null,
+    "dead_volume_uL_aq_lt": null,
+    "effective_reservoir_uL": 2800,
+    "x_offset": null,
+    "y_offset": null,
+    "notes": "Echo Qualified 2x3 reservoir for large-volume transfers on Echo 525. Working volume 250 uL - 2.8 mL. Beckman 001-11101. x/y offsets not yet calibrated."
+  },
+  "EchoMS_384PP": {
+    "wells": 384,
+    "rows": 16,
+    "cols": 24,
+    "dispense_min_nL_aq": 2.5,
+    "dispense_max_nL_aq": null,
+    "dead_volume_uL_aq_lt": null,
+    "effective_reservoir_uL": 65,
+    "x_offset": 1050,
+    "y_offset": -1050,
+    "notes": "Echo MS Qualified 384-well polypropylene for SCIEX Echo MS System. Beckman C74290."
+  },
+  "EchoMS_1536LDV": {
+    "wells": 1536,
+    "rows": 32,
+    "cols": 48,
+    "dispense_min_nL_aq": 2.5,
+    "dispense_max_nL_aq": null,
+    "dead_volume_uL_aq_lt": null,
+    "effective_reservoir_uL": 5.5,
+    "x_offset": null,
+    "y_offset": null,
+    "notes": "Echo MS Qualified 1536-well low dead volume for SCIEX Echo MS System. Beckman C52621. x/y offsets not yet calibrated."
   }
 }

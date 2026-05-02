@@ -56,7 +56,7 @@ def test_echo_dispenser_spec() -> None:
     disp = EchoDispenser()
     assert disp.spec.name == "echo"
     assert disp.spec.min_increment_nL == 2.5
-    assert disp.spec.default_sourceplate_type == "384PP_DMSO2"
+    assert disp.spec.default_sourceplate_type == "384PP"
 
 
 def test_echo_registered() -> None:
@@ -68,11 +68,11 @@ def test_echo_load_plate_specs(tmp_path: Path) -> None:
     data_dir = tmp_path / "data"
     data_dir.mkdir()
     (data_dir / "echo_plate_specs.json").write_text(
-        '{"384PP_DMSO2": {"x_offset": 1050, "y_offset": -1050, "dispense_min_nL": 2.5}}'
+        '{"384PP": {"x_offset": 1050, "y_offset": -1050, "dispense_min_nL": 2.5}}'
     )
     disp = EchoDispenser()
     specs = disp.load_plate_specs(tmp_path)
-    assert specs["384PP_DMSO2"]["x_offset"] == 1050
+    assert specs["384PP"]["x_offset"] == 1050
 
 
 # ----- E1.4: EchoDispenser.build_protocol -----------------------------------
@@ -93,7 +93,7 @@ def test_echo_build_protocol_columns_and_format() -> None:
         "Source Well": ["A1", "A2", "A12"],
     })
     cfg = {
-        "sourceplate_type": "384PP_DMSO2",
+        "sourceplate_type": "384PP",
         "target_plate_type": "Corning_384w_3784",
     }
     source_specs = {"x_offset": 1050, "y_offset": -1050}
@@ -110,7 +110,7 @@ def test_echo_build_protocol_columns_and_format() -> None:
     assert list(out["Source well"]) == ["A01", "A02", "A12"]
     assert list(out["destination well"]) == ["B2", "B3", "B17"]
     assert list(out["Transfer Volume"]) == ["5.0", "12.5", "50.0"]
-    assert (out["Source Plate Type"] == "384PP_DMSO2").all()
+    assert (out["Source Plate Type"] == "384PP").all()
     assert (out["Destination Well X Offset"] == 1050).all()
 
 
@@ -125,7 +125,7 @@ def test_echo_write_protocol_uses_utf8_no_bom_and_lf(tmp_path: Path) -> None:
         "Destination Plate Barcode": ["P1"],
         "destination well": ["B2"],
         "Transfer Volume": ["5.0"],
-        "Source Plate Type": ["384PP_DMSO2"],
+        "Source Plate Type": ["384PP"],
         "Destination Plate Type": ["Corning_384w_3784"],
         "Destination Well X Offset": [1050],
         "Destination Well Y Offset": [-1050],
@@ -161,7 +161,7 @@ def _good_echo_df() -> pd.DataFrame:
         "Destination Plate Barcode": ["P1"],
         "destination well": ["B2"],
         "Transfer Volume": ["5.0"],
-        "Source Plate Type": ["384PP_DMSO2"],
+        "Source Plate Type": ["384PP"],
         "Destination Plate Type": ["Corning_384w_3784"],
         "Destination Well X Offset": [1050],
         "Destination Well Y Offset": [-1050],

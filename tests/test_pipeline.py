@@ -90,8 +90,8 @@ def test_echo_smoke_produces_valid_csv(tmp_path: Path, freeze_now) -> None:
     shutil.copy(src / "meta.csv", work / "meta.csv")
     cfg = json.loads((src / "config.json").read_text())
     cfg["dispenser"] = "echo"
-    cfg["sourceplate_type"] = "384PP_DMSO2"
-    cfg["target_plate_type"] = "Corning_384w_3784"
+    cfg["sourceplate_type"] = "384PP"
+    cfg["target_plate_type"] = "MWP 384"
     cfg["working_volume_ul"] = 50
     out_dir = work / "out"
     out_dir.mkdir()
