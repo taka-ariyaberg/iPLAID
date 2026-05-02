@@ -1,0 +1,15 @@
+{
+  "384PP_DMSO2": {
+    "wells": 384,
+    "rows": 16,
+    "cols": 24,
+    "dispense_min_nL": 2.5,
+    "dispense_max_nL_dmso": 12000,
+    "dead_volume_uL_dmso": 15,
+    "effective_reservoir_uL": 65,
+    "x_offset": 1050,
+    "y_offset": -1050,
+    "destination_plate_type_default": "Corning_384w_3784",
+    "notes": "Echo 384-well low dead volume DMSO source plate. X/Y offsets are vendor defaults; verify against your Echo software profile before first run."
+  }
+}
