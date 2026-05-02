@@ -36,3 +36,4 @@ __all__ = [
 # Auto-import dispenser implementations so they self-register on package import.
 # Imports are at the bottom so each module's `from . import _register` resolves.
 from . import idot  # noqa: E402, F401
+from . import echo  # noqa: E402, F401
