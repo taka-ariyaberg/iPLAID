@@ -1,5 +1,7 @@
 # Echo dispenser in iPLAID — Implementation Plan
 
+> **Status (2026-05-03):** Implemented and merged to `main`. Source spec marked `implemented`. This file is kept as the historical execution record.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add Echo acoustic liquid handler as a selectable dispenser in iPLAID alongside iDOT, with a UI dropdown, optional source-plate-layout import, and zero behavioral change to the iDOT path.
@@ -31,7 +33,7 @@ src/iplaid/
     idot.py                                         CREATE  (IDotDispenser; iDOT functions moved from output.py + validators.py)
     echo.py                                         CREATE  (EchoDispenser; Echo writer + validator + helpers)
 data/
-  echo_plate_specs.json                             CREATE  (Echo plate catalog: 384PP_DMSO2)
+  echo_source_plate_specs.json                             CREATE  (Echo plate catalog: 384LDV)
 backend/app/
   models.py                                         MODIFY  (RunConfigModel.dispenser field; source_layout_file field)
   main.py                                           MODIFY  (/bootstrap returns dispensers + plate_types_by_dispenser)
@@ -575,7 +577,7 @@ class IDotDispenser:
     spec = DispenserSpec(
         name="idot",
         display_name="iDOT",
-        plate_specs_path="source_plate_specs.json",
+        plate_specs_path="idot_source_plate_specs.json",
         min_increment_nL=0.0,
         default_sourceplate_type="S.100 Plate",
         default_target_plate_type="MWP 384",
@@ -875,13 +877,13 @@ git commit -m "test(dispensers): add interface conformance test"
 ### Task E1.1: Echo plate specs JSON
 
 **Files:**
-- Create: `data/echo_plate_specs.json`
+- Create: `data/echo_source_plate_specs.json`
 
 - [ ] **Step 1: Create the file.**
 
 ```json
 {
-  "384PP_DMSO2": {
+  "384LDV": {
     "wells": 384,
     "rows": 16,
     "cols": 24,
@@ -900,8 +902,8 @@ git commit -m "test(dispensers): add interface conformance test"
 - [ ] **Step 2: Commit.**
 
 ```bash
-git add data/echo_plate_specs.json
-git commit -m "feat(data): add echo_plate_specs.json with 384PP_DMSO2"
+git add data/echo_source_plate_specs.json
+git commit -m "feat(data): add echo_source_plate_specs.json with 384LDV"
 ```
 
 ---
@@ -1051,7 +1053,7 @@ def test_echo_dispenser_spec() -> None:
     disp = EchoDispenser()
     assert disp.spec.name == "echo"
     assert disp.spec.min_increment_nL == 2.5
-    assert disp.spec.default_sourceplate_type == "384PP_DMSO2"
+    assert disp.spec.default_sourceplate_type == "384LDV"
 
 
 def test_echo_registered() -> None:
@@ -1060,15 +1062,15 @@ def test_echo_registered() -> None:
 
 
 def test_echo_load_plate_specs(tmp_path: Path) -> None:
-    # Create a minimal data/echo_plate_specs.json under tmp_path
+    # Create a minimal data/echo_source_plate_specs.json under tmp_path
     data_dir = tmp_path / "data"
     data_dir.mkdir()
-    (data_dir / "echo_plate_specs.json").write_text(
-        '{"384PP_DMSO2": {"x_offset": 1050, "y_offset": -1050, "dispense_min_nL": 2.5}}'
+    (data_dir / "echo_source_plate_specs.json").write_text(
+        '{"384LDV": {"x_offset": 1050, "y_offset": -1050, "dispense_min_nL": 2.5}}'
     )
     disp = EchoDispenser()
     specs = disp.load_plate_specs(tmp_path)
-    assert specs["384PP_DMSO2"]["x_offset"] == 1050
+    assert specs["384LDV"]["x_offset"] == 1050
 ```
 
 - [ ] **Step 2: Run; expect failure.**
@@ -1084,9 +1086,9 @@ class EchoDispenser:
     spec = DispenserSpec(
         name="echo",
         display_name="Echo",
-        plate_specs_path="echo_plate_specs.json",
+        plate_specs_path="echo_source_plate_specs.json",
         min_increment_nL=2.5,
-        default_sourceplate_type="384PP_DMSO2",
+        default_sourceplate_type="384LDV",
         default_target_plate_type="Corning_384w_3784",
     )
 
@@ -1140,7 +1142,7 @@ def test_echo_build_protocol_columns_and_format() -> None:
         "Source Well": ["A1", "A2", "A12"],
     })
     cfg = {
-        "sourceplate_type": "384PP_DMSO2",
+        "sourceplate_type": "384LDV",
         "target_plate_type": "Corning_384w_3784",
     }
     source_specs = {"x_offset": 1050, "y_offset": -1050}
@@ -1157,7 +1159,7 @@ def test_echo_build_protocol_columns_and_format() -> None:
     assert list(out["Source well"]) == ["A01", "A02", "A12"]
     assert list(out["destination well"]) == ["B2", "B3", "B17"]
     assert list(out["Transfer Volume"]) == ["5.0", "12.5", "50.0"]
-    assert (out["Source Plate Type"] == "384PP_DMSO2").all()
+    assert (out["Source Plate Type"] == "384LDV").all()
     assert (out["Destination Well X Offset"] == 1050).all()
 ```
 
@@ -1214,7 +1216,7 @@ def test_echo_write_protocol_uses_utf8_no_bom_and_lf(tmp_path: Path) -> None:
         "Destination Plate Barcode": ["P1"],
         "destination well": ["B2"],
         "Transfer Volume": ["5.0"],
-        "Source Plate Type": ["384PP_DMSO2"],
+        "Source Plate Type": ["384LDV"],
         "Destination Plate Type": ["Corning_384w_3784"],
         "Destination Well X Offset": [1050],
         "Destination Well Y Offset": [-1050],
@@ -1277,7 +1279,7 @@ def test_echo_validate_export_accepts_good_file(tmp_path: Path) -> None:
         "Destination Plate Barcode": ["P1"],
         "destination well": ["B2"],
         "Transfer Volume": ["5.0"],
-        "Source Plate Type": ["384PP_DMSO2"],
+        "Source Plate Type": ["384LDV"],
         "Destination Plate Type": ["Corning_384w_3784"],
         "Destination Well X Offset": [1050],
         "Destination Well Y Offset": [-1050],
@@ -1297,7 +1299,7 @@ def test_echo_validate_export_rejects_non_increment(tmp_path: Path) -> None:
         "Destination Plate Barcode": ["P"],
         "destination well": ["B2"],
         "Transfer Volume": ["12.7"],  # NOT a multiple of 2.5
-        "Source Plate Type": ["384PP_DMSO2"],
+        "Source Plate Type": ["384LDV"],
         "Destination Plate Type": ["Corning_384w_3784"],
         "Destination Well X Offset": [1050],
         "Destination Well Y Offset": [-1050],
@@ -1316,7 +1318,7 @@ def test_echo_validate_export_rejects_unpadded_source(tmp_path: Path) -> None:
         "Destination Plate Barcode": ["P"],
         "destination well": ["B2"],
         "Transfer Volume": ["5.0"],
-        "Source Plate Type": ["384PP_DMSO2"],
+        "Source Plate Type": ["384LDV"],
         "Destination Plate Type": ["Corning_384w_3784"],
         "Destination Well X Offset": [1050],
         "Destination Well Y Offset": [-1050],
@@ -1566,7 +1568,7 @@ def test_echo_smoke_produces_valid_csv(tmp_path: Path) -> None:
     shutil.copy(src / "meta.csv", work / "meta.csv")
     cfg = json.loads((src / "config.json").read_text())
     cfg["dispenser"] = "echo"
-    cfg["sourceplate_type"] = "384PP_DMSO2"
+    cfg["sourceplate_type"] = "384LDV"
     cfg["target_plate_type"] = "Corning_384w_3784"
     cfg["working_volume_ul"] = 50  # match Echo legacy convention
     out_dir = work / "out"
@@ -1596,7 +1598,7 @@ def test_echo_smoke_produces_valid_csv(tmp_path: Path) -> None:
 python -m pytest tests/test_pipeline.py::test_echo_smoke_produces_valid_csv -v
 ```
 
-Expected: pass. If it fails because `inputs/meta_example.csv` doesn't include `384PP_DMSO2`-compatible compounds, override the highest_stock to make all rows feasible — adjust the meta CSV in the fixture as needed (the fix lives in `tests/golden/idot_basic/meta.csv`).
+Expected: pass. If it fails because `inputs/meta_example.csv` doesn't include `384LDV`-compatible compounds, override the highest_stock to make all rows feasible — adjust the meta CSV in the fixture as needed (the fix lives in `tests/golden/idot_basic/meta.csv`).
 
 - [ ] **Step 3: Commit.**
 
@@ -1632,7 +1634,7 @@ cp tests/golden/idot_basic/meta.csv tests/golden/echo_basic/meta.csv
   "layout_file": "layout.csv",
   "meta_file": "meta.csv",
   "dispenser": "echo",
-  "sourceplate_type": "384PP_DMSO2",
+  "sourceplate_type": "384LDV",
   "target_plate_type": "Corning_384w_3784",
   "working_volume_ul": 50,
   "max_dmso_pct": 0.1,

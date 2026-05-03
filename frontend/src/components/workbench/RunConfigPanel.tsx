@@ -1,4 +1,5 @@
 import type { BootstrapResponse, RunConfig } from "../../types";
+import { ConfigDropdown } from "./ConfigDropdown";
 import { SpinInput } from "./SpinInput";
 import "./RunConfigPanel.css";
 
@@ -84,58 +85,84 @@ export function RunConfigPanel({
         </label>
 
         {bootstrap.dispensers && bootstrap.dispensers.length > 0 && (
-          <label>
+          <div className="config-form-field">
             <span>Dispenser</span>
-            <select
+            <ConfigDropdown
+              ariaLabel="Dispenser"
               value={config.dispenser}
-              onChange={(e) => onConfigChange("dispenser", e.target.value)}
-            >
-              {bootstrap.dispensers.map((d) => (
-                <option key={d.name} value={d.name}>
-                  {d.display_name}
-                </option>
-              ))}
-            </select>
-          </label>
+              options={bootstrap.dispensers.map((d) => ({
+                value: d.name,
+                label: d.display_name,
+              }))}
+              onChange={(v) => onConfigChange("dispenser", v)}
+            />
+          </div>
         )}
 
-        <label>
-          <span>Source plate</span>
-          <select
+        <div className="config-form-field">
+          <span>Source plate type</span>
+          <ConfigDropdown
+            ariaLabel="Source plate type"
             value={config.sourceplate_type}
-            onChange={(e) => onConfigChange("sourceplate_type", e.target.value)}
-          >
-            {(bootstrap.plate_types_by_dispenser?.[config.dispenser] ?? bootstrap.sourcePlateTypes).map(
-              (plateType) => (
-                <option key={plateType} value={plateType}>
-                  {plateType}
-                </option>
-              ),
+            options={(bootstrap.plate_types_by_dispenser?.[config.dispenser] ?? bootstrap.sourcePlateTypes).map(
+              (plateType) => ({ value: plateType, label: plateType }),
             )}
-          </select>
-        </label>
+            onChange={(v) => onConfigChange("sourceplate_type", v)}
+          />
+        </div>
 
         {onSourceLayoutFileChange && (
-          <label>
-            <span>Source plate layout (optional)</span>
-            <input
-              type="file"
-              accept=".csv,text/csv"
-              onChange={(e) => onSourceLayoutFileChange(e.target.files?.[0] ?? null)}
-            />
-            {sourceLayoutFile && (
-              <small style={{ display: "block", marginTop: 4, opacity: 0.7 }}>
-                Using {sourceLayoutFile.name}.{" "}
-                <button
-                  type="button"
-                  onClick={() => onSourceLayoutFileChange(null)}
-                  style={{ background: "none", border: "none", padding: 0, color: "inherit", cursor: "pointer", textDecoration: "underline" }}
-                >
-                  Clear
-                </button>
-              </small>
-            )}
-          </label>
+          <div className="config-form-field">
+            <span>Source plate layout</span>
+            <div className={`config-upload-zone ${sourceLayoutFile ? "is-loaded" : ""}`}>
+              <label className="config-upload-zone-target" htmlFor="config-upload-source-layout">
+                <div className="config-upload-zone-icon" aria-hidden="true">
+                  {sourceLayoutFile ? (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="17 8 12 3 7 8" />
+                      <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                  )}
+                </div>
+                <div className="config-upload-zone-body">
+                  <span className="config-upload-zone-title">
+                    {sourceLayoutFile ? sourceLayoutFile.name : "Upload layout CSV"}
+                  </span>
+                </div>
+              </label>
+              <input
+                key={sourceLayoutFile?.name ?? "source-layout-empty"}
+                id="config-upload-source-layout"
+                type="file"
+                accept=".csv,text/csv"
+                onChange={(e) => onSourceLayoutFileChange(e.target.files?.[0] ?? null)}
+              />
+              <div className="config-upload-zone-right">
+                <div className={`config-upload-zone-badge ${sourceLayoutFile ? "is-loaded" : "is-optional"}`}>
+                  {sourceLayoutFile ? "Loaded" : "Optional"}
+                </div>
+                {sourceLayoutFile && (
+                  <button
+                    type="button"
+                    className="config-upload-zone-clear"
+                    title="Remove file"
+                    aria-label="Remove file"
+                    onClick={() => onSourceLayoutFileChange(null)}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         )}
 
         <label>

@@ -95,3 +95,44 @@
   background: rgba(239, 68, 68, 0.28);
   border-color: rgba(239, 68, 68, 0.6);
 }
+
+/* ---------------------------------------------------------------------------
+   Invalid-file warning (single-button variant of the conflict modal)
+   --------------------------------------------------------------------------- */
+.invalid-file-panel {
+  max-width: 440px;
+  gap: 0.7rem;
+}
+
+.invalid-file-panel .conflict-icon {
+  color: var(--icell-danger, #ff3b55);
+}
+
+.invalid-file-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--icell-text, #ebebf2);
+  text-align: center;
+  line-height: 1.4;
+}
+
+.invalid-file-detail {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--icell-text-muted, #ababc0);
+  text-align: center;
+  line-height: 1.55;
+  white-space: pre-line;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.invalid-file-actions {
+  justify-content: center;
+}
+
+.invalid-file-actions .conflict-btn {
+  flex: 0 0 auto;
+  min-width: 110px;
+}

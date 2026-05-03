@@ -153,7 +153,13 @@ def resolve_project_paths(project_root: Path, config: Dict[str, Any]) -> Dict[st
 
     layout_path = project_root / "inputs" / "layouts" / config["layout_file"]
     meta_path = project_root / "inputs" / "meta" / config["meta_file"]
-    plate_specs_path = project_root / "data" / "source_plate_specs.json"
+    from .dispensers import get_dispenser
+
+    plate_specs_path = (
+        project_root
+        / "data"
+        / get_dispenser(config.get("dispenser", "idot")).spec.plate_specs_path
+    )
 
     output_paths = build_output_paths(project_root / "outputs" / "results", config)
 
@@ -163,6 +169,7 @@ def resolve_project_paths(project_root: Path, config: Dict[str, Any]) -> Dict[st
         "meta_path": meta_path,
         "plate_specs_path": plate_specs_path,
         "out_idot": output_paths["out_idot"],
+        "out_protocol": output_paths.get("out_protocol", output_paths["out_idot"]),
         "out_liquids": output_paths["out_liquids"],
         "out_imeta": output_paths["out_imeta"],
         "run_timestamp": str(output_paths["run_timestamp"]),
@@ -175,7 +182,7 @@ def load_source_plate_specs(spec_path: Path) -> Dict[str, Any]:
     Load source plate specifications from JSON file.
     
     Args:
-        spec_path: Path to source_plate_specs.json
+        spec_path: Path to a dispenser-specific source plate specs JSON file
         
     Returns:
         Specifications dictionary keyed by plate type

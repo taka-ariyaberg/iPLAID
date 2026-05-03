@@ -1,10 +1,12 @@
 ---
 type: design-spec
-status: draft
+status: implemented
 project: iPLAID (target) / Echo (origin)
 date: 2026-05-02
 tags: [design, spec, iplaid, echo, dispenser]
 ---
+
+> **Status (2026-05-03):** Implemented and merged. iDOT + Echo dispensers ship behind the strategy registry at `src/iplaid/dispensers/`; the workbench exposes the Dispenser dropdown, dependent Source-plate-type dropdown, and the optional Source-plate-layout CSV upload (validated at `POST /api/source-layouts/preview`). The companion plan tracks the per-task checkboxes.
 
 # Echo dispenser support in iPLAID — Design Spec
 
@@ -48,8 +50,8 @@ src/iplaid/
     echo.py                            (NEW — Echo impl)
   validators.py                        (shrunk — dispenser-agnostic validators only; iDOT-specific moved to dispensers/idot.py and re-exported for import-path stability)
 data/
-  source_plate_specs.json              (existing — iDOT plates)
-  echo_plate_specs.json                (NEW — Echo plates)
+  idot_source_plate_specs.json              (existing — iDOT plates)
+  echo_source_plate_specs.json                (NEW — Echo plates)
 backend/app/
   models.py                            (extended — adds dispenser field)
   main.py / bootstrap                  (extended — exposes per-dispenser plate types)
@@ -83,9 +85,9 @@ class DispenserSpec:
     """Static metadata about a dispenser. Loaded from the registry."""
     name: str                              # "idot" | "echo"
     display_name: str                      # "iDOT" | "Echo"
-    plate_specs_path: str                  # path under data/, e.g. "source_plate_specs.json"
+    plate_specs_path: str                  # path under data/, e.g. "idot_source_plate_specs.json"
     min_increment_nL: float                # 0 for iDOT (no rounding), 2.5 for Echo
-    default_sourceplate_type: str          # "S.100 Plate" | "384PP_DMSO2"
+    default_sourceplate_type: str          # "S.100 Plate" | "384LDV"
     default_target_plate_type: str         # "MWP 384" | "Corning_384w_3784"
 
 
@@ -200,7 +202,7 @@ After Phase M, every iDOT behavior is preserved and we have a registry with one 
 | 4 | `Destination Plate Barcode` | from `all_rows["Target Plate"]` | string | `colo8-v3-VP-organoid-48h-P1-L1` |
 | 5 | `destination well` (lowercase 'd') | destination well **NOT zero-padded** | `[A-Z][0-9]+` | `B2` |
 | 6 | `Transfer Volume` | volume in **nL**, multiple of 2.5 | `%.1f` | `12.5` |
-| 7 | `Source Plate Type` | vendor SKU from plate specs | string | `384PP_DMSO2` |
+| 7 | `Source Plate Type` | vendor SKU from plate specs | string | `384LDV` |
 | 8 | `Destination Plate Type` | vendor SKU from cfg/plate specs | string | `Corning_384w_3784` |
 | 9 | `Destination Well X Offset` | from plate specs | int | `1050` |
 | 10 | `Destination Well Y Offset` | from plate specs | int | `-1050` |
@@ -236,9 +238,9 @@ class EchoDispenser:
     spec = DispenserSpec(
         name="echo",
         display_name="Echo",
-        plate_specs_path="echo_plate_specs.json",
+        plate_specs_path="echo_source_plate_specs.json",
         min_increment_nL=2.5,
-        default_sourceplate_type="384PP_DMSO2",
+        default_sourceplate_type="384LDV",
         default_target_plate_type="Corning_384w_3784",
     )
 
@@ -296,11 +298,11 @@ class EchoDispenser:
 
 ### 6.4 Echo plate specs file
 
-`data/echo_plate_specs.json`:
+`data/echo_source_plate_specs.json`:
 
 ```json
 {
-  "384PP_DMSO2": {
+  "384LDV": {
     "wells": 384,
     "rows": 16,
     "cols": 24,
@@ -496,7 +498,7 @@ When set, the upload posts to a new endpoint `/upload/source-layout` (or piggyba
 
 ## 12. Source-plate-prep instructions for Echo
 
-`source_plate_prep.py` today reads `min_pipette_volume_uL` from cfg and assumes iDOT plate semantics. The function gets a small extension: it reads dispense limits from the dispenser's plate specs (already loaded in pipeline) instead of cfg-only constants. For Echo, the prep instructions become "load X µL into source well Y of plate type 384PP_DMSO2"; the math is the same (compound consumption × overage + dead volume).
+`source_plate_prep.py` today reads `min_pipette_volume_uL` from cfg and assumes iDOT plate semantics. The function gets a small extension: it reads dispense limits from the dispenser's plate specs (already loaded in pipeline) instead of cfg-only constants. For Echo, the prep instructions become "load X µL into source well Y of plate type 384LDV"; the math is the same (compound consumption × overage + dead volume).
 
 Concretely: pass `dispenser` and `source_specs` to `generate_source_plate_prep_instructions(...)` and let it read `dead_volume_uL` and `effective_reservoir_uL` from `source_specs` (both files have these keys; the iDOT path keeps reading them as it does today).
 
@@ -548,14 +550,14 @@ Concretely: pass `dispenser` and `source_specs` to `generate_source_plate_prep_i
 | R4 | UI sends Echo source plate to iDOT pipeline (or vice versa) due to dispenser/plate-type drift | `workbenchState` resets `sourceplate_type` to the dispenser's default on dispenser change. Backend rejects mismatched (dispenser, sourceplate_type) pairs in `validate_config_dict`. |
 | R5 | Volume rounding back-calc produces NaN where stock is 0 (solvent control rows) | `apply_dispenser_increment` only back-calcs where `stock_conc_mM > 0`. Solvent topup rows pass through with rounded volume but no CONCuM rewrite. Covered by unit test. |
 | R6 | Source-layout upload missing a liquid the pipeline auto-derives later (e.g. solvent control) | Validation runs after `build_compound_and_topup_rows` so it sees the full liquid set including topups. Error message lists missing names. |
-| R7 | Echo X/Y offsets vary by plate combo and are wrong for a setup we haven't seen | Per-plate spec entries in `echo_plate_specs.json`. If a lab adds a new plate, they add a JSON entry; no code change. |
+| R7 | Echo X/Y offsets vary by plate combo and are wrong for a setup we haven't seen | Per-plate spec entries in `echo_source_plate_specs.json`. If a lab adds a new plate, they add a JSON entry; no code change. |
 | R8 | iMETA expects iDOT-shaped fields | `imeta.py` reads from `df` and `all_rows` which are dispenser-agnostic. Verified by reading the function. Add an iMETA-shape test in the Echo path to be explicit. |
 | R9 | Golden test for Echo locks in a specific stockfinder choice that future stockfinder changes would break | Same risk applies to existing iDOT goldens — manageable. If stockfinder changes intentionally, regenerate goldens deliberately. |
 
 ## 15. Out of scope / explicit deferrals
 
 - **Multi-source-plate Echo runs.** v1 assumes a single Echo source plate. The dispenser interface accommodates multiple plates if `liquid_table["Source Plate"]` ever has > 1 unique value, but v1 doesn't ship UI or tests for that.
-- **Aqueous Echo plate types.** Spec schema allows them; v1 adds only `384PP_DMSO2`.
+- **Aqueous Echo plate types.** Spec schema allows them; v1 adds only `384LDV`.
 - **Echo source-plate-prep PDF/HTML report.** v1 reuses `source_plate_prep.py` text instructions; no Echo-specific report. Defer to v2.
 - **Removing the legacy Echo repo.** Once the Echo backend is shipped in iPLAID and the golden test stands in, the standalone Echo repo (this one) can be archived. That's a follow-up cleanup, not part of this work.
 - **Dropping iDOT.** Never. Both backends coexist permanently.

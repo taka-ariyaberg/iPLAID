@@ -4,7 +4,7 @@
   "layout_file": "layout.csv",
   "meta_file": "meta.csv",
   "dispenser": "echo",
-  "sourceplate_type": "384PP",
+  "sourceplate_type": "384LDV",
   "target_plate_type": "MWP 384",
   "working_volume_ul": 50,
   "max_dmso_pct": 0.1,

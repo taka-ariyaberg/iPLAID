@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import datetime  # kept for backwards compat — some callers may import datetime via this module
 from pathlib import Path
+import re
 import pandas as pd
 
 # Re-exports — iDOT functions moved to iplaid.dispensers.idot
@@ -21,6 +22,71 @@ from .dispensers.idot import (
     write_outputs,
 )
 from .dispensers.base import SourceLayoutError
+
+
+_SOURCE_WELL_RE = re.compile(r"^([A-Za-z]+)0*(\d+)$")
+
+
+def _row_label_to_index(label: str) -> int:
+    """Convert A/B/.../Z/AA row labels to a 1-based row index."""
+    idx = 0
+    for char in label.upper():
+        if not ("A" <= char <= "Z"):
+            raise SourceLayoutError(f"Invalid source well row label: {label!r}")
+        idx = idx * 26 + (ord(char) - ord("A") + 1)
+    return idx
+
+
+def _normalize_source_well_key(well: object) -> str:
+    """Return canonical uppercase well key, with column zeros removed."""
+    raw = str(well).strip()
+    match = _SOURCE_WELL_RE.match(raw)
+    if not match:
+        raise SourceLayoutError(f"Invalid Source Well value: {raw!r}")
+    col = int(match.group(2))
+    if col < 1:
+        raise SourceLayoutError(f"Invalid Source Well value: {raw!r}")
+    return f"{match.group(1).upper()}{col}"
+
+
+def validate_source_layout_geometry(
+    existing_layout: pd.DataFrame,
+    source_specs: dict,
+    sourceplate_type: str,
+) -> None:
+    """Validate uploaded source wells against the selected source plate geometry."""
+    if "Source Well" not in existing_layout.columns:
+        return
+
+    rows = int(source_specs.get("rows") or 0)
+    cols = int(source_specs.get("cols") or 0)
+    if rows <= 0 or cols <= 0:
+        return
+
+    bad_wells: list[str] = []
+    for well in existing_layout["Source Well"]:
+        try:
+            well_key = _normalize_source_well_key(well)
+            match = _SOURCE_WELL_RE.match(well_key)
+            if not match:
+                bad_wells.append(str(well))
+                continue
+            row_idx = _row_label_to_index(match.group(1))
+            col_idx = int(match.group(2))
+        except SourceLayoutError:
+            bad_wells.append(str(well))
+            continue
+
+        if row_idx < 1 or row_idx > rows or col_idx < 1 or col_idx > cols:
+            bad_wells.append(str(well))
+
+    if bad_wells:
+        preview = bad_wells[:10]
+        suffix = "" if len(bad_wells) <= 10 else f" and {len(bad_wells) - 10} more"
+        raise SourceLayoutError(
+            f"source layout has wells outside {sourceplate_type} "
+            f"({rows} rows x {cols} columns): {preview}{suffix}"
+        )
 
 
 def build_compound_and_topup_rows(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -105,9 +171,36 @@ def build_liquid_table(
             raise SourceLayoutError(
                 "existing_layout must have columns 'Source Well' and 'Liquid Name'"
             )
-        if layout["Source Well"].duplicated().any():
-            dups = layout.loc[layout["Source Well"].duplicated(keep=False), "Source Well"].tolist()
-            raise SourceLayoutError(f"existing_layout has duplicate Source Wells: {dups}")
+        for column in ["Source Well", "Liquid Name"]:
+            if layout[column].isna().any():
+                raise SourceLayoutError(f"existing_layout has blank {column} values")
+            layout[column] = layout[column].astype(str).str.strip()
+        if "Source Plate" in layout.columns:
+            if layout["Source Plate"].isna().any():
+                raise SourceLayoutError("existing_layout has blank Source Plate values")
+            layout["Source Plate"] = layout["Source Plate"].astype(str).str.strip()
+
+        if layout["Liquid Name"].duplicated().any():
+            dups = layout.loc[layout["Liquid Name"].duplicated(keep=False), "Liquid Name"].tolist()
+            raise SourceLayoutError(f"existing_layout has duplicate Liquid Names: {dups}")
+
+        plate_keys = (
+            layout["Source Plate"].astype(str).str.strip()
+            if "Source Plate" in layout.columns
+            else pd.Series([""] * len(layout), index=layout.index)
+        )
+        well_keys = layout["Source Well"].map(_normalize_source_well_key)
+        duplicate_wells = pd.DataFrame({
+            "Source Plate": plate_keys,
+            "Source Well": well_keys,
+        })
+        if duplicate_wells.duplicated().any():
+            dups = duplicate_wells.loc[duplicate_wells.duplicated(keep=False)]
+            pretty = [
+                f"{row['Source Plate'] or '<default>'}:{row['Source Well']}"
+                for _, row in dups.iterrows()
+            ]
+            raise SourceLayoutError(f"existing_layout has duplicate Source Wells: {pretty}")
 
         required = set(liquid_table["Liquid Name"])
         provided = set(layout["Liquid Name"])

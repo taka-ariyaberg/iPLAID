@@ -130,6 +130,100 @@ def test_pipeline_with_existing_source_layout_idot(tmp_path: Path) -> None:
         _output.datetime.datetime = orig
 
 
+def test_uploaded_source_layout_writes_summary_for_idot(tmp_path: Path) -> None:
+    """Existing iDOT source layouts produce a usage summary, not prep recipes."""
+    import json
+    import shutil
+    from iplaid.pipeline import run_pipeline_with_inputs
+
+    src = Path(__file__).parent / "golden" / "idot_basic"
+    work = tmp_path / "idot_summary"
+    work.mkdir()
+    shutil.copy(src / "layout.csv", work / "layout.csv")
+    shutil.copy(src / "meta.csv", work / "meta.csv")
+    cfg = json.loads((src / "config.json").read_text())
+    out_dir = work / "out"
+    out_dir.mkdir()
+
+    r = run_pipeline_with_inputs(
+        config=cfg,
+        layout_path=work / "layout.csv",
+        meta_path=work / "meta.csv",
+        output_dir=out_dir,
+        include_source_prep=True,
+        source_layout_path=src / "expected_liquids.csv",
+    )
+
+    text = str(r["source_prep_instructions"])
+    assert "SOURCE PLATE LAYOUT SUMMARY" in text
+    assert "source of truth" in text
+    assert "This file is a usage summary, not a preparation recipe." in text
+    assert "STEP " not in text
+    assert "[Dasatinib][0.1]" in text
+    assert Path(r["paths"]["out_source_prep"]).read_text() == text
+
+
+def test_uploaded_source_layout_writes_summary_for_echo(tmp_path: Path) -> None:
+    """Existing Echo source layouts produce a summary instead of the v2 placeholder."""
+    import json
+    import shutil
+    from iplaid.pipeline import run_pipeline_with_inputs
+
+    src = Path(__file__).parent / "golden" / "echo_with_layout"
+    work = tmp_path / "echo_summary"
+    work.mkdir()
+    shutil.copy(src / "layout.csv", work / "layout.csv")
+    shutil.copy(src / "meta.csv", work / "meta.csv")
+    cfg = json.loads((src / "config.json").read_text())
+    out_dir = work / "out"
+    out_dir.mkdir()
+
+    r = run_pipeline_with_inputs(
+        config=cfg,
+        layout_path=work / "layout.csv",
+        meta_path=work / "meta.csv",
+        output_dir=out_dir,
+        include_source_prep=True,
+        source_layout_path=src / "source_layout.csv",
+    )
+
+    text = str(r["source_prep_instructions"])
+    assert "SOURCE PLATE LAYOUT SUMMARY" in text
+    assert "Dispenser: echo" in text
+    assert "v2" not in text
+    assert "[Dasatinib][0.1]" in text
+
+
+def test_uploaded_source_layout_rejects_wells_outside_source_plate(tmp_path: Path) -> None:
+    """Uploaded source-layout wells must exist on the selected source plate."""
+    import json
+    import shutil
+    from iplaid.pipeline import run_pipeline_with_inputs
+
+    src = Path(__file__).parent / "golden" / "idot_basic"
+    work = tmp_path / "bad_source_layout"
+    work.mkdir()
+    shutil.copy(src / "layout.csv", work / "layout.csv")
+    shutil.copy(src / "meta.csv", work / "meta.csv")
+    cfg = json.loads((src / "config.json").read_text())
+    bad_layout = work / "bad_source_layout.csv"
+    bad_layout.write_text(
+        "Liquid Name,Source Plate,Source Well\n"
+        "[DMSO][0.0],SRC_BAD,A13\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SourceLayoutError, match="outside S.100 Plate"):
+        run_pipeline_with_inputs(
+            config=cfg,
+            layout_path=work / "layout.csv",
+            meta_path=work / "meta.csv",
+            output_dir=work / "out",
+            include_source_prep=True,
+            source_layout_path=bad_layout,
+        )
+
+
 def test_build_liquid_table_layout_unused_entries_warn_not_fail(capsys) -> None:
     layout = pd.DataFrame({
         "Source Well": ["A07", "A10", "A12", "A15"],

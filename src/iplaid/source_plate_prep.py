@@ -433,6 +433,126 @@ def generate_source_plate_prep_instructions(
     return volumes_per_compound, instructions
 
 
+def generate_existing_source_plate_summary(
+    *,
+    config: Dict,
+    source_layout: pd.DataFrame,
+    liquid_table: pd.DataFrame,
+    all_rows: pd.DataFrame,
+    source_layout_name: Optional[str] = None,
+) -> Tuple[List[Dict], str]:
+    """
+    Generate a run summary when the user supplied an existing source plate.
+
+    The uploaded source layout is treated as the source of truth for source
+    plate/well positions. This summary reports how iPLAID used that plate; it
+    intentionally does not provide source-plate preparation recipes.
+    """
+    usage = all_rows.copy()
+    usage["Volume [uL]"] = usage["Volume [uL]"].astype(float)
+    usage["_target_well_key"] = (
+        usage["Target Plate"].astype(str) + ":" + usage["Target Well"].astype(str)
+    )
+    usage_summary = (
+        usage
+        .groupby(["Liquid Name", "Source Plate", "Source Well"], dropna=False)
+        .agg(
+            dispense_count=("Volume [uL]", "size"),
+            total_dispense_uL=("Volume [uL]", "sum"),
+            target_well_count=("_target_well_key", "nunique"),
+        )
+        .reset_index()
+    )
+    usage_summary["total_dispense_nL"] = usage_summary["total_dispense_uL"] * 1000.0
+
+    base_columns = [
+        "Liquid Name",
+        "compound",
+        "stock_mM",
+        "is_control_liquid",
+        "Source Plate",
+        "Source Well",
+    ]
+    summary = (
+        liquid_table[base_columns]
+        .drop_duplicates()
+        .merge(
+            usage_summary,
+            on=["Liquid Name", "Source Plate", "Source Well"],
+            how="left",
+        )
+        .fillna({
+            "dispense_count": 0,
+            "total_dispense_uL": 0.0,
+            "target_well_count": 0,
+            "total_dispense_nL": 0.0,
+        })
+        .sort_values(["Source Plate", "Source Well", "Liquid Name"], kind="mergesort")
+        .reset_index(drop=True)
+    )
+
+    source_layout_clean = source_layout.copy()
+    if "Liquid Name" in source_layout_clean.columns:
+        source_layout_clean["Liquid Name"] = source_layout_clean["Liquid Name"].astype(str).str.strip()
+    required_liquids = set(liquid_table["Liquid Name"].astype(str))
+    if "Liquid Name" in source_layout_clean.columns:
+        unused_layout = source_layout_clean.loc[
+            ~source_layout_clean["Liquid Name"].isin(required_liquids)
+        ].copy()
+    else:
+        unused_layout = pd.DataFrame()
+
+    records = summary.to_dict("records")
+
+    lines: List[str] = []
+    lines.append("SOURCE PLATE LAYOUT SUMMARY")
+    lines.append("")
+    lines.append("Uploaded source plate layout was used as the source of truth for this run.")
+    lines.append("iPLAID calculated target concentrations, transfer volumes, solvent top-ups,")
+    lines.append("protocol rows, and iMETA from the run inputs, then mapped each required")
+    lines.append("liquid to the source plate/well provided in the uploaded layout.")
+    lines.append("")
+    lines.append("This file is a usage summary, not a preparation recipe.")
+    lines.append("The physical source plate must already contain the listed liquids at the")
+    lines.append("listed stock concentrations. The user is responsible for ensuring each")
+    lines.append("source well contains enough volume for the total dispense demand below.")
+    lines.append("")
+    lines.append("Run")
+    lines.append(f"  Protocol: {config.get('protocol_name', '')}")
+    lines.append(f"  User: {config.get('user_name', '')}")
+    lines.append(f"  Dispenser: {config.get('dispenser', 'idot')}")
+    lines.append(f"  Source plate type: {config.get('sourceplate_type', '')}")
+    if source_layout_name:
+        lines.append(f"  Uploaded source layout file: {source_layout_name}")
+    lines.append(f"  Required liquids matched: {len(summary)}")
+    lines.append(f"  Source plates referenced: {summary['Source Plate'].nunique()}")
+    lines.append("")
+    lines.append("Required source wells")
+    lines.append(
+        "Liquid Name,Source Plate,Source Well,Compound,Stock mM,"
+        "Dispense count,Target well count,Total dispense uL,Total dispense nL"
+    )
+    for _, row in summary.iterrows():
+        stock = "" if bool(row["is_control_liquid"]) else f"{float(row['stock_mM']):g}"
+        lines.append(
+            f"{row['Liquid Name']},{row['Source Plate']},{row['Source Well']},"
+            f"{row['compound']},{stock},{int(row['dispense_count'])},"
+            f"{int(row['target_well_count'])},{float(row['total_dispense_uL']):.6f},"
+            f"{float(row['total_dispense_nL']):.3f}"
+        )
+
+    if len(unused_layout) > 0:
+        lines.append("")
+        lines.append("Unused uploaded source-layout entries")
+        columns = [col for col in ["Liquid Name", "Source Plate", "Source Well"] if col in unused_layout.columns]
+        lines.append(",".join(columns))
+        for _, row in unused_layout[columns].iterrows():
+            lines.append(",".join(str(row[col]) for col in columns))
+
+    lines.append("")
+    return records, "\n".join(lines)
+
+
 def run(project_root: Path) -> None:
     """
     Main entry point: generate source prep instructions from project outputs.
@@ -445,7 +565,7 @@ def run(project_root: Path) -> None:
     # Define paths
     output_dir = project_root / 'outputs' / 'results'
     meta_path = project_root / 'inputs' / 'meta' / config['meta_file']
-    plate_specs_path = project_root / 'data' / 'source_plate_specs.json'
+    plate_specs_path = project_root / 'data' / 'idot_source_plate_specs.json'
     
     # Generate instructions
     prep_volumes, instructions = generate_source_plate_prep_instructions(

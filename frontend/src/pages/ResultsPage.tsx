@@ -177,7 +177,10 @@ export function ResultsPage() {
   const targetPlateDef = bootstrap?.targetPlateDefinitions.find(
     (d) => d.id === job.config.target_plate_type,
   );
-  const sourcePlateDef = bootstrap?.sourcePlateDefinitions.find(
+  const sourcePlateDefinitions =
+    bootstrap?.source_plate_definitions_by_dispenser?.[job.config.dispenser] ??
+    bootstrap?.sourcePlateDefinitions;
+  const sourcePlateDef = sourcePlateDefinitions?.find(
     (d) => d.id === job.config.sourceplate_type,
   );
 

@@ -43,6 +43,17 @@ export const apiClient = {
     });
   },
 
+  async previewSourceLayout(
+    sourceLayoutFile: File,
+  ): Promise<{ rowCount: number; columns: string[]; sampleLiquidNames: string[] }> {
+    const formData = new FormData();
+    formData.append("source_layout_file", sourceLayoutFile);
+    return request("/api/source-layouts/preview", {
+      method: "POST",
+      body: formData,
+    });
+  },
+
   async createRun(params: {
     layoutFile: File;
     metaFile: File;

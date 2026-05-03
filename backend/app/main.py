@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse, PlainTextResponse
 from .design_preflight import assess_design_preflight
 from .jobs import JobStore
 from .models import DesignConfigModel, RunConfigModel
-from .preview import build_layout_preview_from_upload
+from .preview import build_layout_preview_from_upload, validate_source_layout_upload
 
 
 app = FastAPI(title="PLAID iDOT API", version="0.1.0")
@@ -46,6 +46,24 @@ async def preview_layout(layout_file: UploadFile = File(...)) -> dict:
     try:
         file_bytes = await layout_file.read()
         return build_layout_preview_from_upload(layout_file.filename or "layout.csv", file_bytes)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/source-layouts/preview")
+async def preview_source_layout(source_layout_file: UploadFile = File(...)) -> dict:
+    """Schema-level validation for the optional Source plate layout CSV.
+
+    Returns 400 with a user-readable detail if the file isn't shaped the way
+    the pipeline will need; geometry/completeness checks happen at run time.
+    """
+    try:
+        file_bytes = await source_layout_file.read()
+        return validate_source_layout_upload(
+            source_layout_file.filename or "source_layout.csv", file_bytes
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

@@ -36,6 +36,7 @@ from .output import (
     build_compound_and_topup_rows,
     build_liquid_table,
     attach_and_sort_dispense_rows,
+    validate_source_layout_geometry,
 )
 from .validators import validate_solvent_normalization
 from .dispensers import get_dispenser
@@ -92,7 +93,9 @@ def run_pipeline_with_inputs(
     explicit_plate_specs_path = (
         Path(plate_specs_path)
         if plate_specs_path is not None
-        else Path(root) / "data" / "source_plate_specs.json"
+        else Path(root)
+        / "data"
+        / get_dispenser(cfg.get("dispenser", "idot")).spec.plate_specs_path
     )
     output_paths = build_output_paths(Path(output_dir), cfg)
 
@@ -102,6 +105,7 @@ def run_pipeline_with_inputs(
         "meta_path": explicit_meta_path,
         "plate_specs_path": explicit_plate_specs_path,
         "out_idot": output_paths["out_idot"],
+        "out_protocol": output_paths.get("out_protocol", output_paths["out_idot"]),
         "out_liquids": output_paths["out_liquids"],
         "out_imeta": output_paths["out_imeta"],
         "run_timestamp": str(output_paths["run_timestamp"]),
@@ -110,6 +114,7 @@ def run_pipeline_with_inputs(
     existing_layout_df = None
     if source_layout_path is not None:
         import pandas as pd
+        paths["source_layout_path"] = Path(source_layout_path)
         existing_layout_df = pd.read_csv(source_layout_path)
 
     return _run_pipeline_with_resolved_inputs(
@@ -134,6 +139,8 @@ def _run_pipeline_with_resolved_inputs(
     disp = get_dispenser(cfg.get("dispenser", "idot"))
     specs = disp.load_plate_specs(paths["project_root"])
     source_specs = get_source_plate_spec(specs, cfg["sourceplate_type"])
+    if existing_layout is not None:
+        validate_source_layout_geometry(existing_layout, source_specs, cfg["sourceplate_type"])
 
     # Load and normalize input data
     df = load_layout_csv(paths["layout_path"])
@@ -301,7 +308,32 @@ This run has {input_unique_pairs} unique compound/target pairs and {len(liquid_n
     # crashing on the format mismatch.
     source_prep_volumes = None
     source_prep_instructions = None
-    if include_source_prep and disp.spec.name != "idot":
+    if include_source_prep and existing_layout is not None:
+        source_layout_path = paths.get("source_layout_path")
+        source_layout_name = (
+            Path(source_layout_path).name
+            if source_layout_path is not None
+            else str(cfg.get("source_layout_file") or "uploaded source layout")
+        )
+        source_prep_volumes, source_prep_instructions = (
+            source_plate_prep.generate_existing_source_plate_summary(
+                config=cfg,
+                source_layout=existing_layout,
+                liquid_table=liquid_table,
+                all_rows=all_rows,
+                source_layout_name=source_layout_name,
+            )
+        )
+        prep_outfile = build_source_prep_output_path(
+            Path(paths["out_idot"]).parent,
+            cfg,
+            timestamp=str(paths["run_timestamp"]),
+            source_layout_provided=True,
+        )
+        with open(prep_outfile, "w", encoding="utf-8") as f:
+            f.write(source_prep_instructions)
+        paths["out_source_prep"] = prep_outfile
+    elif include_source_prep and disp.spec.name != "idot":
         source_prep_instructions = (
             f"# Source-plate preparation instructions are not yet generated "
             f"for the '{disp.spec.name}' dispenser.\n"
@@ -364,4 +396,5 @@ This run has {input_unique_pairs} unique compound/target pairs and {len(liquid_n
         "max_dmso_ul": validated_max_dmso_ul,
         "source_prep_volumes": source_prep_volumes,
         "source_prep_instructions": source_prep_instructions,
+        "source_layout_provided": existing_layout is not None,
     }

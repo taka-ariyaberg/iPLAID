@@ -21,7 +21,7 @@
     "effective_reservoir_uL": 12,
     "x_offset": 1050,
     "y_offset": -1050,
-    "notes": "Echo Qualified 384-well low dead volume (cyclic olefin copolymer). DMSO working volume 3-12 uL. Beckman 001-12782/16128/6025."
+    "notes": "Echo Qualified 384-well low dead volume (cyclic olefin copolymer). DMSO working volume 3-12 uL. Beckman 001-12782/16128/6025. X/Y offsets match legacy Echo repo 384-source protocols; dead volume was not present there."
   },
   "1536LDV": {
     "wells": 1536,

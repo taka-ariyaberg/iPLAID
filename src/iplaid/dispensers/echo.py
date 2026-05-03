@@ -62,9 +62,9 @@ class EchoDispenser:
     spec = DispenserSpec(
         name="echo",
         display_name="Echo",
-        plate_specs_path="echo_plate_specs.json",
+        plate_specs_path="echo_source_plate_specs.json",
         min_increment_nL=2.5,
-        default_sourceplate_type="384PP",
+        default_sourceplate_type="384LDV",
         default_target_plate_type="MWP 384",
     )
 

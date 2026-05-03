@@ -2,15 +2,16 @@
 
 **iDOT Protocol Layout & Assay Integration Dispatcher**
 
-iPLAID converts screening layouts into iDOT Assay Studio dispense outputs. It can:
+iPLAID converts screening layouts into liquid-handler dispense outputs for both **iDOT** (Assay Studio) and **Echo** (acoustic) dispensers. The dispenser is selected from a dropdown in the workbench. iPLAID can:
 
 - use an existing target-layout CSV,
 - design a new layout with PLAID_Core,
+- accept an optional pre-prepared **source-plate layout CSV** (validated on upload),
 - match compounds to stock concentrations,
 - normalize solvent-family carrier volumes,
-- generate iDOT dispense and liquids CSVs,
+- generate dispenser-specific dispense and liquids CSVs (iDOT or Echo),
 - generate an iMETA CSV for downstream run metadata,
-- generate source-plate preparation instructions.
+- generate source-plate preparation instructions, or — when a source-plate layout is supplied — a source-plate summary instead.
 
 This repository now has one supported setup path for new machines: **Docker**.
 
@@ -198,7 +199,7 @@ Important fields:
 |-----|-------------|
 | `layout_file` | File name under `inputs/layouts/` for direct pipeline runs |
 | `meta_file` | File name under `inputs/meta/` for direct pipeline runs |
-| `sourceplate_type` | Must match a key in `data/source_plate_specs.json` |
+| `sourceplate_type` | Must match a key in the selected dispenser's source plate specs file, for example `data/idot_source_plate_specs.json` or `data/echo_source_plate_specs.json` |
 | `target_plate_type` | Must match an entry in `data/target_plate_types.json` |
 | `working_volume_ul` | Assay working volume in µL |
 | `max_dmso_pct` | Default maximum solvent percentage used when no solvent-specific override is provided |
@@ -212,9 +213,9 @@ Important fields:
 2. Upload a layout CSV.
 3. Upload a metadata CSV, or build one with the metadata creator.
 4. Inspect the previewed plate map.
-5. Adjust run settings.
+5. Adjust run settings: pick the **Dispenser** (iDOT / Echo), the **Source plate type** for that dispenser, and optionally upload a **Source plate layout** CSV (`Liquid Name`, `Source Well`, optional `Source Plate`). The upload is validated immediately — invalid CSVs trigger a popup warning and the field stays empty.
 6. Submit the run.
-7. Review results and download the protocol, liquids, iMETA, and source-prep artifacts.
+7. Review results and download the dispenser-specific protocol CSV, liquids map CSV, iMETA CSV, and either the source-prep TXT or the source-plate summary TXT.
 
 ### Design workflow
 
@@ -240,11 +241,16 @@ Direct pipeline runs write to `outputs/results/`:
 
 ```text
 outputs/results/
-  iPLAID_{User}_{Protocol}_idot_protocol_{yy-mm-dd-hh-mm-ss}.csv
+  iPLAID_{User}_{Protocol}_{dispenser}_protocol_{yy-mm-dd-hh-mm-ss}.csv
   iPLAID_{User}_{Protocol}_liquids_map_{yy-mm-dd-hh-mm-ss}.csv
   iPLAID_{User}_{Protocol}_imeta_{yy-mm-dd-hh-mm-ss}.csv
   iPLAID_{User}_{Protocol}_source_plate_prep_{yy-mm-dd-hh-mm-ss}.txt
+  iPLAID_{User}_{Protocol}_source_plate_summary_{yy-mm-dd-hh-mm-ss}.txt
 ```
+
+The protocol artifact uses the selected dispenser name, for example
+`idot_protocol` or `echo_protocol`. Source-layout uploads switch the source
+artifact from preparation instructions to `source_plate_summary`.
 
 ### iMETA CSV
 
@@ -272,7 +278,7 @@ backend/data/jobs/<job_id>/
 
 with uploaded files, status JSON, and generated artifacts under that job directory.
 
-Completed jobs expose the same run artifacts through the backend: Protocol CSV, Liquids CSV, iMETA CSV, and Source Prep TXT.
+Completed jobs expose the same run artifacts through the backend: dispenser-specific Protocol CSV, Liquids CSV, iMETA CSV, and either Source Prep TXT or Source Plate Summary TXT.
 The UI downloads result files through the backend artifact endpoints rather than from `outputs/results/`.
 
 ## Backend API
@@ -282,8 +288,9 @@ All endpoints are served by the FastAPI app in `backend/app/main.py`.
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/api/health` | Liveness check |
-| `GET` | `/api/bootstrap` | Config template, source plate specs, target plate definitions |
+| `GET` | `/api/bootstrap` | Config template, dispensers, per-dispenser source plate specs, target plate definitions |
 | `POST` | `/api/layouts/preview` | Parse and preview an uploaded layout |
+| `POST` | `/api/source-layouts/preview` | Schema-validate an uploaded source-plate layout CSV (returns 400 with a user-readable message on invalid format) |
 | `POST` | `/api/runs` | Submit a pipeline run |
 | `GET` | `/api/runs/{job_id}` | Poll a pipeline run |
 | `GET` | `/api/runs/{job_id}/artifacts/{name}` | Download a pipeline artifact |

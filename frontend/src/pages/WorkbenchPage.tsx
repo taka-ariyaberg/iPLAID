@@ -52,6 +52,37 @@ function ConflictWarning({ message, onConfirm, onCancel }: ConflictWarningProps)
 }
 
 // ---------------------------------------------------------------------------
+// Invalid-file warning (single-button, informational)
+// ---------------------------------------------------------------------------
+
+type InvalidFileWarningProps = {
+  title: string;
+  detail: string;
+  onDismiss: () => void;
+};
+
+function InvalidFileWarning({ title, detail, onDismiss }: InvalidFileWarningProps) {
+  return (
+    <div className="conflict-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onDismiss(); }}>
+      <div className="conflict-panel invalid-file-panel" role="alertdialog">
+        <div className="conflict-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+        </div>
+        <h3 className="invalid-file-title">{title}</h3>
+        <p className="invalid-file-detail">{detail}</p>
+        <div className="conflict-actions invalid-file-actions">
+          <button type="button" className="conflict-btn conflict-btn-cancel" onClick={onDismiss}>OK</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -95,6 +126,10 @@ export function WorkbenchPage() {
   // Optional pre-prepared source-plate layout (Liquid Name -> Source Well CSV).
   // Lives in component state — not persisted across navigation, intentionally.
   const [sourceLayoutFile, setSourceLayoutFile] = useState<File | null>(null);
+  // Validation-error modal for the optional Source plate layout CSV upload.
+  // Held separately from the page-level errorMessage banner so the user gets
+  // a hard-to-miss popup when the format is wrong (banner can be missed).
+  const [sourceLayoutWarning, setSourceLayoutWarning] = useState<string | null>(null);
 
   // ----- upload mode -----
   const [layoutFile, setLayoutFile] = useWorkbenchField("layoutFile");
@@ -243,6 +278,27 @@ export function WorkbenchPage() {
     setConfig((c) => (c ? { ...c, meta_file: file.name } : c));
   }
 
+  async function handleSourceLayoutChange(file: File | null) {
+    if (file === null) {
+      setSourceLayoutFile(null);
+      setConfig((c) => (c ? { ...c, source_layout_file: null } : c));
+      return;
+    }
+    try {
+      await apiClient.previewSourceLayout(file);
+      setSourceLayoutFile(file);
+      setConfig((c) => (c ? { ...c, source_layout_file: file.name } : c));
+    } catch (err) {
+      // Validation failed — pop a modal warning instead of silently rejecting.
+      // Leave previous state cleared so the upload zone does NOT go green.
+      setSourceLayoutFile(null);
+      setConfig((c) => (c ? { ...c, source_layout_file: null } : c));
+      setSourceLayoutWarning(
+        err instanceof Error ? err.message : "Failed to validate source plate layout."
+      );
+    }
+  }
+
   function handleMetaChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
     event.target.value = "";
@@ -293,6 +349,9 @@ export function WorkbenchPage() {
   }
 
   function handleConfigChange(field: keyof RunConfig, value: string) {
+    if (field === "dispenser" || field === "sourceplate_type") {
+      setSourceLayoutFile(null);
+    }
     setConfig((c) => {
       if (!c) return c;
       // Switching dispenser resets sourceplate_type to the new dispenser's
@@ -306,6 +365,13 @@ export function WorkbenchPage() {
           ...c,
           dispenser: value as RunConfig["dispenser"],
           sourceplate_type: meta?.default_sourceplate_type ?? c.sourceplate_type,
+          source_layout_file: null,
+        };
+      }
+      if (field === "sourceplate_type") {
+        return {
+          ...c,
+          sourceplate_type: value,
           source_layout_file: null,
         };
       }
@@ -489,10 +555,7 @@ export function WorkbenchPage() {
             onConfigChange={handleConfigChange}
             onProcess={() => { if (layoutFile && metaFile && config && preview) setShowConfirmRun(true); }}
             sourceLayoutFile={sourceLayoutFile}
-            onSourceLayoutFileChange={(f) => {
-              setSourceLayoutFile(f);
-              setConfig((c) => (c ? { ...c, source_layout_file: f?.name ?? null } : c));
-            }}
+            onSourceLayoutFileChange={(f) => void handleSourceLayoutChange(f)}
           />
         )}
       </div>
@@ -501,6 +564,8 @@ export function WorkbenchPage() {
         <ConfirmRunModal
           hasEdits={Boolean(workingPreview)}
           isEditMode={isEditMode}
+          sourceLayoutFileName={sourceLayoutFile?.name ?? config?.source_layout_file ?? null}
+          sourcePlateType={config?.sourceplate_type}
           onConfirm={handleConfirmRun}
           onClose={() => setShowConfirmRun(false)}
         />
@@ -520,6 +585,14 @@ export function WorkbenchPage() {
           message={conflictWarning.message}
           onConfirm={conflictWarning.onConfirm}
           onCancel={dismissConflictWarning}
+        />
+      )}
+
+      {sourceLayoutWarning && (
+        <InvalidFileWarning
+          title="Invalid source plate layout CSV"
+          detail={`iPLAID can't accept this file as a Source plate layout — the format is wrong.\n\n${sourceLayoutWarning}`}
+          onDismiss={() => setSourceLayoutWarning(null)}
         />
       )}
     </div>

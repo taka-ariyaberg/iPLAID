@@ -41,15 +41,27 @@ class JobStore:
         dispensers = list_dispensers()
         plate_types_by_dispenser: dict[str, list[str]] = {}
         plate_specs_by_dispenser: dict[str, dict] = {}
+        source_plate_definitions_by_dispenser: dict[str, list[dict]] = {}
         for d in dispensers:
             specs_path = self.repo_root / "data" / d.plate_specs_path
             if not specs_path.exists():
                 plate_types_by_dispenser[d.name] = []
                 plate_specs_by_dispenser[d.name] = {}
+                source_plate_definitions_by_dispenser[d.name] = []
                 continue
             specs = json.loads(specs_path.read_text(encoding="utf-8"))
             plate_types_by_dispenser[d.name] = sorted(specs.keys())
             plate_specs_by_dispenser[d.name] = specs
+            source_plate_definitions_by_dispenser[d.name] = [
+                {
+                    "id": name,
+                    "label": name,
+                    "rows": spec.get("rows", 8),
+                    "cols": spec.get("cols", 12),
+                    "wells": spec.get("wells", 96),
+                }
+                for name, spec in specs.items()
+            ]
 
         # Legacy: keep `sourcePlateTypes` and `sourcePlateDefinitions` keyed by
         # the iDOT specs so existing frontend code continues to work.
@@ -83,6 +95,7 @@ class JobStore:
                 for d in dispensers
             ],
             "plate_types_by_dispenser": plate_types_by_dispenser,
+            "source_plate_definitions_by_dispenser": source_plate_definitions_by_dispenser,
         }
 
     def create_job(
@@ -217,12 +230,21 @@ class JobStore:
             ]
             result_preview = build_layout_preview_from_dataframe(result["df"][result_preview_columns])
 
+            source_layout_provided = bool(result.get("source_layout_provided"))
+            dispenser_name = str(result["config"].get("dispenser", "idot")).lower()
+            dispenser_label = {
+                "idot": "iDOT",
+                "echo": "Echo",
+            }.get(dispenser_name, dispenser_name.upper())
             artifacts = []
             for key, label in [
-                ("out_idot", "Protocol CSV"),
+                ("out_idot", f"{dispenser_label} Protocol CSV"),
                 ("out_liquids", "Liquids CSV"),
                 ("out_imeta", "iMETA CSV"),
-                ("out_source_prep", "Source Prep TXT"),
+                (
+                    "out_source_prep",
+                    "Source Plate Summary TXT" if source_layout_provided else "Source Prep TXT",
+                ),
             ]:
                 artifact_path = result["paths"].get(key)
                 if artifact_path:

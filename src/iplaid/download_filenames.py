@@ -86,14 +86,22 @@ def build_run_artifact_paths(
         config.get("user_name", "user"),
         config.get("protocol_name", "run"),
     )
+    dispenser = sanitize_filename_segment(
+        str(config.get("dispenser", "idot")).lower(),
+        fallback="idot",
+    )
+    protocol_path = output_dir / build_download_filename(
+        project_details=project_details,
+        artifact=f"{dispenser}_protocol",
+        extension=".csv",
+        timestamp=run_timestamp,
+    )
 
     return {
-        "out_idot": output_dir / build_download_filename(
-            project_details=project_details,
-            artifact="idot_protocol",
-            extension=".csv",
-            timestamp=run_timestamp,
-        ),
+        # `out_idot` is the legacy internal key used by the pipeline. The
+        # filename itself is dispenser-aware.
+        "out_idot": protocol_path,
+        "out_protocol": protocol_path,
         "out_liquids": output_dir / build_download_filename(
             project_details=project_details,
             artifact="liquids_map",
@@ -115,14 +123,16 @@ def build_source_prep_output_path(
     config: dict,
     *,
     timestamp: str | None = None,
+    source_layout_provided: bool = False,
 ) -> Path:
-    """Return the standardized source-prep instructions path."""
+    """Return the standardized source-prep or source-summary path."""
     timestamp_value = timestamp or format_download_timestamp(
         timestamp_format=config.get("output_timestamp_format", DEFAULT_DOWNLOAD_TIMESTAMP_FORMAT)
     )
+    artifact = "source_plate_summary" if source_layout_provided else "source_plate_prep"
     return Path(output_dir) / build_download_filename(
         project_details=(config.get("user_name", "user"), config.get("protocol_name", "run")),
-        artifact="source_plate_prep",
+        artifact=artifact,
         extension=".txt",
         timestamp=timestamp_value,
     )

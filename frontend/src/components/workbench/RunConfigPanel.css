@@ -1,40 +1,23 @@
 @import "../../styles/DesignMode.css";
 
-/* Improve native number input arrows for config panel */
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  appearance: none;
-  margin: 0;
-  width: 22px;
-  height: 22px;
-  background: url('data:image/svg+xml;utf8,<svg width="22" height="22" xmlns="http://www.w3.org/2000/svg"><polygon points="11,6 15,12 7,12" fill="%23999"/><polygon points="11,16 7,10 15,10" fill="%23999"/></svg>') no-repeat center center;
-  background-size: 22px 22px;
-  opacity: 0.7;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: background 0.15s;
-}
+/* ==========================================================================
+   RunConfigPanel — Configuration form for a workbench run
+   ==========================================================================
+   The form is a 2-column grid. Each row contains either a plain <label>
+   wrapping the field or a <div class="config-form-field"> that holds the
+   custom upload zone for "Source plate layout".
 
-input[type="number"]:hover::-webkit-inner-spin-button,
-input[type="number"]:hover::-webkit-outer-spin-button {
-  opacity: 1;
-  background: url('data:image/svg+xml;utf8,<svg width="22" height="22" xmlns="http://www.w3.org/2000/svg"><polygon points="11,6 15,12 7,12" fill="%23444"/><polygon points="11,16 7,10 15,10" fill="%23444"/></svg>') no-repeat center center;
-}
+   The first six fields (User name, Protocol name, Dispenser, Source plate,
+   Source plate layout, Dilution solvent) share an explicit height so they
+   line up across the grid rows.
 
-input[type="number"] {
-  padding-right: 2.2em;
-}
+   The numeric fields below (Working volume, Max solvent, Prep overage,
+   Min pipette volume, Source well fill, Standard prep volume) are SpinInput
+   components styled by DesignMode.css and intentionally untouched here. */
 
-input[type="number"]::-ms-inner-spin-button,
-input[type="number"]::-ms-outer-spin-button {
-  width: 22px;
-  height: 22px;
-}
 
-input[type="number"]::-moz-focus-inner {
-  border: 0;
-}
+/* ── Panel + form layout ─────────────────────────────────────────────────── */
+
 .workbench-config {
   padding: 1.2rem;
 }
@@ -46,7 +29,10 @@ input[type="number"]::-moz-focus-inner {
   margin: 1rem 0 1.15rem;
 }
 
-.config-form label {
+/* `>` combinator on purpose — only applies to the row-level wrappers, not to
+   inner labels (e.g. the upload zone's <label> that wraps the file input). */
+.config-form > label,
+.config-form > .config-form-field {
   display: grid;
   gap: 0.45rem;
 }
@@ -55,6 +41,276 @@ input[type="number"]::-moz-focus-inner {
   color: var(--icell-text-muted);
   font-size: 0.86rem;
 }
+
+
+/* ── Unified field height for the six entry fields ───────────────────────── */
+/* Targets the native <input> in each row label, the upload zone for the
+   "Source plate layout" row, and the ConfigDropdown trigger button used for
+   "Dispenser" and "Source plate type". */
+
+.config-form > label > input,
+.config-form > .config-form-field > .config-upload-zone,
+.config-form > .config-form-field > .config-dropdown > .config-dropdown-trigger {
+  height: 54px;
+  box-sizing: border-box;
+}
+
+
+/* ── ConfigDropdown: Dispenser + Source plate type ───────────────────────── */
+/* Custom dropdown replacing native <select> so the opened menu is a styled
+   list (matching the dark UI) instead of the macOS popover panel. */
+
+.config-dropdown {
+  position: relative;
+}
+
+.config-dropdown-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0 0.95rem;
+  border: 1px solid var(--icell-border);
+  border-radius: var(--icell-radius-control);
+  background: #0c0c12;
+  color: var(--icell-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.config-dropdown-trigger:hover {
+  border-color: rgba(129, 140, 248, 0.4);
+}
+
+.config-dropdown-trigger:focus-visible {
+  outline: none;
+  border-color: rgba(129, 140, 248, 0.5);
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.08);
+}
+
+.config-dropdown-trigger-label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.config-dropdown-chevron {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  color: var(--icell-text-dim);
+  transition: transform 160ms ease, color 160ms ease;
+}
+
+.config-dropdown.is-open .config-dropdown-chevron {
+  transform: rotate(180deg);
+  color: var(--icell-text);
+}
+
+.config-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: #16161e;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 0.3rem;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.config-dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: none;
+  background: transparent;
+  color: var(--icell-text);
+  font: inherit;
+  text-align: left;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 100ms ease, color 100ms ease;
+}
+
+.config-dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.config-dropdown-item.is-selected {
+  background: rgba(129, 140, 248, 0.12);
+  color: var(--icell-accent);
+}
+
+
+/* ── Source plate layout: compact version of the Inputs-panel upload zone ── */
+
+.config-upload-zone {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0 0.85rem;
+  border-radius: 12px;
+  border: 1.5px dashed rgba(255, 255, 255, 0.1);
+  background: #111118;
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.config-upload-zone input[type="file"] {
+  display: none;
+}
+
+.config-upload-zone-target {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.65rem;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  cursor: pointer;
+}
+
+.config-upload-zone:not(.is-loaded):hover {
+  border-color: rgba(129, 140, 248, 0.4);
+  background: #13131e;
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.06);
+}
+
+.config-upload-zone.is-loaded {
+  border-style: solid;
+  border-color: rgba(52, 211, 153, 0.35);
+  background: rgba(52, 211, 153, 0.04);
+}
+
+.config-upload-zone.is-loaded:hover {
+  border-color: rgba(52, 211, 153, 0.55);
+  background: rgba(52, 211, 153, 0.07);
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.06);
+}
+
+.config-upload-zone-icon {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--icell-text-muted);
+  transition: color 180ms ease, background 180ms ease, border-color 180ms ease;
+}
+
+.config-upload-zone-icon svg {
+  width: 13px;
+  height: 13px;
+}
+
+.config-upload-zone.is-loaded .config-upload-zone-icon {
+  border-color: rgba(52, 211, 153, 0.3);
+  background: rgba(52, 211, 153, 0.10);
+  color: #34d399;
+}
+
+.config-upload-zone:not(.is-loaded) .config-upload-zone-target:hover .config-upload-zone-icon {
+  border-color: rgba(129, 140, 248, 0.3);
+  background: rgba(129, 140, 248, 0.08);
+  color: var(--icell-accent);
+}
+
+.config-upload-zone-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  min-width: 0;
+}
+
+/* Specificity bump: .config-form span applies a muted color to all spans —
+   override here so the upload-zone title uses the regular text color. */
+.config-form .config-upload-zone-title {
+  font-weight: 600;
+  font-size: 0.86rem;
+  color: var(--icell-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.config-upload-zone-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.config-upload-zone-badge {
+  flex-shrink: 0;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.config-upload-zone-badge.is-optional {
+  color: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.config-upload-zone-badge.is-loaded {
+  color: #34d399;
+  border-color: rgba(52, 211, 153, 0.28);
+  background: rgba(52, 211, 153, 0.08);
+}
+
+.config-upload-zone-clear {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent;
+  color: var(--icell-text-dim);
+  cursor: pointer;
+  padding: 0;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.config-upload-zone-clear svg {
+  width: 10px;
+  height: 10px;
+}
+
+.config-upload-zone-clear:hover {
+  background: rgba(248, 113, 113, 0.12);
+  border-color: rgba(255, 59, 85, 0.26);
+  color: #ff3b55;
+}
+
+
+/* ── Process button + responsive layout ──────────────────────────────────── */
 
 .workbench-process-button {
   width: 100%;
