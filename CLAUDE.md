@@ -9,43 +9,36 @@ iPLAID (iDOT Protocol Layout & Assay Integration Dispatcher) converts compound s
 
 ---
 
-## Vault Pointer
-Primary vault: `/Users/takar834/Documents/UU/TIMED/Tools/Nexus_OV/iPLAID_OV/`
-Shared vault:  `/Users/takar834/Documents/UU/TIMED/Tools/Nexus_OV/_Commons_OV/`
+## Vault
+- Project: `~/claude-workspace/Nexus_OV/iPLAID_OV/`
+- Shared:  `~/claude-workspace/Nexus_OV/_Commons_OV/`
+
+**Save-location rule:** Project-specific work → `iPLAID_OV/`. Cross-project workflow tooling, anything in `~/.claude/` or `~/claude-workspace/claude-steroid/` → `_Commons_OV/`. Applies to Specs, Plans, ADRs.
 
 ---
 
-## Session Start Ritual
-1. Read `../Nexus_OV/iPLAID_OV/iPLAID_Home.md` — master index
-2. Read `../Nexus_OV/iPLAID_OV/iPLAID_Current.md` — **live focus; trust this over Home.md**
-3. Read the most recent file in `../Nexus_OV/iPLAID_OV/Sessions/` for context continuity
-4. Skim `../Nexus_OV/_Commons_OV/Commons_Home.md` for cross-project patterns
-5. Do NOT re-read the whole repo from scratch — the vault is the cached understanding
+## Session Start
+Read `~/claude-workspace/Nexus_OV/iPLAID_OV/Current.md`. That's it. Auto-memory loads MEMORY.md automatically; do not re-read Home.md or Sessions logs unless something forces it.
+
+## Session End
+Run `/end-session`. It updates `Current.md`, appends a 5-line note to `Sessions/`, and writes ADRs/Learnings only when warranted.
 
 ---
 
-## Session End Ritual
-1. Append a dated note to `../Nexus_OV/iPLAID_OV/Sessions/` using `Templates/iPLAID_Session_Note.md`
-2. Update `../Nexus_OV/iPLAID_OV/iPLAID_Current.md` if focus, blockers, or next steps shifted
-3. Add to `../Nexus_OV/iPLAID_OV/Decisions/` for any architectural choice made today
-4. Escalate generalizable learnings to `../Nexus_OV/_Commons_OV/`
+## Agent Model Override Rubric
+User agents (`~/.claude/agents/`) have sensible default `model:`. Override at dispatch when:
+
+| Override | When |
+|---|---|
+| `reviewer` → `model: opus` | Security-critical diffs, auth/crypto, architectural reviews |
+| `planner` → `model: sonnet` | Trivial CRUD plan, single-file change, no novel design |
+| `executor` → `model: opus` | Plan involves subtle reasoning per step (rare) |
+
+Default models otherwise. Trust the skills — don't add a routing table here.
 
 ---
 
-## Routing Table — Auto-Trigger Rules
-
-| Situation | Action |
-|-----------|--------|
-| New feature / change >50 lines | `superpowers` plugin — brainstorm → plan → TDD |
-| Frontend UI work (React) | `frontend-design` plugin + `/impeccable` (default) or `/emilkowalski-skill` for interaction-heavy work |
-| Pre-commit / pre-PR on non-trivial diffs | `code-review` plugin |
-| Auth, crypto, input validation, secrets, deps | `/security-review` — **mandatory** |
-| MiniZinc constraint model changes | Extra care — run full regression tests; logic errors are silent |
-| Design audit requested | `/impeccable /audit` then `/impeccable /polish` |
-
----
-
-## Setup
+## Setup / Quick Run
 
 Docker only (no host Python/Node/MiniZinc required):
 
@@ -59,7 +52,6 @@ docker compose up
 ---
 
 ## Key Files
-
 | File | Purpose |
 |------|---------|
 | `src/iplaid/` | Main pipeline — layout → dispenser-specific output |
@@ -87,13 +79,6 @@ docker compose up
 
 ---
 
-## Anti-Patterns
-- Never load multiple taste/design skills simultaneously
-- Never skip superpowers brainstorm on features >50 lines
-- Never commit non-trivial diffs without code-review
-- Never re-read the full repo from scratch — always start from vault
-
----
-
 ## Reference
-Skills and workflow recipes: `~/claude-steroid/skills/` and `~/claude-steroid/workflows/`
+- Skill descriptions: `~/claude-workspace/claude-steroid/skills/`
+- Anti-patterns: `~/claude-workspace/claude-steroid/rules/anti-patterns.md`
