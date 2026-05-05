@@ -18,7 +18,7 @@ iPLAID (iDOT Protocol Layout & Assay Integration Dispatcher) converts compound s
 ---
 
 ## Session Start
-Read `~/claude-workspace/Nexus_OV/iPLAID_OV/Current.md`. That's it. Auto-memory loads MEMORY.md automatically; do not re-read Home.md or Sessions logs unless something forces it.
+Read `~/claude-workspace/Nexus_OV/iPLAID_OV/iPLAID_Current.md`. That's it. Auto-memory loads MEMORY.md automatically; do not re-read iPLAID_Home.md or Sessions logs unless something forces it.
 
 ## Session End
 Run `/end-session`. It updates `Current.md`, appends a 5-line note to `Sessions/`, and writes ADRs/Learnings only when warranted.
