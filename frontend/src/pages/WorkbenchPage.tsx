@@ -157,6 +157,8 @@ export function WorkbenchPage() {
   // pending files held while waiting for user confirmation
   const pendingLayoutFileRef = useRef<File | null>(null);
   const pendingMetaFileRef   = useRef<File | null>(null);
+  const pendingNewMetaRef = useRef<{ file: File; source: "upload" | "created"; rows?: MetaCompoundRow[] } | null>(null);
+  const pendingNewSourceLayoutRef = useRef<File | null>(null);
 
   // ----- design mode -----
   const [designActive, setDesignActive] = useWorkbenchField("designActive");
@@ -233,6 +235,8 @@ export function WorkbenchPage() {
   function dismissConflictWarning() {
     pendingLayoutFileRef.current = null;
     pendingMetaFileRef.current = null;
+    pendingNewMetaRef.current = null;
+    pendingNewSourceLayoutRef.current = null;
     setConflictWarning(null);
   }
 
@@ -278,6 +282,68 @@ export function WorkbenchPage() {
     setConfig((c) => (c ? { ...c, meta_file: file.name } : c));
   }
 
+  function applyMetaFromUpload(file: File) {
+    if (sourceLayoutFile) {
+      pendingNewMetaRef.current = { file, source: "upload" };
+      setConflictWarning({
+        message:
+          "A source plate layout is staged, which already provides metadata. Replace it with this metadata file?",
+        onConfirm: () => {
+          const pending = pendingNewMetaRef.current;
+          pendingNewMetaRef.current = null;
+          setConflictWarning(null);
+          if (!pending) return;
+          setSourceLayoutFile(null);
+          setConfig((c) => (c ? { ...c, source_layout_file: null } : c));
+          applyMetaFile(pending.file);
+        },
+      });
+      return;
+    }
+    applyMetaFile(file);
+  }
+
+  function applyMetaFromCreator(file: File, rows: MetaCompoundRow[]) {
+    if (sourceLayoutFile) {
+      pendingNewMetaRef.current = { file, source: "created", rows };
+      setConflictWarning({
+        message:
+          "A source plate layout is staged, which already provides metadata. Replace it with the metadata you just created?",
+        onConfirm: () => {
+          const pending = pendingNewMetaRef.current;
+          pendingNewMetaRef.current = null;
+          setConflictWarning(null);
+          if (!pending || pending.source !== "created" || !pending.rows) return;
+          setSourceLayoutFile(null);
+          setConfig((c) => (c ? { ...c, source_layout_file: null } : c));
+          handleMetaFile(pending.file, pending.rows);
+        },
+      });
+      return;
+    }
+    handleMetaFile(file, rows);
+  }
+
+  async function applySourceLayoutUpload(file: File | null) {
+    if (file && metaFile) {
+      pendingNewSourceLayoutRef.current = file;
+      setConflictWarning({
+        message:
+          "A metadata file is staged. A source plate layout supersedes metadata. Replace metadata with this source plate layout?",
+        onConfirm: () => {
+          const pending = pendingNewSourceLayoutRef.current;
+          pendingNewSourceLayoutRef.current = null;
+          setConflictWarning(null);
+          if (!pending) return;
+          clearMetaFile();
+          void handleSourceLayoutChange(pending);
+        },
+      });
+      return;
+    }
+    await handleSourceLayoutChange(file);
+  }
+
   async function handleSourceLayoutChange(file: File | null) {
     if (file === null) {
       setSourceLayoutFile(null);
@@ -311,12 +377,12 @@ export function WorkbenchPage() {
           const nextFile = pendingMetaFileRef.current;
           pendingMetaFileRef.current = null;
           setConflictWarning(null);
-          if (nextFile) applyMetaFile(nextFile);
+          if (nextFile) applyMetaFromUpload(nextFile);
         },
       });
       return;
     }
-    applyMetaFile(file);
+    applyMetaFromUpload(file);
   }
 
   function handleDesignToggle() {
@@ -555,7 +621,7 @@ export function WorkbenchPage() {
             onConfigChange={handleConfigChange}
             onProcess={() => { if (layoutFile && metaFile && config && preview) setShowConfirmRun(true); }}
             sourceLayoutFile={sourceLayoutFile}
-            onSourceLayoutFileChange={(f) => void handleSourceLayoutChange(f)}
+            onSourceLayoutFileChange={(f) => void applySourceLayoutUpload(f)}
           />
         )}
       </div>
@@ -576,7 +642,7 @@ export function WorkbenchPage() {
           initialRows={metaCreatorRows}
           projectDetails={downloadProjectDetails}
           onClose={() => setMetaCreatorOpen(false)}
-          onApply={handleMetaFile}
+          onApply={applyMetaFromCreator}
         />
       )}
 
