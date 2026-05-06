@@ -456,7 +456,8 @@ export function WorkbenchPage() {
   }
 
   async function handleConfirmRun() {
-    if (!metaFile || !config) return;
+    if (!config) return;
+    if (!metaFile && !sourceLayoutFile) return;
     setShowConfirmRun(false);
     setProcessing(true);
     setErrorMessage(null);
@@ -519,7 +520,7 @@ export function WorkbenchPage() {
 
   return (
     <div className="workbench-layout">
-      <WorkbenchHero isReady={Boolean(layoutFile && metaFile)} />
+      <WorkbenchHero isReady={Boolean(layoutFile && (metaFile || sourceLayoutFile))} />
 
       {errorMessage && <section className="status-banner is-error">{errorMessage}</section>}
 
@@ -617,9 +618,9 @@ export function WorkbenchPage() {
             config={config}
             bootstrap={bootstrap}
             processing={processing}
-            canProcess={Boolean(layoutFile && metaFile && preview)}
+            canProcess={Boolean(layoutFile && (metaFile || sourceLayoutFile) && preview)}
             onConfigChange={handleConfigChange}
-            onProcess={() => { if (layoutFile && metaFile && config && preview) setShowConfirmRun(true); }}
+            onProcess={() => { if (layoutFile && (metaFile || sourceLayoutFile) && config && preview) setShowConfirmRun(true); }}
             sourceLayoutFile={sourceLayoutFile}
             onSourceLayoutFileChange={(f) => void applySourceLayoutUpload(f)}
           />

@@ -56,13 +56,15 @@ export const apiClient = {
 
   async createRun(params: {
     layoutFile: File;
-    metaFile: File;
+    metaFile: File | null;
     config: RunConfig;
     sourceLayoutFile?: File | null;
   }): Promise<JobRecord> {
     const formData = new FormData();
     formData.append("layout_file", params.layoutFile);
-    formData.append("meta_file", params.metaFile);
+    if (params.metaFile) {
+      formData.append("meta_file", params.metaFile);
+    }
     formData.append("config_json", JSON.stringify(params.config));
     if (params.sourceLayoutFile) {
       formData.append("source_layout_file", params.sourceLayoutFile);
