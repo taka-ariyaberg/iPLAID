@@ -1,8 +1,8 @@
 {
   "user_name": "YourName",
   "protocol_name": "YourProtocolName",
-  "layout_file": "Layout_1.csv",
-  "meta_file": "cmpd_info.csv",
+  "layout_file": "compound_layout_example.csv",
+  "meta_file": "meta_example.csv",
   "dispenser": "idot",
   "source_layout_file": null,
   "sourceplate_type": "S.100 Plate",

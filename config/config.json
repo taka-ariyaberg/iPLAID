@@ -3,6 +3,8 @@
   "protocol_name": "MyExperiment",
   "layout_file": "compound_layout_example.csv",
   "meta_file": "meta_example.csv",
+  "dispenser": "idot",
+  "source_layout_file": null,
   "sourceplate_type": "S.100 Plate",
   "target_plate_type": "MWP 384",
   "working_volume_ul": 40,
