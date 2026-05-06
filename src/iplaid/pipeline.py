@@ -17,6 +17,8 @@ from .loaders import (
     load_meta_csv,
     normalize_meta_df,
     merge_layout_with_meta,
+    derive_meta_from_source_layout,
+    source_layout_to_legacy_shape,
 )
 from .calculations import (
     stockfinder,
@@ -43,6 +45,11 @@ from .dispensers import get_dispenser
 from .validators_preflight import PreflightAssessmentError, run_preflight_validation
 from . import source_plate_prep
 from .imeta import build_imeta_dataframe
+
+# Columns that unambiguously identify the new self-contained source-layout shape.
+# A CSV possessing all four is treated as new-shape; anything else falls through
+# to legacy handling (3-column Liquid Name / Source Plate / Source Well).
+NEW_SHAPE_COLUMNS = {"cmpdname", "conc_mM", "source_plate", "source_well"}
 
 
 def run_pipeline(project_root=None, include_source_prep=True):
@@ -72,7 +79,7 @@ def run_pipeline_with_inputs(
     *,
     config: dict,
     layout_path: str | Path,
-    meta_path: str | Path,
+    meta_path: str | Path | None,
     output_dir: str | Path,
     include_source_prep: bool = True,
     project_root: str | Path | None = None,
@@ -82,14 +89,38 @@ def run_pipeline_with_inputs(
     """
     Execute the pipeline against explicit input files and output directory.
 
-    This entrypoint is suitable for the web app because it keeps each run isolated
-    and does not depend on mutating repository input/config files.
+    Exactly one of {meta_path, new-shape source_layout_path} must be provided.
+    When the source plate layout is provided in the new shape (cmpdname /
+    conc_mM / solvent / source_plate / source_well), metadata is derived from
+    it and `meta_path` must be None. The legacy 3-column source-layout upload
+    (Liquid Name / Source Plate / Source Well) is a programmatic shim that
+    pairs with an explicit `meta_path`.
     """
+    # Probe the source layout shape up front so we can apply the correct
+    # exclusivity rule. New-shape source layouts are self-contained and
+    # forbid a meta_path; legacy-shape uploads still require meta.
+    layout_raw = None
+    layout_is_new_shape = False
+    if source_layout_path is not None:
+        import pandas as pd
+        layout_raw = pd.read_csv(source_layout_path)
+        layout_is_new_shape = NEW_SHAPE_COLUMNS.issubset(set(layout_raw.columns))
+
+    if layout_is_new_shape:
+        if meta_path is not None:
+            raise ValueError(
+                "both meta_path and source_layout_path were provided; pass exactly one"
+            )
+    else:
+        if meta_path is None:
+            raise ValueError(
+                "meta_path is required (or pass source_layout_path in the new self-contained shape)"
+            )
+
     root = find_project_root(project_root)
     cfg = validate_config_dict(dict(config))
 
     explicit_layout_path = Path(layout_path)
-    explicit_meta_path = Path(meta_path)
     explicit_plate_specs_path = (
         Path(plate_specs_path)
         if plate_specs_path is not None
@@ -102,7 +133,7 @@ def run_pipeline_with_inputs(
     paths = {
         "project_root": Path(root),
         "layout_path": explicit_layout_path,
-        "meta_path": explicit_meta_path,
+        "meta_path": Path(meta_path) if meta_path is not None else None,
         "plate_specs_path": explicit_plate_specs_path,
         "out_idot": output_paths["out_idot"],
         "out_protocol": output_paths.get("out_protocol", output_paths["out_idot"]),
@@ -112,10 +143,18 @@ def run_pipeline_with_inputs(
     }
 
     existing_layout_df = None
+    derived_cmpd_info = None
     if source_layout_path is not None:
-        import pandas as pd
         paths["source_layout_path"] = Path(source_layout_path)
-        existing_layout_df = pd.read_csv(source_layout_path)
+        if layout_is_new_shape:
+            derived_cmpd_info = normalize_meta_df(
+                derive_meta_from_source_layout(layout_raw)
+            )
+            existing_layout_df = source_layout_to_legacy_shape(layout_raw)
+        else:
+            # Legacy 3-column upload (only used by tests / programmatic callers
+            # passing the old shape alongside an explicit meta_path).
+            existing_layout_df = layout_raw
 
     return _run_pipeline_with_resolved_inputs(
         root=Path(root),
@@ -123,6 +162,7 @@ def run_pipeline_with_inputs(
         paths=paths,
         include_source_prep=include_source_prep,
         existing_layout=existing_layout_df,
+        derived_cmpd_info=derived_cmpd_info,
     )
 
 
@@ -133,6 +173,7 @@ def _run_pipeline_with_resolved_inputs(
     paths: dict,
     include_source_prep: bool,
     existing_layout=None,
+    derived_cmpd_info=None,
 ):
     """Execute the shared pipeline workflow once config and file paths are resolved."""
 
@@ -146,8 +187,11 @@ def _run_pipeline_with_resolved_inputs(
     df = load_layout_csv(paths["layout_path"])
     df, _ = normalize_layout_df(df)
 
-    cmpd_info = load_meta_csv(paths["meta_path"])
-    cmpd_info = normalize_meta_df(cmpd_info)
+    if derived_cmpd_info is not None:
+        cmpd_info = derived_cmpd_info
+    else:
+        cmpd_info = load_meta_csv(paths["meta_path"])
+        cmpd_info = normalize_meta_df(cmpd_info)
     df = merge_layout_with_meta(df, cmpd_info)
 
     # Pre-flight validation: check all concentrations and solvent families are feasible
