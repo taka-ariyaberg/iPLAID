@@ -201,6 +201,62 @@ def normalize_meta_df(cmpd_info):
     return cmpd_info
 
 
+def derive_meta_from_source_layout(layout_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Build a meta-equivalent DataFrame from a new-shape source plate layout.
+
+    Input columns: cmpdname, conc_mM, solvent, source_plate, source_well.
+    Output columns: cmpdname, highest_stock_mM, solvent (one row per compound).
+
+    `highest_stock_mM` is max(conc_mM) over the compound's rows. Solvent must
+    be consistent per compound.
+
+    The result is suitable for `normalize_meta_df`, which performs the rest of
+    the validation (solvent-control rules, missing-solvent-row check, etc.).
+    """
+    required = {"cmpdname", "conc_mM", "solvent", "source_plate", "source_well"}
+    missing = sorted(required - set(layout_df.columns))
+    if missing:
+        raise ValueError(f"Source plate layout is missing required columns: {missing}")
+
+    df = layout_df.copy()
+    df["cmpdname"] = df["cmpdname"].map(clean_label)
+    df["solvent"] = df["solvent"].map(clean_label)
+
+    blank_names = df.loc[df["cmpdname"].eq(""), "cmpdname"]
+    blank_solvents = df.loc[df["solvent"].eq(""), "solvent"]
+    if len(blank_names) > 0:
+        raise ValueError("Source plate layout has blank cmpdname value(s).")
+    if len(blank_solvents) > 0:
+        raise ValueError("Source plate layout has blank solvent value(s).")
+
+    df["conc_mM"] = pd.to_numeric(df["conc_mM"], errors="raise")
+
+    # Single-pass groupby: aggregate + inconsistency flag in one shot.
+    df["cmpdname_key"] = df["cmpdname"].map(label_key)
+    grouped = df.groupby("cmpdname_key", as_index=False).agg(
+        cmpdname=("cmpdname", "first"),
+        highest_stock_mM=("conc_mM", "max"),
+        solvent=("solvent", "first"),
+        _solvent_nunique=("solvent", "nunique"),
+    )
+
+    bad = grouped[grouped["_solvent_nunique"] > 1]
+    if not bad.empty:
+        lines = []
+        for row in bad.itertuples(index=False):
+            unique_solvents = sorted(
+                df.loc[df["cmpdname_key"].eq(label_key(row.cmpdname)), "solvent"].unique().tolist()
+            )
+            lines.append(
+                f"Inconsistent solvent for cmpdname '{row.cmpdname}': "
+                + " vs ".join(repr(s) for s in unique_solvents)
+            )
+        raise ValueError("\n  - ".join(["Source plate layout has solvent inconsistencies:"] + lines))
+
+    return grouped[["cmpdname", "highest_stock_mM", "solvent"]]
+
+
 def merge_layout_with_meta(df, cmpd_info):
     df = df.copy()
     cmpd_info = cmpd_info.copy()
