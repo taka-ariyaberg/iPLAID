@@ -117,7 +117,7 @@ class RunConfigModel(BaseModel):
     user_name: str = Field(default="YourName")
     protocol_name: str = Field(default="PLAID_RUN")
     layout_file: str = Field(default="layout.csv")
-    meta_file: str = Field(default="meta.csv")
+    meta_file: str | None = Field(default=None)
     dispenser: Literal["idot", "echo"] = Field(default="idot")
     source_layout_file: Optional[str] = Field(default=None)
     sourceplate_type: str = Field(default="S.100 Plate")

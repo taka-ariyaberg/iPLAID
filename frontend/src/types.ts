@@ -100,7 +100,7 @@ export type RunConfig = {
   user_name: string;
   protocol_name: string;
   layout_file: string;
-  meta_file: string;
+  meta_file: string | null;
   dispenser: DispenserName;
   source_layout_file?: string | null;
   sourceplate_type: string;

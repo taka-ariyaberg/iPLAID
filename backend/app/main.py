@@ -71,14 +71,26 @@ async def preview_source_layout(source_layout_file: UploadFile = File(...)) -> d
 @app.post("/api/runs")
 async def create_run(
     layout_file: UploadFile = File(...),
-    meta_file: UploadFile = File(...),
     config_json: str = Form(...),
+    meta_file: UploadFile | None = File(None),
     source_layout_file: UploadFile | None = File(None),
 ) -> dict:
+    if (meta_file is None) == (source_layout_file is None):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Provide exactly one of: meta_file, source_layout_file. "
+                "Source plate layout already includes the metadata."
+            ),
+        )
+
     try:
         config = RunConfigModel.model_validate_json(config_json).model_dump()
     except Exception as exc:
         raise HTTPException(status_code=422, detail=f"Invalid config payload: {exc}") from exc
+
+    meta_bytes = await meta_file.read() if meta_file is not None else None
+    meta_filename = meta_file.filename if meta_file is not None else None
 
     source_layout_bytes = None
     source_layout_filename = None
@@ -90,8 +102,8 @@ async def create_run(
         return job_store.create_job(
             layout_bytes=await layout_file.read(),
             layout_filename=layout_file.filename or "layout.csv",
-            meta_bytes=await meta_file.read(),
-            meta_filename=meta_file.filename or "meta.csv",
+            meta_bytes=meta_bytes,
+            meta_filename=meta_filename,
             config=config,
             source_layout_bytes=source_layout_bytes,
             source_layout_filename=source_layout_filename,

@@ -103,12 +103,19 @@ class JobStore:
         *,
         layout_bytes: bytes,
         layout_filename: str,
-        meta_bytes: bytes,
-        meta_filename: str,
+        meta_bytes: bytes | None = None,
+        meta_filename: str | None = None,
         config: dict,
         source_layout_bytes: bytes | None = None,
         source_layout_filename: str | None = None,
     ) -> dict:
+        # Defense-in-depth: mirrors the HTTP route guard for programmatic callers.
+        if (meta_bytes is None) == (source_layout_bytes is None):
+            raise ValueError(
+                "Provide exactly one of meta_file or source_layout_file. "
+                "Source plate layout already includes the metadata."
+            )
+
         job_id = uuid.uuid4().hex[:12]
         job_dir = self.jobs_root / job_id
         uploads_dir = job_dir / "uploads"
@@ -117,11 +124,14 @@ class JobStore:
         outputs_dir.mkdir(parents=True, exist_ok=True)
 
         safe_layout_name = Path(layout_filename).name or "layout.csv"
-        safe_meta_name = Path(meta_filename).name or "meta.csv"
         layout_path = uploads_dir / safe_layout_name
-        meta_path = uploads_dir / safe_meta_name
         layout_path.write_bytes(layout_bytes)
-        meta_path.write_bytes(meta_bytes)
+
+        meta_path: Path | None = None
+        if meta_bytes is not None:
+            safe_meta_name = Path(meta_filename or "meta.csv").name or "meta.csv"
+            meta_path = uploads_dir / safe_meta_name
+            meta_path.write_bytes(meta_bytes)
 
         source_layout_path: Path | None = None
         if source_layout_bytes is not None:
@@ -131,7 +141,8 @@ class JobStore:
 
         run_config = dict(config)
         run_config["layout_file"] = safe_layout_name
-        run_config["meta_file"] = safe_meta_name
+        if meta_path is not None:
+            run_config["meta_file"] = meta_path.name
         if source_layout_path is not None:
             run_config["source_layout_file"] = source_layout_path.name
 
@@ -191,7 +202,7 @@ class JobStore:
         job_id: str,
         job_dir: Path,
         layout_path: Path,
-        meta_path: Path,
+        meta_path: Path | None,
         outputs_dir: Path,
         config: dict,
         source_layout_path: Path | None = None,
