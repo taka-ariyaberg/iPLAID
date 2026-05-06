@@ -168,6 +168,20 @@ Ethanol,0,Ethanol
 The in-app metadata creator handles solvent rows automatically and does not ask the user for a stock value for solvents.
 Internally, the design solver still receives these solvent entries as PLAID_Core control objects with one concentration level and replicate counts only. After solving, iPLAID converts them back into solvent rows with `CONCuM = 0` in the exported layout CSV.
 
+### Source plate layout CSV (optional)
+
+If you have a predesigned source plate, upload a layout CSV instead of metadata — it is a superset and supersedes the metadata file (the two are mutually exclusive). Required columns:
+
+| Column | Meaning |
+|--------|---------|
+| `cmpdname` | Compound name; must match the layout compound names exactly |
+| `conc_mM` | Stock concentration in this source well, in mM |
+| `solvent` | Solvent family for that compound; must be consistent across all rows of the same compound |
+| `source_plate` | Source plate identifier |
+| `source_well` | Well address on the source plate (e.g. `A1`, `B01`) |
+
+Solvent-control wells are rows where `cmpdname == solvent` and `conc_mM == 0`. iPLAID derives `highest_stock_mM` per compound as `max(conc_mM)` across its rows, then runs the same downstream pipeline. Examples are under `inputs/source_plate_layout/`.
+
 ## Configuration
 
 The direct pipeline reads `config/config.json`. The template lives in `config/config.template.json`.
@@ -213,7 +227,7 @@ Important fields:
 2. Upload a layout CSV.
 3. Upload a metadata CSV, or build one with the metadata creator.
 4. Inspect the previewed plate map.
-5. Adjust run settings: pick the **Dispenser** (iDOT / Echo), the **Source plate type** for that dispenser, and optionally upload a **Source plate layout** CSV (`Liquid Name`, `Source Well`, optional `Source Plate`). The upload is validated immediately — invalid CSVs trigger a popup warning and the field stays empty.
+5. Adjust run settings: pick the **Dispenser** (iDOT / Echo), the **Source plate type** for that dispenser, and optionally upload a **Source plate layout** CSV (`cmpdname, conc_mM, solvent, source_plate, source_well`). When uploaded, it replaces the metadata file (mutual exclusion — the workbench prompts before swapping). The upload is validated immediately; invalid CSVs trigger a popup warning and the field stays empty.
 6. Submit the run.
 7. Review results and download the dispenser-specific protocol CSV, liquids map CSV, iMETA CSV, and either the source-prep TXT or the source-plate summary TXT.
 
