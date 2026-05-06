@@ -257,6 +257,43 @@ def derive_meta_from_source_layout(layout_df: pd.DataFrame) -> pd.DataFrame:
     return grouped[["cmpdname", "highest_stock_mM", "solvent"]]
 
 
+def _format_conc(value: float) -> str:
+    """Match Python's default float→str formatting for conc_mM in Liquid Name.
+
+    This must agree with the format produced by the rest of the pipeline when
+    constructing Liquid Name internally (so set-equality matching in
+    `validate_source_layout_geometry` succeeds). Today the codebase relies on
+    plain str(float) — we keep that.
+    """
+    return str(float(value))
+
+
+def source_layout_to_legacy_shape(layout_df: pd.DataFrame) -> pd.DataFrame:
+    """Rewrite a new-shape source plate layout into the old 3-column shape.
+
+    Output columns: Liquid Name (= `[cmpdname][conc_mM]`), Source Plate,
+    Source Well. Downstream consumers (`output.py`,
+    `source_plate_prep.py`) read the old shape and remain untouched.
+    """
+    required = {"cmpdname", "conc_mM", "solvent", "source_plate", "source_well"}
+    missing = sorted(required - set(layout_df.columns))
+    if missing:
+        raise ValueError(f"Source plate layout is missing required columns: {missing}")
+
+    df = layout_df.copy()
+    df["cmpdname"] = df["cmpdname"].map(clean_label)
+    df["conc_mM"] = pd.to_numeric(df["conc_mM"], errors="raise")
+    out = pd.DataFrame({
+        "Liquid Name": [
+            f"[{name}][{_format_conc(conc)}]"
+            for name, conc in zip(df["cmpdname"], df["conc_mM"])
+        ],
+        "Source Plate": df["source_plate"].astype(str).str.strip().values,
+        "Source Well": df["source_well"].astype(str).str.strip().values,
+    })
+    return out
+
+
 def merge_layout_with_meta(df, cmpd_info):
     df = df.copy()
     cmpd_info = cmpd_info.copy()
