@@ -12,7 +12,6 @@ from src.iplaid.wells import canonical_well_name
 
 
 WELL_PATTERN = re.compile(r"^([A-Za-z]+)(\d+)$")
-LIQUID_NAME_PATTERN = re.compile(r"^\[(.*?)\]\[(.*?)\]$")
 
 
 def _row_label_to_index(label: str) -> int:
@@ -141,18 +140,16 @@ def dataframe_to_records(df, limit: int | None = None) -> list[dict]:
     return json.loads(df.to_json(orient="records"))
 
 
+REQUIRED_LAYOUT_COLUMNS = ["cmpdname", "conc_mM", "solvent", "source_plate", "source_well"]
+
+
 def validate_source_layout_upload(file_name: str, file_bytes: bytes) -> dict:
     """
-    Schema-level validation for a source-plate-layout CSV upload.
+    Schema-level validation for the new-format Source plate layout CSV upload.
 
-    Checks the structural shape of the file (parseable, required columns
-    present, Liquid Name in `[Compound][Stock]` format with a numeric stock,
-    Source Well in `<letters><digits>` format, no blanks, no duplicates).
-
+    Required columns: cmpdname, conc_mM, solvent, source_plate, source_well.
     Geometry checks against the selected source plate (does well exist on
-    the plate?) and completeness checks against the run's layout/meta (are
-    all required liquids present?) intentionally happen later, at run time
-    in `output.py`, since those need context this endpoint doesn't have.
+    the plate?) intentionally happen later in `output.py`.
     """
     suffix = Path(file_name).suffix or ".csv"
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as handle:
@@ -160,6 +157,8 @@ def validate_source_layout_upload(file_name: str, file_bytes: bytes) -> dict:
         temp_path = Path(handle.name)
 
     try:
+        if b"\x00" in file_bytes:
+            raise ValueError("Could not parse CSV: file contains null bytes (not a text CSV).")
         try:
             df = pd.read_csv(temp_path)
         except Exception as exc:
@@ -167,89 +166,91 @@ def validate_source_layout_upload(file_name: str, file_bytes: bytes) -> dict:
     finally:
         temp_path.unlink(missing_ok=True)
 
-    required = ["Liquid Name", "Source Well"]
-    missing = [col for col in required if col not in df.columns]
+    missing = [col for col in REQUIRED_LAYOUT_COLUMNS if col not in df.columns]
     if missing:
         raise ValueError(
             "Source plate layout CSV is missing required column(s): "
-            f"{missing}. Expected: 'Liquid Name', 'Source Well' "
-            "(and optionally 'Source Plate')."
+            f"{missing}. Required: {REQUIRED_LAYOUT_COLUMNS}."
         )
 
     if len(df) == 0:
         raise ValueError("Source plate layout CSV has no data rows.")
 
-    columns_to_check = list(required)
-    if "Source Plate" in df.columns:
-        columns_to_check.append("Source Plate")
-    for column in columns_to_check:
-        stripped = df[column].astype(str).str.strip()
-        if df[column].isna().any() or (stripped == "").any():
+    for col in REQUIRED_LAYOUT_COLUMNS:
+        stripped = df[col].astype(str).str.strip()
+        blank_mask = df[col].isna() | stripped.eq("")
+        if blank_mask.any():
+            row_idx = int(blank_mask.idxmax()) + 1  # 1-based, header excluded
             raise ValueError(
-                f"Source plate layout has blank values in column '{column}'."
+                f"Row {row_idx}: blank value in column '{col}'."
             )
 
-    bad_format: list[str] = []
-    bad_concentration: list[str] = []
-    for raw in df["Liquid Name"].astype(str).str.strip():
-        match = LIQUID_NAME_PATTERN.match(raw)
-        if not match:
-            bad_format.append(raw)
-            continue
+    # Numeric conc_mM
+    for idx, raw in enumerate(df["conc_mM"], start=1):
         try:
-            float(match.group(2))
-        except ValueError:
-            bad_concentration.append(raw)
-    if bad_format:
+            value = float(raw)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"Row {idx}: non-numeric conc_mM value {raw!r}."
+            ) from exc
+        if value < 0:
+            raise ValueError(
+                f"Row {idx}: conc_mM must be >= 0, got {value}."
+            )
+
+    # Well address shape
+    for idx, raw in enumerate(df["source_well"].astype(str).str.strip(), start=1):
+        if not WELL_PATTERN.match(raw):
+            raise ValueError(
+                f"Row {idx}: invalid source_well value {raw!r} "
+                "(expected letters followed by digits, e.g. 'A1')."
+            )
+
+    # Solvent-control rule: cmpdname == solvent (case/whitespace-normalized)
+    # => conc_mM == 0; otherwise conc_mM > 0.
+    cmpd_keys = df["cmpdname"].astype(str).str.strip().str.lower()
+    solv_keys = df["solvent"].astype(str).str.strip().str.lower()
+    conc_vals = df["conc_mM"].astype(float)
+    is_ctrl = cmpd_keys.eq(solv_keys)
+    bad_ctrl = is_ctrl & (conc_vals != 0)
+    bad_compound = (~is_ctrl) & (conc_vals <= 0)
+    if bad_ctrl.any():
+        idx = int(bad_ctrl.idxmax()) + 1
         raise ValueError(
-            "Source plate layout has Liquid Name(s) not in the expected "
-            f"'[Compound][Stock]' format: {bad_format[:5]}"
+            f"Row {idx}: solvent-control row (cmpdname == solvent) must have conc_mM == 0."
         )
-    if bad_concentration:
+    if bad_compound.any():
+        idx = int(bad_compound.idxmax()) + 1
         raise ValueError(
-            "Source plate layout has Liquid Name(s) with a non-numeric "
-            f"stock concentration: {bad_concentration[:5]}"
+            f"Row {idx}: compound rows must have conc_mM > 0."
         )
 
-    bad_wells = [
-        raw for raw in df["Source Well"].astype(str).str.strip()
-        if not WELL_PATTERN.match(raw)
-    ]
-    if bad_wells:
-        raise ValueError(
-            f"Source plate layout has invalid Source Well value(s): {bad_wells[:5]}"
-        )
+    # Solvent consistency per compound
+    cmpd_groups = df.groupby(cmpd_keys)
+    for key, group in cmpd_groups:
+        unique_solvents = sorted(set(group["solvent"].astype(str).str.strip()))
+        if len(unique_solvents) > 1:
+            display = group["cmpdname"].iloc[0]
+            raise ValueError(
+                f"Inconsistent solvent for cmpdname '{display}': "
+                + " vs ".join(repr(s) for s in unique_solvents)
+            )
 
-    liquid_names = df["Liquid Name"].astype(str).str.strip()
-    if liquid_names.duplicated().any():
-        dups = liquid_names[liquid_names.duplicated(keep=False)].unique().tolist()
-        raise ValueError(
-            f"Source plate layout has duplicate Liquid Name(s): {dups[:5]}"
-        )
-
-    plate_keys = (
-        df["Source Plate"].astype(str).str.strip()
-        if "Source Plate" in df.columns
-        else pd.Series([""] * len(df), index=df.index)
-    )
-    well_keys = df["Source Well"].astype(str).str.strip().str.upper()
+    # Duplicate (source_plate, source_well)
+    plate_keys = df["source_plate"].astype(str).str.strip()
+    well_keys = df["source_well"].astype(str).str.strip().str.upper()
     pairs = pd.DataFrame({"plate": plate_keys, "well": well_keys})
-    if pairs.duplicated().any():
-        dup_rows = pairs[pairs.duplicated(keep=False)].drop_duplicates()
-        pretty = [
-            f"{row['plate'] or '<default>'}:{row['well']}"
-            for _, row in dup_rows.iterrows()
-        ]
+    dup_mask = pairs.duplicated(keep=False)
+    if dup_mask.any():
+        first_idx = int(dup_mask.idxmax()) + 1
+        well = pairs.iloc[int(dup_mask.idxmax())]["well"]
         raise ValueError(
-            f"Source plate layout has duplicate Source Well(s): {pretty[:5]}"
+            f"Row {first_idx}: Duplicate source_well '{well}' for source_plate "
+            f"'{pairs.iloc[int(dup_mask.idxmax())]['plate']}'."
         )
 
-    columns_present = [
-        col for col in ("Liquid Name", "Source Well", "Source Plate")
-        if col in df.columns
-    ]
     return {
         "rowCount": int(len(df)),
-        "columns": columns_present,
-        "sampleLiquidNames": liquid_names.head(5).tolist(),
+        "columns": REQUIRED_LAYOUT_COLUMNS,
+        "sampleCompounds": df["cmpdname"].astype(str).str.strip().head(5).tolist(),
     }
