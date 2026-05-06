@@ -15,6 +15,8 @@ iPLAID converts screening layouts into liquid-handler dispense outputs for both 
 
 This repository now has one supported setup path for new machines: **Docker**.
 
+> **Use at your own risk.** iPLAID is research software for academic lab automation. Outputs (dispense protocols, source-plate preparation instructions, iMETA CSVs) **must be reviewed against the intended layout before being executed on physical instruments**. Errors in dispense volumes, source-plate assignments, or solvent caps can damage stocks, contaminate plates, waste reagent, or invalidate downstream assay results. iPLAID is provided **as is**, without warranty of any kind; the authors and contributors accept no liability for outcomes — biological, chemical, instrumental, or otherwise — resulting from its use. Verify, then run. See [`LICENSE.md`](LICENSE.md) and [`NOTICE.md`](NOTICE.md) for the full terms and third-party attribution.
+
 ## What is in this repo
 
 - `src/iplaid/`: the pipeline that turns a layout + metadata into iDOT outputs.
@@ -343,7 +345,7 @@ Key files:
 - `compose.yml`: operator entrypoint; the `notebook` service requires `--profile notebook`
 - `scripts/run_pipeline.py`: direct pipeline runner inside the container
 - `src/iplaid/imeta.py`: iMETA CSV export builder
-- `notebooks/01_plaid_idot_pipeline.ipynb`: interactive pipeline notebook
+- `notebooks/iPLAID.ipynb`: interactive pipeline notebook
 - `backend/app/main.py`: API routes and frontend serving
 - `frontend/src/services/apiClient.ts`: frontend API wiring
 
@@ -366,6 +368,14 @@ Key files:
 
 The docs under `src/plaid_core/` explain the design engine itself (Python API, MiniZinc solver, layout logic). For setup and operation of iPLAID as a whole, this root README is the authoritative source.
 
+## Credits
+
+iPLAID's *Design with PLAID* step is built on top of [**PLAID** (Plate Layouts using Artificial Intelligence Design)](https://github.com/pharmbio/plaid) by **Maria Andreina Francisco Rodríguez** and **Ola Spjuth** (pharmbio group, Uppsala University). The MiniZinc model and constraint-programming logic in [`src/plaid_core/`](src/plaid_core/) are derived from that project and remain governed by its Apache License 2.0. See [`NOTICE.md`](NOTICE.md) for the full attribution and citation.
+
+If your work uses iPLAID's design step (or PLAID directly), please cite:
+
+> Francisco Rodríguez, M. A.; Carreras Puigvert, J.; Spjuth, O. *Designing Microplate Layouts Using Artificial Intelligence.* Artificial Intelligence in the Life Sciences **3**, 100073 (2023). [doi:10.1016/j.ailsci.2023.100073](https://doi.org/10.1016/j.ailsci.2023.100073)
+
 ## License
 
-MIT. See `LICENSE.md`.
+iPLAID is dual-licensed: `src/plaid_core/` is **Apache License 2.0** (from upstream PLAID); the rest of the repository is **MIT**. See [`LICENSE.md`](LICENSE.md), [`NOTICE.md`](NOTICE.md), and [`LICENSES/Apache-2.0.txt`](LICENSES/Apache-2.0.txt).

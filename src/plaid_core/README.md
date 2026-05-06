@@ -98,7 +98,7 @@ The frontend `DesignPanel` uses these endpoints and returns the accepted layout 
 
 ## License
 
-This repository is MIT-licensed. See [LICENSE.md](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/LICENSE.md).
+The contents of `src/plaid_core/` are derived from [pharmbio/plaid](https://github.com/pharmbio/plaid) and are governed by the Apache License 2.0. See [`LICENSES/Apache-2.0.txt`](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/LICENSES/Apache-2.0.txt) for the full license text and [`NOTICE.md`](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/NOTICE.md) for attribution. The rest of the iPLAID repository is MIT-licensed; see the project [`LICENSE.md`](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/LICENSE.md).
 
 ## Citation
 

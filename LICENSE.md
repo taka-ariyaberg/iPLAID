@@ -1,6 +1,19 @@
-# MIT License
+# License
 
-Copyright (c) 2026 Taka
+iPLAID is distributed under two licenses depending on which part of the source tree you are using.
+
+| Path | License |
+|------|---------|
+| [`src/plaid_core/`](src/plaid_core/) | Apache License 2.0 (derived from [pharmbio/plaid](https://github.com/pharmbio/plaid)) |
+| Everything else (the iPLAID-specific code) | MIT License (text below) |
+
+See [`NOTICE.md`](NOTICE.md) for the full third-party attribution and [`LICENSES/Apache-2.0.txt`](LICENSES/Apache-2.0.txt) for the Apache License 2.0 text.
+
+---
+
+## MIT License
+
+Copyright (c) 2026 Taka Ariyaberg
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
