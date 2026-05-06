@@ -46,33 +46,34 @@ The Docker image builds and runs:
 
 ## Quick start
 
-Build the image:
+Start iPLAID with the bundled launcher script:
 
 ```bash
-docker compose build
+scripts/start.sh           # build only if the image is missing, then start
+scripts/start.sh --build   # force a rebuild before starting
+scripts/start.sh --no-open # skip auto-opening the browser
 ```
 
-Start iPLAID:
+The script runs `docker compose up -d iplaid`, waits for `/api/health` to come up, and opens `http://127.0.0.1:8000` in your default browser. Set `IPLAID_PORT=8001` to use a different port.
+
+Stop iPLAID:
 
 ```bash
-docker compose up
+scripts/stop.sh            # stop and remove containers (volumes preserved)
+scripts/stop.sh --volumes  # also remove named volumes
 ```
 
-Then open:
-
-- `http://127.0.0.1:8000`
-
-Useful commands:
+Useful commands while running:
 
 ```bash
 docker compose logs -f iplaid
-docker compose down
 ```
 
-If you change code and want the container to pick it up, rebuild:
+If you change code and want the running container to pick it up, restart with `--build`:
 
 ```bash
-docker compose up --build
+scripts/stop.sh
+scripts/start.sh --build
 ```
 
 ## Persistent data
@@ -342,7 +343,8 @@ iPLAID/
 Key files:
 
 - `Dockerfile`: multi-stage build — `runtime` (web app) and `notebook` targets
-- `compose.yml`: operator entrypoint; the `notebook` service requires `--profile notebook`
+- `compose.yml`: docker compose service definitions; the `notebook` service requires `--profile notebook`
+- `scripts/start.sh`, `scripts/stop.sh`: launcher / shutdown wrappers around `docker compose` for the web app
 - `scripts/run_pipeline.py`: direct pipeline runner inside the container
 - `src/iplaid/imeta.py`: iMETA CSV export builder
 - `notebooks/iPLAID.ipynb`: interactive pipeline notebook
@@ -354,17 +356,17 @@ Key files:
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
 | `docker: command not found` | Docker is not installed | Install Docker Desktop or Docker Engine + Compose |
-| `Cannot connect to the Docker daemon` | Docker is installed but not running | Start Docker and rerun `docker compose up --build` |
-| `bind: address already in use` on port 8000 | Another process is using port 8000 | Stop the conflicting process or run `IPLAID_PORT=8001 docker compose up` |
-| Designer fails unexpectedly | Container image is stale or MiniZinc runtime is unhealthy | Rebuild with `docker compose up --build`; verify with `docker compose run --rm iplaid minizinc --version` |
+| `Cannot connect to the Docker daemon` | Docker is installed but not running | Start Docker and rerun `scripts/start.sh` |
+| `bind: address already in use` on port 8000 | Another process is using port 8000 | Stop the conflicting process or run `IPLAID_PORT=8001 scripts/start.sh` |
+| Designer fails unexpectedly | Container image is stale or MiniZinc runtime is unhealthy | Rebuild with `scripts/start.sh --build`; verify with `docker compose run --rm iplaid minizinc --version` |
 | Frontend loads but API calls fail | Container is not healthy yet | Check `docker compose logs -f iplaid` and verify `/api/health` |
 | Layout preview or run fails with missing compounds | Layout names do not match metadata names | Ensure `cmpdname` matches exactly |
 | Pre-flight validation fails | Requested concentrations are infeasible under the DMSO limit | Reduce target concentration or adjust config after reviewing feasibility |
-| Code changes do not appear | Running image was not rebuilt | Rerun `docker compose up --build` |
+| Code changes do not appear | Running image was not rebuilt | Run `scripts/stop.sh && scripts/start.sh --build` |
 
 ## Notes on bundled PLAID_Core
 
-`src/plaid_core/` is bundled inside this repo. You do not need to copy it in or install it separately — `docker compose build` handles everything.
+`src/plaid_core/` is bundled inside this repo. You do not need to copy it in or install it separately — `scripts/start.sh --build` handles everything.
 
 The docs under `src/plaid_core/` explain the design engine itself (Python API, MiniZinc solver, layout logic). For setup and operation of iPLAID as a whole, this root README is the authoritative source.
 
