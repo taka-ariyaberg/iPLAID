@@ -1,106 +1,309 @@
 ﻿plateID,well,cmpdname,CONCuM,cmpdnum
-plate_1,D04,Tetrandrine,3,Tetrandrine_ 3
-plate_1,D05,Dasatinib,0.3,Dasatinib_ 0.3
-plate_1,D06,Etoposide,30,Etoposide_ 30
-plate_1,D07,Nocodazole,0.3,Nocodazole_ 0.3
-plate_1,D09,DMSO,0,DMSO_0
-plate_1,D13,Nocodazole,0.3,Nocodazole_ 0.3
-plate_1,D14,Tetrandrine,1,Tetrandrine_1
-plate_1,D15,Nocodazole,0.3,Nocodazole_ 0.3
-plate_1,D16,Tetrandrine,3,Tetrandrine_ 3
-plate_1,D20,DMSO,0,DMSO_0
-plate_1,E05,DMSO,0,DMSO_0
-plate_1,E06,Tetrandrine,3,Tetrandrine_ 3
-plate_1,E09,Nocodazole,0.1,Nocodazole_0.1
-plate_1,E10,Tetrandrine,3,Tetrandrine_ 3
-plate_1,E12,Tetrandrine,10,Tetrandrine_ 10
-plate_1,E13,DMSO,0,DMSO_0
-plate_1,E14,Etoposide,3,Etoposide_3
-plate_1,E16,Dasatinib,1,Dasatinib_ 1
-plate_1,E17,Etoposide,10,Etoposide_ 10
-plate_1,E18,Tetrandrine,1,Tetrandrine_1
-plate_1,F04,Etoposide,10,Etoposide_ 10
-plate_1,F05,Dasatinib,0.3,Dasatinib_ 0.3
-plate_1,F07,DMSO,0,DMSO_0
-plate_1,F11,Nocodazole,0.1,Nocodazole_0.1
-plate_1,F12,Etoposide,10,Etoposide_ 10
-plate_1,F13,Dasatinib,1,Dasatinib_ 1
-plate_1,F15,DMSO,0,DMSO_0
-plate_1,F16,Tetrandrine,10,Tetrandrine_ 10
-plate_1,F17,Nocodazole,1,Nocodazole_ 1
-plate_1,F21,Dasatinib,0.3,Dasatinib_ 0.3
-plate_1,G04,Nocodazole,0.1,Nocodazole_0.1
-plate_1,G05,Tetrandrine,10,Tetrandrine_ 10
-plate_1,G07,Dasatinib,0.1,Dasatinib_0.1
-plate_1,G08,Etoposide,3,Etoposide_3
-plate_1,G09,Dasatinib,1,Dasatinib_ 1
-plate_1,G11,DMSO,0,DMSO_0
-plate_1,G15,Etoposide,30,Etoposide_ 30
-plate_1,G17,Dasatinib,0.1,Dasatinib_0.1
-plate_1,G18,DMSO,0,DMSO_0
-plate_1,G19,Nocodazole,0.3,Nocodazole_ 0.3
-plate_1,G20,Etoposide,10,Etoposide_ 10
-plate_1,G21,DMSO,0,DMSO_0
-plate_1,H06,DMSO,0,DMSO_0
-plate_1,H08,Nocodazole,0.1,Nocodazole_0.1
-plate_1,H10,Nocodazole,0.3,Nocodazole_ 0.3
-plate_1,H11,Dasatinib,0.3,Dasatinib_ 0.3
-plate_1,H12,Etoposide,10,Etoposide_ 10
-plate_1,H15,Dasatinib,1,Dasatinib_ 1
-plate_1,H16,DMSO,0,DMSO_0
-plate_1,H18,Tetrandrine,3,Tetrandrine_ 3
-plate_1,H19,Dasatinib,0.1,Dasatinib_0.1
-plate_1,H20,Tetrandrine,10,Tetrandrine_ 10
-plate_1,H21,Dasatinib,0.3,Dasatinib_ 0.3
-plate_1,I04,Etoposide,3,Etoposide_3
-plate_1,I07,Tetrandrine,1,Tetrandrine_1
-plate_1,I08,Dasatinib,0.3,Dasatinib_ 0.3
-plate_1,I11,DMSO,0,DMSO_0
-plate_1,I12,Nocodazole,0.1,Nocodazole_0.1
-plate_1,I13,Dasatinib,1,Dasatinib_ 1
-plate_1,I14,DMSO,0,DMSO_0
-plate_1,I15,Nocodazole,0.1,Nocodazole_0.1
-plate_1,I18,Nocodazole,1,Nocodazole_ 1
-plate_1,I20,Etoposide,30,Etoposide_ 30
-plate_1,J04,Nocodazole,1,Nocodazole_ 1
-plate_1,J06,Etoposide,3,Etoposide_3
-plate_1,J08,DMSO,0,DMSO_0
-plate_1,J10,Nocodazole,1,Nocodazole_ 1
-plate_1,J12,Etoposide,30,Etoposide_ 30
-plate_1,J13,Tetrandrine,3,Tetrandrine_ 3
-plate_1,J14,Etoposide,3,Etoposide_3
-plate_1,J15,Dasatinib,0.1,Dasatinib_0.1
-plate_1,J17,DMSO,0,DMSO_0
-plate_1,J18,Dasatinib,1,Dasatinib_ 1
-plate_1,J19,Tetrandrine,1,Tetrandrine_1
-plate_1,K05,Tetrandrine,1,Tetrandrine_1
-plate_1,K08,Etoposide,3,Etoposide_3
-plate_1,K09,Dasatinib,0.3,Dasatinib_ 0.3
-plate_1,K10,Etoposide,30,Etoposide_ 30
-plate_1,K12,DMSO,0,DMSO_0
-plate_1,K13,Nocodazole,0.3,Nocodazole_ 0.3
-plate_1,K15,DMSO,0,DMSO_0
-plate_1,K16,Etoposide,3,Etoposide_3
-plate_1,K17,Tetrandrine,10,Tetrandrine_ 10
-plate_1,K18,Etoposide,10,Etoposide_ 10
-plate_1,L05,Etoposide,30,Etoposide_ 30
-plate_1,L06,Nocodazole,1,Nocodazole_ 1
-plate_1,L07,Tetrandrine,1,Tetrandrine_1
-plate_1,L08,Nocodazole,0.1,Nocodazole_0.1
-plate_1,L10,DMSO,0,DMSO_0
-plate_1,L11,Dasatinib,0.1,Dasatinib_0.1
-plate_1,L14,Tetrandrine,1,Tetrandrine_1
-plate_1,L16,Nocodazole,1,Nocodazole_ 1
-plate_1,L17,Dasatinib,1,Dasatinib_ 1
-plate_1,L19,DMSO,0,DMSO_0
-plate_1,L21,Tetrandrine,3,Tetrandrine_ 3
-plate_1,M04,DMSO,0,DMSO_0
-plate_1,M06,Dasatinib,0.1,Dasatinib_0.1
-plate_1,M07,Etoposide,10,Etoposide_ 10
-plate_1,M09,Dasatinib,0.1,Dasatinib_0.1
-plate_1,M11,Tetrandrine,10,Tetrandrine_ 10
-plate_1,M13,DMSO,0,DMSO_0
-plate_1,M14,Nocodazole,1,Nocodazole_ 1
-plate_1,M19,Tetrandrine,10,Tetrandrine_ 10
-plate_1,M20,Etoposide,30,Etoposide_ 30
-plate_1,M21,Nocodazole,0.3,Nocodazole_ 0.3
+plate_1,B02,Niraparib,0.1,Niraparib_ 0.1
+plate_1,B03,Doxorubicin,1,Doxorubicin_ 1
+plate_1,B04,Berzosertib,0.1,Berzosertib_ 0.1
+plate_1,B05,Cisplatin,10,Cisplatin_ 10
+plate_1,B06,Veliparib,1,Veliparib_ 1
+plate_1,B07,Rucaparib,0.1,Rucaparib_ 0.1
+plate_1,B08,Carboplatin,10,Carboplatin_ 10
+plate_1,B09,Carboplatin,1,Carboplatin_ 1
+plate_1,B10,Cisplatin,1,Cisplatin_ 1
+plate_1,B11,Adavosertib,0.1,Adavosertib_ 0.1
+plate_1,B12,Olaparib,0.1,Olaparib_ 0.1
+plate_1,B13,Trametinib,1,Trametinib_ 1
+plate_1,B14,Paclitaxel,10,Paclitaxel_ 10
+plate_1,B15,Gemcitabine,0.1,Gemcitabine_ 0.1
+plate_1,B16,Berzosertib,0.1,Berzosertib_ 0.1
+plate_1,B17,DMSO,0,DMSO_ 0
+plate_1,B18,Rucaparib,1,Rucaparib_ 1
+plate_1,B19,Gemcitabine,1,Gemcitabine_ 1
+plate_1,B20,Palbociclib,10,Palbociclib_ 10
+plate_1,B21,Cisplatin,0.1,Cisplatin_ 0.1
+plate_1,B22,Palbociclib,1,Palbociclib_ 1
+plate_1,B23,Berzosertib,1,Berzosertib_ 1
+plate_1,C02,Veliparib,1,Veliparib_ 1
+plate_1,C03,DMSO,0,DMSO_ 0
+plate_1,C04,Olaparib,10,Olaparib_ 10
+plate_1,C05,Cisplatin,0.1,Cisplatin_ 0.1
+plate_1,C06,Paclitaxel,0.1,Paclitaxel_ 0.1
+plate_1,C07,Doxorubicin,1,Doxorubicin_ 1
+plate_1,C08,Trametinib,10,Trametinib_ 10
+plate_1,C09,Carboplatin,10,Carboplatin_ 10
+plate_1,C10,Topotecan,10,Topotecan_ 10
+plate_1,C11,Topotecan,10,Topotecan_ 10
+plate_1,C12,Olaparib,1,Olaparib_ 1
+plate_1,C13,Topotecan,0.1,Topotecan_ 0.1
+plate_1,C14,Gemcitabine,10,Gemcitabine_ 10
+plate_1,C15,Cisplatin,10,Cisplatin_ 10
+plate_1,C16,Cisplatin,1,Cisplatin_ 1
+plate_1,C17,Adavosertib,1,Adavosertib_ 1
+plate_1,C18,Palbociclib,0.1,Palbociclib_ 0.1
+plate_1,C19,Veliparib,1,Veliparib_ 1
+plate_1,C20,Carboplatin,1,Carboplatin_ 1
+plate_1,C21,Rucaparib,10,Rucaparib_ 10
+plate_1,C22,Palbociclib,0.1,Palbociclib_ 0.1
+plate_1,C23,Veliparib,0.1,Veliparib_ 0.1
+plate_1,D02,Trametinib,10,Trametinib_ 10
+plate_1,D03,Niraparib,1,Niraparib_ 1
+plate_1,D04,Gemcitabine,1,Gemcitabine_ 1
+plate_1,D05,Gemcitabine,0.1,Gemcitabine_ 0.1
+plate_1,D06,Berzosertib,1,Berzosertib_ 1
+plate_1,D07,Doxorubicin,1,Doxorubicin_ 1
+plate_1,D08,Berzosertib,0.1,Berzosertib_ 0.1
+plate_1,D09,Adavosertib,1,Adavosertib_ 1
+plate_1,D10,Rucaparib,1,Rucaparib_ 1
+plate_1,D11,Palbociclib,1,Palbociclib_ 1
+plate_1,D12,Paclitaxel,0.1,Paclitaxel_ 0.1
+plate_1,D13,Paclitaxel,1,Paclitaxel_ 1
+plate_1,D14,Veliparib,1,Veliparib_ 1
+plate_1,D15,Carboplatin,0.1,Carboplatin_ 0.1
+plate_1,D16,Veliparib,1,Veliparib_ 1
+plate_1,D17,Trametinib,10,Trametinib_ 10
+plate_1,D18,Berzosertib,10,Berzosertib_ 10
+plate_1,D19,Palbociclib,1,Palbociclib_ 1
+plate_1,D20,Cisplatin,0.1,Cisplatin_ 0.1
+plate_1,D21,Berzosertib,1,Berzosertib_ 1
+plate_1,D22,Carboplatin,0.1,Carboplatin_ 0.1
+plate_1,D23,Palbociclib,0.1,Palbociclib_ 0.1
+plate_1,E02,Gemcitabine,10,Gemcitabine_ 10
+plate_1,E03,Berzosertib,10,Berzosertib_ 10
+plate_1,E04,Adavosertib,10,Adavosertib_ 10
+plate_1,E05,Gemcitabine,10,Gemcitabine_ 10
+plate_1,E06,Rucaparib,10,Rucaparib_ 10
+plate_1,E07,Palbociclib,0.1,Palbociclib_ 0.1
+plate_1,E08,Adavosertib,10,Adavosertib_ 10
+plate_1,E09,Veliparib,10,Veliparib_ 10
+plate_1,E10,Carboplatin,1,Carboplatin_ 1
+plate_1,E11,Doxorubicin,0.1,Doxorubicin_ 0.1
+plate_1,E12,Topotecan,10,Topotecan_ 10
+plate_1,E13,Paclitaxel,0.1,Paclitaxel_ 0.1
+plate_1,E14,Berzosertib,0.1,Berzosertib_ 0.1
+plate_1,E15,Olaparib,1,Olaparib_ 1
+plate_1,E16,Niraparib,1,Niraparib_ 1
+plate_1,E17,Cisplatin,1,Cisplatin_ 1
+plate_1,E18,Veliparib,10,Veliparib_ 10
+plate_1,E19,Cisplatin,1,Cisplatin_ 1
+plate_1,E20,Olaparib,1,Olaparib_ 1
+plate_1,E21,Gemcitabine,0.1,Gemcitabine_ 0.1
+plate_1,E22,Topotecan,0.1,Topotecan_ 0.1
+plate_1,E23,Berzosertib,0.1,Berzosertib_ 0.1
+plate_1,F02,Adavosertib,1,Adavosertib_ 1
+plate_1,F03,Niraparib,1,Niraparib_ 1
+plate_1,F04,Adavosertib,10,Adavosertib_ 10
+plate_1,F05,Berzosertib,0.1,Berzosertib_ 0.1
+plate_1,F06,Niraparib,10,Niraparib_ 10
+plate_1,F07,DMSO,0,DMSO_ 0
+plate_1,F08,Carboplatin,1,Carboplatin_ 1
+plate_1,F09,DMSO,0,DMSO_ 0
+plate_1,F10,DMSO,0,DMSO_ 0
+plate_1,F11,Doxorubicin,0.1,Doxorubicin_ 0.1
+plate_1,F12,Rucaparib,10,Rucaparib_ 10
+plate_1,F13,Palbociclib,0.1,Palbociclib_ 0.1
+plate_1,F14,Adavosertib,1,Adavosertib_ 1
+plate_1,F15,Topotecan,0.1,Topotecan_ 0.1
+plate_1,F16,Paclitaxel,1,Paclitaxel_ 1
+plate_1,F17,Olaparib,10,Olaparib_ 10
+plate_1,F18,Topotecan,1,Topotecan_ 1
+plate_1,F19,Trametinib,0.1,Trametinib_ 0.1
+plate_1,F20,Topotecan,0.1,Topotecan_ 0.1
+plate_1,F21,Berzosertib,10,Berzosertib_ 10
+plate_1,F22,Topotecan,1,Topotecan_ 1
+plate_1,F23,Adavosertib,10,Adavosertib_ 10
+plate_1,G02,Trametinib,0.1,Trametinib_ 0.1
+plate_1,G03,Veliparib,10,Veliparib_ 10
+plate_1,G04,Doxorubicin,10,Doxorubicin_ 10
+plate_1,G05,Niraparib,1,Niraparib_ 1
+plate_1,G06,Rucaparib,0.1,Rucaparib_ 0.1
+plate_1,G07,Carboplatin,1,Carboplatin_ 1
+plate_1,G08,Niraparib,0.1,Niraparib_ 0.1
+plate_1,G09,Doxorubicin,1,Doxorubicin_ 1
+plate_1,G10,Paclitaxel,10,Paclitaxel_ 10
+plate_1,G11,Topotecan,0.1,Topotecan_ 0.1
+plate_1,G12,Gemcitabine,10,Gemcitabine_ 10
+plate_1,G13,Berzosertib,1,Berzosertib_ 1
+plate_1,G14,Rucaparib,0.1,Rucaparib_ 0.1
+plate_1,G15,Adavosertib,10,Adavosertib_ 10
+plate_1,G16,Rucaparib,0.1,Rucaparib_ 0.1
+plate_1,G17,Berzosertib,10,Berzosertib_ 10
+plate_1,G18,Topotecan,10,Topotecan_ 10
+plate_1,G19,Gemcitabine,10,Gemcitabine_ 10
+plate_1,G20,Carboplatin,0.1,Carboplatin_ 0.1
+plate_1,G21,Cisplatin,10,Cisplatin_ 10
+plate_1,G22,Olaparib,0.1,Olaparib_ 0.1
+plate_1,G23,Palbociclib,1,Palbociclib_ 1
+plate_1,H02,Paclitaxel,10,Paclitaxel_ 10
+plate_1,H03,Doxorubicin,10,Doxorubicin_ 10
+plate_1,H04,Trametinib,1,Trametinib_ 1
+plate_1,H05,Niraparib,1,Niraparib_ 1
+plate_1,H06,Cisplatin,0.1,Cisplatin_ 0.1
+plate_1,H07,DMSO,0,DMSO_ 0
+plate_1,H08,Doxorubicin,10,Doxorubicin_ 10
+plate_1,H09,Niraparib,0.1,Niraparib_ 0.1
+plate_1,H10,Niraparib,10,Niraparib_ 10
+plate_1,H11,Olaparib,1,Olaparib_ 1
+plate_1,H12,Palbociclib,1,Palbociclib_ 1
+plate_1,H13,Topotecan,1,Topotecan_ 1
+plate_1,H14,Rucaparib,1,Rucaparib_ 1
+plate_1,H15,Paclitaxel,1,Paclitaxel_ 1
+plate_1,H16,Rucaparib,10,Rucaparib_ 10
+plate_1,H17,Doxorubicin,1,Doxorubicin_ 1
+plate_1,H18,Carboplatin,0.1,Carboplatin_ 0.1
+plate_1,H19,Olaparib,0.1,Olaparib_ 0.1
+plate_1,H20,Paclitaxel,0.1,Paclitaxel_ 0.1
+plate_1,H21,Olaparib,0.1,Olaparib_ 0.1
+plate_1,H22,Trametinib,1,Trametinib_ 1
+plate_1,H23,Cisplatin,0.1,Cisplatin_ 0.1
+plate_1,I02,Berzosertib,10,Berzosertib_ 10
+plate_1,I03,Trametinib,0.1,Trametinib_ 0.1
+plate_1,I04,DMSO,0,DMSO_ 0
+plate_1,I05,Doxorubicin,1,Doxorubicin_ 1
+plate_1,I06,Rucaparib,1,Rucaparib_ 1
+plate_1,I07,Topotecan,0.1,Topotecan_ 0.1
+plate_1,I08,Veliparib,10,Veliparib_ 10
+plate_1,I09,Veliparib,0.1,Veliparib_ 0.1
+plate_1,I10,Carboplatin,1,Carboplatin_ 1
+plate_1,I11,Cisplatin,0.1,Cisplatin_ 0.1
+plate_1,I12,Olaparib,10,Olaparib_ 10
+plate_1,I13,Doxorubicin,0.1,Doxorubicin_ 0.1
+plate_1,I14,Trametinib,10,Trametinib_ 10
+plate_1,I15,Trametinib,0.1,Trametinib_ 0.1
+plate_1,I16,Palbociclib,0.1,Palbociclib_ 0.1
+plate_1,I17,Adavosertib,10,Adavosertib_ 10
+plate_1,I18,Trametinib,1,Trametinib_ 1
+plate_1,I19,Veliparib,10,Veliparib_ 10
+plate_1,I20,Niraparib,0.1,Niraparib_ 0.1
+plate_1,I21,Gemcitabine,0.1,Gemcitabine_ 0.1
+plate_1,I22,Berzosertib,1,Berzosertib_ 1
+plate_1,I23,Trametinib,0.1,Trametinib_ 0.1
+plate_1,J02,Niraparib,1,Niraparib_ 1
+plate_1,J03,Carboplatin,10,Carboplatin_ 10
+plate_1,J04,Carboplatin,1,Carboplatin_ 1
+plate_1,J05,DMSO,0,DMSO_ 0
+plate_1,J06,Trametinib,1,Trametinib_ 1
+plate_1,J07,Olaparib,0.1,Olaparib_ 0.1
+plate_1,J08,Olaparib,0.1,Olaparib_ 0.1
+plate_1,J09,Veliparib,0.1,Veliparib_ 0.1
+plate_1,J10,Adavosertib,1,Adavosertib_ 1
+plate_1,J11,Topotecan,1,Topotecan_ 1
+plate_1,J12,Palbociclib,10,Palbociclib_ 10
+plate_1,J13,Veliparib,0.1,Veliparib_ 0.1
+plate_1,J14,Gemcitabine,0.1,Gemcitabine_ 0.1
+plate_1,J15,Niraparib,0.1,Niraparib_ 0.1
+plate_1,J16,Adavosertib,1,Adavosertib_ 1
+plate_1,J17,Olaparib,1,Olaparib_ 1
+plate_1,J18,Olaparib,10,Olaparib_ 10
+plate_1,J19,Veliparib,0.1,Veliparib_ 0.1
+plate_1,J20,Trametinib,10,Trametinib_ 10
+plate_1,J21,Trametinib,1,Trametinib_ 1
+plate_1,J22,Doxorubicin,0.1,Doxorubicin_ 0.1
+plate_1,J23,Carboplatin,10,Carboplatin_ 10
+plate_1,K02,Gemcitabine,1,Gemcitabine_ 1
+plate_1,K03,Niraparib,10,Niraparib_ 10
+plate_1,K04,Palbociclib,10,Palbociclib_ 10
+plate_1,K05,Olaparib,0.1,Olaparib_ 0.1
+plate_1,K06,Niraparib,10,Niraparib_ 10
+plate_1,K07,Veliparib,10,Veliparib_ 10
+plate_1,K08,Adavosertib,0.1,Adavosertib_ 0.1
+plate_1,K09,Trametinib,10,Trametinib_ 10
+plate_1,K10,Olaparib,10,Olaparib_ 10
+plate_1,K11,Paclitaxel,1,Paclitaxel_ 1
+plate_1,K12,DMSO,0,DMSO_ 0
+plate_1,K13,Berzosertib,1,Berzosertib_ 1
+plate_1,K14,Topotecan,10,Topotecan_ 10
+plate_1,K15,Doxorubicin,10,Doxorubicin_ 10
+plate_1,K16,Veliparib,10,Veliparib_ 10
+plate_1,K17,Cisplatin,1,Cisplatin_ 1
+plate_1,K18,Adavosertib,0.1,Adavosertib_ 0.1
+plate_1,K19,Paclitaxel,10,Paclitaxel_ 10
+plate_1,K20,Cisplatin,10,Cisplatin_ 10
+plate_1,K21,Veliparib,1,Veliparib_ 1
+plate_1,K22,Veliparib,1,Veliparib_ 1
+plate_1,K23,Adavosertib,0.1,Adavosertib_ 0.1
+plate_1,L02,Doxorubicin,10,Doxorubicin_ 10
+plate_1,L03,Rucaparib,1,Rucaparib_ 1
+plate_1,L04,Paclitaxel,10,Paclitaxel_ 10
+plate_1,L05,Palbociclib,10,Palbociclib_ 10
+plate_1,L06,Trametinib,10,Trametinib_ 10
+plate_1,L07,Niraparib,10,Niraparib_ 10
+plate_1,L08,Doxorubicin,0.1,Doxorubicin_ 0.1
+plate_1,L09,Trametinib,0.1,Trametinib_ 0.1
+plate_1,L10,Gemcitabine,1,Gemcitabine_ 1
+plate_1,L11,Berzosertib,10,Berzosertib_ 10
+plate_1,L12,Paclitaxel,10,Paclitaxel_ 10
+plate_1,L13,Rucaparib,10,Rucaparib_ 10
+plate_1,L14,Olaparib,1,Olaparib_ 1
+plate_1,L15,Paclitaxel,0.1,Paclitaxel_ 0.1
+plate_1,L16,Berzosertib,10,Berzosertib_ 10
+plate_1,L17,Niraparib,1,Niraparib_ 1
+plate_1,L18,Cisplatin,10,Cisplatin_ 10
+plate_1,L19,Niraparib,10,Niraparib_ 10
+plate_1,L20,Palbociclib,1,Palbociclib_ 1
+plate_1,L21,Berzosertib,1,Berzosertib_ 1
+plate_1,L22,Rucaparib,1,Rucaparib_ 1
+plate_1,L23,Doxorubicin,0.1,Doxorubicin_ 0.1
+plate_1,M02,Rucaparib,0.1,Rucaparib_ 0.1
+plate_1,M03,Paclitaxel,1,Paclitaxel_ 1
+plate_1,M04,Topotecan,0.1,Topotecan_ 0.1
+plate_1,M05,Topotecan,1,Topotecan_ 1
+plate_1,M06,Carboplatin,10,Carboplatin_ 10
+plate_1,M07,Topotecan,1,Topotecan_ 1
+plate_1,M08,Adavosertib,0.1,Adavosertib_ 0.1
+plate_1,M09,Niraparib,10,Niraparib_ 10
+plate_1,M10,Palbociclib,10,Palbociclib_ 10
+plate_1,M11,DMSO,0,DMSO_ 0
+plate_1,M12,Topotecan,1,Topotecan_ 1
+plate_1,M13,Carboplatin,0.1,Carboplatin_ 0.1
+plate_1,M14,Adavosertib,1,Adavosertib_ 1
+plate_1,M15,Palbociclib,10,Palbociclib_ 10
+plate_1,M16,Trametinib,1,Trametinib_ 1
+plate_1,M17,Niraparib,0.1,Niraparib_ 0.1
+plate_1,M18,Gemcitabine,1,Gemcitabine_ 1
+plate_1,M19,Carboplatin,0.1,Carboplatin_ 0.1
+plate_1,M20,Carboplatin,10,Carboplatin_ 10
+plate_1,M21,Topotecan,10,Topotecan_ 10
+plate_1,M22,Rucaparib,10,Rucaparib_ 10
+plate_1,M23,Niraparib,0.1,Niraparib_ 0.1
+plate_1,N02,Carboplatin,10,Carboplatin_ 10
+plate_1,N03,Veliparib,0.1,Veliparib_ 0.1
+plate_1,N04,Doxorubicin,0.1,Doxorubicin_ 0.1
+plate_1,N05,Berzosertib,0.1,Berzosertib_ 0.1
+plate_1,N06,Carboplatin,0.1,Carboplatin_ 0.1
+plate_1,N07,Olaparib,1,Olaparib_ 1
+plate_1,N08,Rucaparib,1,Rucaparib_ 1
+plate_1,N09,Rucaparib,10,Rucaparib_ 10
+plate_1,N10,Paclitaxel,1,Paclitaxel_ 1
+plate_1,N11,Veliparib,0.1,Veliparib_ 0.1
+plate_1,N12,DMSO,0,DMSO_ 0
+plate_1,N13,DMSO,0,DMSO_ 0
+plate_1,N14,Rucaparib,0.1,Rucaparib_ 0.1
+plate_1,N15,Gemcitabine,0.1,Gemcitabine_ 0.1
+plate_1,N16,Doxorubicin,10,Doxorubicin_ 10
+plate_1,N17,Palbociclib,1,Palbociclib_ 1
+plate_1,N18,Rucaparib,0.1,Rucaparib_ 0.1
+plate_1,N19,DMSO,0,DMSO_ 0
+plate_1,N20,Doxorubicin,10,Doxorubicin_ 10
+plate_1,N21,Cisplatin,0.1,Cisplatin_ 0.1
+plate_1,N22,Olaparib,10,Olaparib_ 10
+plate_1,N23,Adavosertib,10,Adavosertib_ 10
+plate_1,O02,Gemcitabine,1,Gemcitabine_ 1
+plate_1,O03,Adavosertib,0.1,Adavosertib_ 0.1
+plate_1,O04,DMSO,0,DMSO_ 0
+plate_1,O05,Topotecan,10,Topotecan_ 10
+plate_1,O06,Palbociclib,10,Palbociclib_ 10
+plate_1,O07,Cisplatin,1,Cisplatin_ 1
+plate_1,O08,Trametinib,0.1,Trametinib_ 0.1
+plate_1,O09,Gemcitabine,10,Gemcitabine_ 10
+plate_1,O10,Gemcitabine,0.1,Gemcitabine_ 0.1
+plate_1,O11,Paclitaxel,0.1,Paclitaxel_ 0.1
+plate_1,O12,Cisplatin,10,Cisplatin_ 10
+plate_1,O13,Cisplatin,10,Cisplatin_ 10
+plate_1,O14,Adavosertib,0.1,Adavosertib_ 0.1
+plate_1,O15,Paclitaxel,0.1,Paclitaxel_ 0.1
+plate_1,O16,Palbociclib,0.1,Palbociclib_ 0.1
+plate_1,O17,Paclitaxel,1,Paclitaxel_ 1
+plate_1,O18,Doxorubicin,1,Doxorubicin_ 1
+plate_1,O19,Gemcitabine,1,Gemcitabine_ 1
+plate_1,O20,Gemcitabine,10,Gemcitabine_ 10
+plate_1,O21,Olaparib,10,Olaparib_ 10
+plate_1,O22,Cisplatin,1,Cisplatin_ 1
+plate_1,O23,Paclitaxel,10,Paclitaxel_ 10
