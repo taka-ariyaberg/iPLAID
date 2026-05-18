@@ -17,6 +17,7 @@ def test_dispenser_spec_is_frozen_dataclass() -> None:
         name="test",
         display_name="Test",
         plate_specs_path="test_specs.json",
+        target_plate_specs_path="test_target_specs.json",
         min_increment_nL=0.0,
         default_sourceplate_type="X",
         default_target_plate_type="Y",

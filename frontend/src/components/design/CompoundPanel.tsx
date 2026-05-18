@@ -22,6 +22,7 @@ interface CompoundPanelProps {
   onCompoundsChange: (compounds: CompoundDef[]) => void;
   onSolventsChange: (solvents: SolventDef[]) => void;
   onGenerate: () => void;
+  onStop: () => void;
   isGenerating: boolean;
   canGenerate: boolean;
 }
@@ -301,6 +302,7 @@ export function CompoundPanel({
   onCompoundsChange,
   onSolventsChange,
   onGenerate,
+  onStop,
   isGenerating,
   canGenerate,
 }: CompoundPanelProps) {
@@ -509,14 +511,24 @@ export function CompoundPanel({
       </div>
 
       <div className="cp-footer">
-        <button
-          type="button"
-          className="design-generate-btn"
-          onClick={onGenerate}
-          disabled={!canGenerate || isGenerating || hasErrors}
-        >
-          {isGenerating ? "Generating…" : "Generate Layout ▶"}
-        </button>
+        {isGenerating ? (
+          <button
+            type="button"
+            className="design-generate-btn design-stop-btn"
+            onClick={onStop}
+          >
+            Stop solver ✕
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="design-generate-btn"
+            onClick={onGenerate}
+            disabled={!canGenerate || hasErrors}
+          >
+            Generate Layout ▶
+          </button>
+        )}
       </div>
 
       {parseResult !== null && (

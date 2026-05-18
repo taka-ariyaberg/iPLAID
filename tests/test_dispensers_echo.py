@@ -94,7 +94,7 @@ def test_echo_build_protocol_columns_and_format() -> None:
     })
     cfg = {
         "sourceplate_type": "384LDV",
-        "target_plate_type": "Corning_384w_3784",
+        "target_plate_type": "Corning_384_3784",
     }
     source_specs = {"x_offset": 1050, "y_offset": -1050}
 
@@ -126,7 +126,7 @@ def test_echo_write_protocol_uses_utf8_no_bom_and_lf(tmp_path: Path) -> None:
         "destination well": ["B2"],
         "Transfer Volume": ["5.0"],
         "Source Plate Type": ["384LDV"],
-        "Destination Plate Type": ["Corning_384w_3784"],
+        "Destination Plate Type": ["Corning_384_3784"],
         "Destination Well X Offset": [1050],
         "Destination Well Y Offset": [-1050],
     })
@@ -162,7 +162,7 @@ def _good_echo_df() -> pd.DataFrame:
         "destination well": ["B2"],
         "Transfer Volume": ["5.0"],
         "Source Plate Type": ["384LDV"],
-        "Destination Plate Type": ["Corning_384w_3784"],
+        "Destination Plate Type": ["Corning_384_3784"],
         "Destination Well X Offset": [1050],
         "Destination Well Y Offset": [-1050],
     })

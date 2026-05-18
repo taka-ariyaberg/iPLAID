@@ -1,6 +1,6 @@
 .workbench-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.9fr) minmax(300px, 0.9fr);
+  grid-template-columns: minmax(0, 1.9fr) minmax(320px, 0.9fr);
   gap: 1rem;
   padding: 1.4rem;
 }
@@ -23,7 +23,7 @@
 
 .hero-status-card {
   display: grid;
-  gap: 0.45rem;
+  gap: 0.55rem;
   padding: 1rem;
   border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.07);
@@ -38,16 +38,127 @@
   text-transform: uppercase;
 }
 
+.hero-checklist {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hero-check-row {
+  display: grid;
+  grid-template-columns: 1.2em minmax(80px, auto) 1fr;
+  align-items: baseline;
+  gap: 0.55rem;
+  font-size: 0.92rem;
+  line-height: 1.35;
+}
+
+.hero-check-mark {
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+.hero-check-row.is-done .hero-check-mark {
+  color: var(--icell-success);
+}
+
+.hero-check-row.is-pending .hero-check-mark,
+.hero-check-row.is-optional .hero-check-mark {
+  color: var(--icell-text-dim);
+}
+
+.hero-check-label {
+  color: var(--icell-text-muted);
+  letter-spacing: 0.02em;
+}
+
+.hero-check-row.is-done .hero-check-label {
+  color: var(--icell-text);
+}
+
+.hero-check-value {
+  color: var(--icell-text-dim);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.hero-check-row.is-done .hero-check-value {
+  color: var(--icell-text-muted);
+}
+
+.hero-status-hint {
+  margin-top: 0.35rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 1.05rem;
+}
+
+.hero-status-hint.is-ready {
+  color: var(--icell-success);
+}
+
+.hero-status-hint.is-missing-files {
+  color: var(--icell-text);
+}
+
+/* ── Running state ──────────────────────────────────────────────────────── */
+
+.hero-status-card.hero-status-running {
+  border-color: rgba(99, 102, 241, 0.3);
+  background: linear-gradient(135deg, #14141c 0%, #1a1830 100%);
+}
+
+.hero-running-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.hero-running-spinner {
+  width: 1.1em;
+  height: 1.1em;
+  border: 2px solid rgba(99, 102, 241, 0.25);
+  border-top-color: var(--icell-accent);
+  border-radius: 50%;
+  animation: hero-spin 0.9s linear infinite;
+  flex: 0 0 auto;
+}
+
+@keyframes hero-spin {
+  to { transform: rotate(360deg); }
+}
+
 .hero-status-value {
   font-size: clamp(1.4rem, 2vw, 2rem);
 }
 
-.hero-status-value.is-ready {
-  color: var(--icell-success);
+.hero-status-value.is-running {
+  color: var(--icell-accent);
 }
 
-.hero-status-value.is-missing-files {
-  color: #ff3b55;
+.hero-running-phase {
+  color: var(--icell-text-muted);
+  font-size: 0.88rem;
+  letter-spacing: 0.02em;
+}
+
+.hero-running-hint {
+  margin: 0.35rem 0 0;
+  padding-top: 0.55rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--icell-text-dim);
+  font-size: 0.85rem;
+}
+
+.hero-running-hint em {
+  color: var(--icell-text);
+  font-style: normal;
+  font-weight: 600;
 }
 
 @media (max-width: 1120px) {

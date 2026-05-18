@@ -228,7 +228,7 @@ interface DesignPanelProps {
   projectDetails?: string | string[];
   onComplete: (layoutFile: File, preview: LayoutPreview) => void;
   onCancel: () => void;
-  onError: (msg: string) => void;
+  onError: (msg: string | null) => void;
 }
 
 export function DesignPanel({
@@ -293,6 +293,7 @@ export function DesignPanel({
       pollRef.current = null;
     }
     cancelAfterStartRef.current = false;
+    onError(null);
     onIsGeneratingChange(true);
     onDesignJobChange(null);
     try {
@@ -331,18 +332,25 @@ export function DesignPanel({
     }
   }
 
-  function handleCancel() {
+  function stopSolverOnly() {
+    // Cancel the in-flight solve but keep the design panel open so the user
+    // can adjust parameters and try again without losing context.
     cancelAfterStartRef.current = true;
     if (pollRef.current) {
       clearInterval(pollRef.current);
       pollRef.current = null;
     }
     onIsGeneratingChange(false);
+    onError(null);
     const activeJob = designJobRef.current;
     if (activeJob && (activeJob.status === "queued" || activeJob.status === "running")) {
       void apiClient.cancelDesignJob(activeJob.jobId).catch(() => undefined);
       onDesignJobChange(null);
     }
+  }
+
+  function handleCancel() {
+    stopSolverOnly();
     onCancel();
   }
 
@@ -481,6 +489,7 @@ export function DesignPanel({
             onCompoundsChange={(c) => onDesignConfigChange((dc) => ({ ...dc, compounds: c }))}
             onSolventsChange={(solvents) => onDesignConfigChange((dc) => ({ ...dc, solvents }))}
             onGenerate={handleGenerate}
+            onStop={stopSolverOnly}
             isGenerating={isGenerating}
             canGenerate={canGenerate}
           />

@@ -1,11 +1,11 @@
 import { PlateGrid } from "../PlateGrid";
-import type { BootstrapResponse, LayoutPreview, TargetPlateDefinition } from "../../types";
+import type { LayoutPreview, TargetPlateDefinition } from "../../types";
 import "./PlateViewerPanel.css";
 
 type PlateViewerPanelProps = {
   preview: LayoutPreview | null;
   originalPreview: LayoutPreview | null;
-  bootstrap: BootstrapResponse;
+  targetPlateDefs: TargetPlateDefinition[];
   viewerPlateTypeId: string;
   onViewerPlateTypeChange: (id: string) => void;
   customRows: number;
@@ -28,7 +28,7 @@ type PlateViewerPanelProps = {
 export function PlateViewerPanel({
   preview,
   originalPreview,
-  bootstrap,
+  targetPlateDefs,
   viewerPlateTypeId,
   onViewerPlateTypeChange,
   customRows,
@@ -74,8 +74,8 @@ export function PlateViewerPanel({
           value={viewerPlateTypeId}
           onChange={(e) => onViewerPlateTypeChange(e.target.value)}
         >
-          {bootstrap.targetPlateDefinitions.map((def) => (
-            <option key={def.id} value={def.id}>{def.label} ({def.wells}w)</option>
+          {targetPlateDefs.map((def) => (
+            <option key={def.id} value={def.id}>{def.label}</option>
           ))}
           <option value="custom">Custom…</option>
         </select>

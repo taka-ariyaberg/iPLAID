@@ -820,6 +820,15 @@ details[open] > .design-config-section-title::before {
   cursor: not-allowed;
 }
 
+.design-stop-btn {
+  background: #b32b3d;
+}
+
+.design-stop-btn:hover:not(:disabled) {
+  background: #c93b4f;
+  transform: translateY(-1px);
+}
+
 /* ── Duplicate-concentration inline warning ─────────────────────────────── */
 .cp-dup-popup {
   margin-top: 8px;

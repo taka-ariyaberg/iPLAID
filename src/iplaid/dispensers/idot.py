@@ -168,6 +168,7 @@ class IDotDispenser:
         name="idot",
         display_name="iDOT",
         plate_specs_path="idot_source_plate_specs.json",
+        target_plate_specs_path="idot_target_plate_specs.json",
         min_increment_nL=0.0,
         default_sourceplate_type="S.100 Plate",
         default_target_plate_type="MWP 384",

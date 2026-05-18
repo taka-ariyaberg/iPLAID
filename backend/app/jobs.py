@@ -31,40 +31,63 @@ class JobStore:
         from src.iplaid.dispensers import list_dispensers
 
         config_template_path = self.repo_root / "config" / "config.template.json"
-        target_plate_types_path = self.repo_root / "data" / "target_plate_types.json"
-
         config_template = json.loads(config_template_path.read_text(encoding="utf-8"))
-        target_plate_types = json.loads(target_plate_types_path.read_text(encoding="utf-8"))
 
-        # Load each registered dispenser's plate-spec catalog so the UI can
-        # show the right Source Plate options when the user picks a dispenser.
+        # Load each registered dispenser's source-plate and destination-plate
+        # catalogs so the UI can swap dropdown options when the user picks a
+        # dispenser.
         dispensers = list_dispensers()
         plate_types_by_dispenser: dict[str, list[str]] = {}
         plate_specs_by_dispenser: dict[str, dict] = {}
         source_plate_definitions_by_dispenser: dict[str, list[dict]] = {}
+        target_plate_definitions_by_dispenser: dict[str, list[dict]] = {}
         for d in dispensers:
             specs_path = self.repo_root / "data" / d.plate_specs_path
             if not specs_path.exists():
                 plate_types_by_dispenser[d.name] = []
                 plate_specs_by_dispenser[d.name] = {}
                 source_plate_definitions_by_dispenser[d.name] = []
-                continue
-            specs = json.loads(specs_path.read_text(encoding="utf-8"))
-            plate_types_by_dispenser[d.name] = sorted(specs.keys())
-            plate_specs_by_dispenser[d.name] = specs
-            source_plate_definitions_by_dispenser[d.name] = [
-                {
-                    "id": name,
-                    "label": name,
-                    "rows": spec.get("rows", 8),
-                    "cols": spec.get("cols", 12),
-                    "wells": spec.get("wells", 96),
-                }
-                for name, spec in specs.items()
-            ]
+            else:
+                specs = json.loads(specs_path.read_text(encoding="utf-8"))
+                plate_types_by_dispenser[d.name] = sorted(specs.keys())
+                plate_specs_by_dispenser[d.name] = specs
+                source_plate_definitions_by_dispenser[d.name] = [
+                    {
+                        "id": name,
+                        "label": name,
+                        "rows": spec.get("rows", 8),
+                        "cols": spec.get("cols", 12),
+                        "wells": spec.get("wells", 96),
+                    }
+                    for name, spec in specs.items()
+                ]
 
-        # Legacy: keep `sourcePlateTypes` and `sourcePlateDefinitions` keyed by
-        # the iDOT specs so existing frontend code continues to work.
+            target_path = self.repo_root / "data" / d.target_plate_specs_path
+            if not target_path.exists():
+                target_plate_definitions_by_dispenser[d.name] = []
+                continue
+            target_raw = json.loads(target_path.read_text(encoding="utf-8"))
+            # iDOT's catalog is an array of {id,label,rows,cols,wells}.
+            # Echo's catalog is a dict keyed by SKU with per-plate metadata.
+            # Normalize both into the same list-of-defs shape the UI expects.
+            if isinstance(target_raw, list):
+                target_plate_definitions_by_dispenser[d.name] = target_raw
+            else:
+                target_plate_definitions_by_dispenser[d.name] = [
+                    {
+                        "id": name,
+                        "label": spec.get("label", name),
+                        "rows": spec.get("rows", 16),
+                        "cols": spec.get("cols", 24),
+                        "wells": spec.get("wells", 384),
+                    }
+                    for name, spec in target_raw.items()
+                ]
+
+        # Legacy: keep `sourcePlateTypes`/`sourcePlateDefinitions` and
+        # `targetPlateTypes`/`targetPlateDefinitions` keyed off the iDOT
+        # catalogs so existing frontend consumers (DesignPanel,
+        # PlateViewerPanel default, ResultsPage) continue to work unchanged.
         idot_specs = plate_specs_by_dispenser.get("idot", {})
         source_plate_definitions = [
             {
@@ -76,13 +99,14 @@ class JobStore:
             }
             for name, spec in idot_specs.items()
         ]
+        idot_target_defs = target_plate_definitions_by_dispenser.get("idot", [])
 
         return {
             "configTemplate": config_template,
             "sourcePlateTypes": sorted(idot_specs.keys()),
             "sourcePlateDefinitions": source_plate_definitions,
-            "targetPlateTypes": [p["id"] for p in target_plate_types],
-            "targetPlateDefinitions": target_plate_types,
+            "targetPlateTypes": [p["id"] for p in idot_target_defs],
+            "targetPlateDefinitions": idot_target_defs,
             "solverCpus": multiprocessing.cpu_count(),
             "dispensers": [
                 {
@@ -96,6 +120,7 @@ class JobStore:
             ],
             "plate_types_by_dispenser": plate_types_by_dispenser,
             "source_plate_definitions_by_dispenser": source_plate_definitions_by_dispenser,
+            "target_plate_definitions_by_dispenser": target_plate_definitions_by_dispenser,
         }
 
     def create_job(

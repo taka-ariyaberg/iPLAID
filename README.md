@@ -217,10 +217,94 @@ Important fields:
 | `layout_file` | File name under `inputs/layouts/` for direct pipeline runs |
 | `meta_file` | File name under `inputs/meta/` for direct pipeline runs |
 | `sourceplate_type` | Must match a key in the selected dispenser's source plate specs file, for example `data/idot_source_plate_specs.json` or `data/echo_source_plate_specs.json` |
-| `target_plate_type` | Must match an entry in `data/target_plate_types.json` |
+| `target_plate_type` | Must match an entry in the selected dispenser's target-plate catalog: `data/idot_target_plate_specs.json` (iDOT) or `data/echo_target_plate_specs.json` (Echo) |
 | `working_volume_ul` | Assay working volume in µL |
 | `max_dmso_pct` | Default maximum solvent percentage used when no solvent-specific override is provided |
 | `solvent_caps_pct` | Optional per-solvent percentage limits, for example `{ "DMSO": 0.1, "Ethanol": 0.2 }` |
+
+## Echo destination plates (Plate Type Editor setup)
+
+The Echo dispenser writes the destination plate name verbatim into column 8 of the Echo Cherry Pick CSV. That string **must** match a plate definition in your Echo machine's Plate Type Editor library — otherwise Echo Cherry Pick rejects the file at import.
+
+iPLAID standardises on the naming pattern `<Vendor>_384_<part-number>`. Each entry below has a matching block in [`data/echo_target_plate_specs.json`](data/echo_target_plate_specs.json). To use any of them, open `Tools → Labware Definitions → Add` on your Echo and fill the fields using the table — the **Name** must match the iPLAID id exactly.
+
+> Source for the Plate Type Editor field set: *Echo Cherry Pick User Manual*, Labcyte P/N 001-5723 Rev 2 (Feb 2008), §4.3.2.
+
+### Revvity_384_6007660 *(default)*
+
+Revvity CulturPlate-384, black, TC-treated. ([Revvity TDS](https://resources.revvity.com/pdfs/Technical_Data_Sheet_OptiPlate-384_CulturPlate-384_SpectraPlate-384_AlphaPlate-384(7).pdf), drawing 0PD 384AP-24431.) Run without lid — with lid would exceed Echo's 16 mm height limit.
+
+| Plate Type Editor field | Value |
+|---|---|
+| Name | `Revvity_384_6007660` |
+| Manufacturer | Revvity |
+| Part Number | 6007660 |
+| Rows / Columns | 16 / 24 |
+| A1 X Offset (mm) | 12.13 |
+| A1 Y Offset (mm) | 8.99 |
+| X / Y Center Spacing (mm) | 4.5 / 4.5 |
+| Plate Height (mm) | 14.35 |
+| Flange Height (mm) | 2.85 |
+| Well Width (mm) | 3.65 |
+| Well Capacity (µL) | 110 |
+
+### Greiner_384_781096
+
+Greiner 384-well polystyrene flat-bottom. Echo Cherry Pick already ships a factory plate definition for this part as `Greiner_384PS_781096`; to use the iPLAID-standardised name, select the factory entry in `Tools → Labware Definitions`, click **Copy**, and rename the copy to `Greiner_384_781096` (the geometry is preserved). No re-measurement needed.
+
+| Plate Type Editor field | Value |
+|---|---|
+| Name | `Greiner_384_781096` |
+| Manufacturer | Greiner Bio-One |
+| Part Number | 781096 |
+| Rows / Columns | 16 / 24 |
+| A1 X Offset (mm) | 12.13 |
+| A1 Y Offset (mm) | 8.99 |
+| X / Y Center Spacing (mm) | 4.5 / 4.5 |
+| Plate Height (mm) | 14.4 |
+| Flange Height (mm) | 2.85 |
+| Well Width (mm) | 3.7 |
+| Well Capacity (µL) | 130 |
+
+### Corning_384_3784
+
+Corning 384-well polystyrene flat-bottom. Standard Corning 384-well dimensions listed below; **verify against your specific Corning 3784 datasheet** before committing — this SKU isn't in Corning's current public e-catalog and may be a regional/legacy variant.
+
+| Plate Type Editor field | Value |
+|---|---|
+| Name | `Corning_384_3784` |
+| Manufacturer | Corning |
+| Part Number | 3784 |
+| Rows / Columns | 16 / 24 |
+| A1 X Offset (mm) | 12.13 |
+| A1 Y Offset (mm) | 8.99 |
+| X / Y Center Spacing (mm) | 4.5 / 4.5 |
+| Plate Height (mm) | 14.4 |
+| Flange Height (mm) | 2.85 |
+| Well Width (mm) | 3.63 |
+| Well Capacity (µL) | 112 |
+
+### ibidi_384_88406
+
+ibidi µ-Plate 384 Well Black ibiTreat. Microscopy-grade #1.5 polymer coverslip bottom, black walls, ANSI/SLAS 1-2004 compliant. ([ibidi instruction manual v1.0, 2023-03-02](https://ibidi.com/img/cms/products/labware/plates/P_884XX_Plate_384well/IN_8840X_384well.pdf).) Run **without** lid — with lid the plate is 17.2 mm tall, exceeding Echo's 16 mm limit. Recommended dispense volume is 50 µL (working range 20–100 µL).
+
+| Plate Type Editor field | Value |
+|---|---|
+| Name | `ibidi_384_88406` |
+| Manufacturer | ibidi |
+| Part Number | 88406 |
+| Rows / Columns | 16 / 24 |
+| A1 X Offset (mm) | 12.0 |
+| A1 Y Offset (mm) | 9.0 |
+| X / Y Center Spacing (mm) | 4.5 / 4.5 |
+| Plate Height (mm) | 15.0 |
+| Flange Height (mm) | 2.3 |
+| Well Width (mm) | 3.4 |
+| Well Capacity (µL) | 100 |
+
+### Adding your own plates
+
+To add a 384-well plate not in the catalog above, append a new entry to [`data/echo_target_plate_specs.json`](data/echo_target_plate_specs.json) following the same shape (id = `<Vendor>_384_<part-number>`), then add the matching definition to your Echo Plate Type Editor with identical **Name**. Echo accepts any ANSI/SLAS 1-2004 skirted flat-bottom plate at 8–16 mm height — the named plate definition in Plate Type Editor is what makes Echo Cherry Pick recognise it.
 
 ## Web workbench workflow
 

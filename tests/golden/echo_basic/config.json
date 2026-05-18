@@ -5,7 +5,7 @@
   "meta_file": "meta.csv",
   "dispenser": "echo",
   "sourceplate_type": "384LDV",
-  "target_plate_type": "MWP 384",
+  "target_plate_type": "Revvity_384_6007660",
   "working_volume_ul": 50,
   "max_dmso_pct": 0.1,
   "source_prep_overage_pct": 0.30,

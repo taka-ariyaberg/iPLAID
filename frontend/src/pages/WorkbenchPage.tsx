@@ -203,6 +203,28 @@ export function WorkbenchPage() {
     setDesignConfig(defaultDesignConfig(p384?.rows ?? 16, p384?.cols ?? 24));
   }, [bootstrap, designConfig]);
 
+  // Self-correcting: if config.target_plate_type isn't in the active dispenser's
+  // catalog (e.g. left over from a saved state, or from a browser serving a stale
+  // bundle on a previous run), snap to that dispenser's default. Same for
+  // sourceplate_type. Prevents an iDOT plate label from leaking into an Echo run
+  // (which would put "MWP 384" in the Echo CSV and the machine would reject it).
+  useEffect(() => {
+    if (!bootstrap || !config) return;
+    const targetList =
+      bootstrap.target_plate_definitions_by_dispenser?.[config.dispenser] ?? bootstrap.targetPlateDefinitions;
+    const sourceList = bootstrap.plate_types_by_dispenser?.[config.dispenser];
+    const meta = bootstrap.dispensers?.find((d) => d.name === config.dispenser);
+    const targetValid = targetList.some((d) => d.id === config.target_plate_type);
+    const sourceValid = sourceList ? sourceList.includes(config.sourceplate_type) : true;
+    if (!targetValid && meta?.default_target_plate_type) {
+      setConfig((c) => (c ? { ...c, target_plate_type: meta.default_target_plate_type } : c));
+      setViewerPlateTypeId(meta.default_target_plate_type);
+    }
+    if (!sourceValid && meta?.default_sourceplate_type) {
+      setConfig((c) => (c ? { ...c, sourceplate_type: meta.default_sourceplate_type } : c));
+    }
+  }, [bootstrap, config, setConfig, setViewerPlateTypeId]);
+
   // ---------------------------------------------------------------------------
   // Upload mode handlers
   // ---------------------------------------------------------------------------
@@ -418,19 +440,25 @@ export function WorkbenchPage() {
     if (field === "dispenser" || field === "sourceplate_type") {
       setSourceLayoutFile(null);
     }
+    if (field === "dispenser" && bootstrap) {
+      const meta = bootstrap.dispensers?.find((d) => d.name === value);
+      if (meta?.default_target_plate_type) setViewerPlateTypeId(meta.default_target_plate_type);
+    }
     setConfig((c) => {
       if (!c) return c;
-      // Switching dispenser resets sourceplate_type to the new dispenser's
-      // default (otherwise an iDOT plate label leaks into an Echo run) and
-      // clears any uploaded source-layout file (different source plates use
-      // different wells / liquid sets). Target plate is geometry-only
-      // (96/384/etc.) and stays whatever the user picked.
+      // Switching dispenser resets sourceplate_type AND target_plate_type to
+      // the new dispenser's defaults. iDOT target plate names are geometric
+      // ("MWP 384"); Echo target plate names are vendor SKUs (e.g.
+      // "Revvity_384PS_6007660"). Letting an iDOT label leak into an Echo
+      // run would put an unrecognised string in the Echo CSV's Destination
+      // Plate Type column, which the Echo machine would reject.
       if (field === "dispenser" && bootstrap) {
         const meta = bootstrap.dispensers?.find((d) => d.name === value);
         return {
           ...c,
           dispenser: value as RunConfig["dispenser"],
           sourceplate_type: meta?.default_sourceplate_type ?? c.sourceplate_type,
+          target_plate_type: meta?.default_target_plate_type ?? c.target_plate_type,
           source_layout_file: null,
         };
       }
@@ -502,10 +530,12 @@ export function WorkbenchPage() {
   const activePreview = workingPreview ?? preview;
   const downloadProjectDetails: string[] = [config.user_name, config.protocol_name];
 
+  const targetDefsForDispenser =
+    bootstrap.target_plate_definitions_by_dispenser?.[config.dispenser] ?? bootstrap.targetPlateDefinitions;
   const viewerPlateDef: TargetPlateDefinition | undefined =
     viewerPlateTypeId === "custom"
       ? { id: "custom", label: "Custom", rows: customRows, cols: customCols, wells: customRows * customCols }
-      : bootstrap.targetPlateDefinitions.find((d) => d.id === viewerPlateTypeId);
+      : targetDefsForDispenser.find((d) => d.id === viewerPlateTypeId);
 
   const maxDataRows = preview ? Math.max(...preview.plates.map((p) => p.rowLabels.length)) : 0;
   const maxDataCols = preview ? Math.max(...preview.plates.map((p) => p.columnLabels.length)) : 0;
@@ -520,7 +550,29 @@ export function WorkbenchPage() {
 
   return (
     <div className="workbench-layout">
-      <WorkbenchHero isReady={Boolean(layoutFile && (metaFile || sourceLayoutFile))} />
+      <WorkbenchHero
+        layoutFile={layoutFile}
+        metaFile={metaFile}
+        sourceLayoutFile={sourceLayoutFile}
+        config={config}
+        layoutWellCount={null}
+        metaCompoundCount={null}
+        running={
+          processing
+            ? { kind: "pipeline" }
+            : designIsGenerating
+              ? {
+                  kind: "design",
+                  label:
+                    designJob?.phase === "preflight"
+                      ? "Checking inputs…"
+                      : designJob?.phase === "solving"
+                        ? "Solving with PLAID_Core…"
+                        : "Starting solver…",
+                }
+              : null
+        }
+      />
 
       {errorMessage && <section className="status-banner is-error">{errorMessage}</section>}
 
@@ -591,7 +643,7 @@ export function WorkbenchPage() {
           <PlateViewerPanel
             preview={activePreview}
             originalPreview={preview}
-            bootstrap={bootstrap}
+            targetPlateDefs={targetDefsForDispenser}
             viewerPlateTypeId={viewerPlateTypeId}
             onViewerPlateTypeChange={handleViewerPlateTypeChange}
             customRows={customRows}

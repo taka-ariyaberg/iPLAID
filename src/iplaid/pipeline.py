@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from .download_filenames import build_source_prep_output_path
@@ -166,6 +167,53 @@ def run_pipeline_with_inputs(
     )
 
 
+def _validate_target_plate_against_catalog(disp, cfg: dict, project_root: Path) -> None:
+    """Reject cfg["target_plate_type"] if it isn't in the active dispenser's
+    destination-plate catalog.
+
+    Source-side mismatches are already caught implicitly by get_source_plate_spec()
+    (raises KeyError). The destination side had no guard — the string was just
+    written verbatim to the CSV's Destination Plate Type column, and the machine
+    rejected the file at import. This adds the explicit pre-write check so every
+    pipeline caller (UI, CLI, notebook, API) gets a fast clear error.
+
+    Graceful when the catalog file is missing (no crash for stripped-down envs).
+    Exact-match comparison — no case folding, no whitespace stripping — to mirror
+    how Echo Cherry Pick / Assay Studio look up plate names in their libraries.
+    """
+    target_path = project_root / "data" / disp.spec.target_plate_specs_path
+    if not target_path.exists():
+        return
+
+    try:
+        target_raw = json.loads(target_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return  # Unreadable catalog -> skip (don't block the run)
+
+    if isinstance(target_raw, list):
+        valid_names = {p["id"] for p in target_raw if isinstance(p, dict) and "id" in p}
+    elif isinstance(target_raw, dict):
+        valid_names = set(target_raw.keys())
+    else:
+        return
+
+    if not valid_names:
+        return
+
+    requested = cfg.get("target_plate_type")
+    if requested in valid_names:
+        return
+
+    sorted_valid = sorted(valid_names)
+    raise ValueError(
+        f"target_plate_type {requested!r} is not in the {disp.spec.display_name} "
+        f"destination-plate catalog (data/{disp.spec.target_plate_specs_path}). "
+        f"Valid options: {sorted_valid}. "
+        f"If you need a different plate, add it to that file (id matching the "
+        f"name your machine's Plate Type Editor uses)."
+    )
+
+
 def _run_pipeline_with_resolved_inputs(
     *,
     root: Path,
@@ -178,6 +226,7 @@ def _run_pipeline_with_resolved_inputs(
     """Execute the shared pipeline workflow once config and file paths are resolved."""
 
     disp = get_dispenser(cfg.get("dispenser", "idot"))
+    _validate_target_plate_against_catalog(disp, cfg, paths["project_root"])
     specs = disp.load_plate_specs(paths["project_root"])
     source_specs = get_source_plate_spec(specs, cfg["sourceplate_type"])
     if existing_layout is not None:

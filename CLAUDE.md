@@ -64,7 +64,8 @@ docker compose up
 | `frontend/src/components/workbench/ConfigDropdown.tsx` | Custom div/button dropdown used for Dispenser + Source plate type (replaces native `<select>`) |
 | `compose.yml` | Docker Compose config |
 | `src/iplaid/imeta.py` | iMETA CSV export from finalized protocol dispense rows |
-| `data/idot_source_plate_specs.json`, `data/echo_source_plate_specs.json` | Per-dispenser source-plate catalogs read by `load_plate_specs_for_dispenser` |
+| `data/idot_source_plate_specs.json`, `data/echo_source_plate_specs.json` | Per-dispenser source-plate catalogs loaded via `Dispenser.load_plate_specs(project_root)` and exposed in the bootstrap as `source_plate_definitions_by_dispenser` |
+| `data/idot_target_plate_specs.json`, `data/echo_target_plate_specs.json` | Per-dispenser destination-plate catalogs (path on each `DispenserSpec.target_plate_specs_path`); exposed in the bootstrap as `target_plate_definitions_by_dispenser`. Cross-field validated against `cfg["target_plate_type"]` in `_validate_target_plate_against_catalog` (pipeline.py) — single chokepoint for UI/CLI/API |
 
 ---
 

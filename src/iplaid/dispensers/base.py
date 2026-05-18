@@ -25,7 +25,8 @@ class DispenserSpec:
     """Static metadata for a dispenser. Loaded from the registry."""
     name: str
     display_name: str
-    plate_specs_path: str  # relative to <project_root>/data/
+    plate_specs_path: str  # source-plate catalog, relative to <project_root>/data/
+    target_plate_specs_path: str  # destination-plate catalog, relative to <project_root>/data/
     min_increment_nL: float  # 0 means no rounding (iDOT); 2.5 for Echo
     default_sourceplate_type: str
     default_target_plate_type: str

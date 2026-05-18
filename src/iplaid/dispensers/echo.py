@@ -63,9 +63,10 @@ class EchoDispenser:
         name="echo",
         display_name="Echo",
         plate_specs_path="echo_source_plate_specs.json",
+        target_plate_specs_path="echo_target_plate_specs.json",
         min_increment_nL=2.5,
         default_sourceplate_type="384LDV",
-        default_target_plate_type="MWP 384",
+        default_target_plate_type="Revvity_384_6007660",
     )
 
     def load_plate_specs(self, project_root: Path) -> dict:

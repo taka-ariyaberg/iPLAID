@@ -174,7 +174,10 @@ export function ResultsPage() {
       preflightAssessment.capRecommendations.length > 0
     )
   );
-  const targetPlateDef = bootstrap?.targetPlateDefinitions.find(
+  const targetPlateDefinitions =
+    bootstrap?.target_plate_definitions_by_dispenser?.[job.config.dispenser] ??
+    bootstrap?.targetPlateDefinitions;
+  const targetPlateDef = targetPlateDefinitions?.find(
     (d) => d.id === job.config.target_plate_type,
   );
   const sourcePlateDefinitions =

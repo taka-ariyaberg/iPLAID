@@ -270,4 +270,5 @@ export type BootstrapResponse = {
   dispensers: DispenserMeta[];
   plate_types_by_dispenser: Record<string, string[]>;
   source_plate_definitions_by_dispenser?: Record<string, TargetPlateDefinition[]>;
+  target_plate_definitions_by_dispenser?: Record<string, TargetPlateDefinition[]>;
 };
