@@ -40,14 +40,16 @@ Default models otherwise. Trust the skills — don't add a routing table here.
 
 ## Setup / Quick Run
 
-Docker only (no host Python/Node/MiniZinc required):
+Docker only (no host Python/Node/MiniZinc required). Canonical launcher is the wrapper script:
 
 ```bash
-docker compose build
-docker compose up
+scripts/start.sh           # build only if image missing, then up
+scripts/start.sh --build   # force rebuild (first build ~20–40 min for Gecode/MiniZinc)
+scripts/stop.sh            # stop + remove containers (volumes preserved)
 ```
 
 - App: `http://127.0.0.1:8000`
+- After a Docker rebuild, hard-refresh the browser (`Cmd+Shift+R`) to bust the cached frontend bundle.
 
 ---
 

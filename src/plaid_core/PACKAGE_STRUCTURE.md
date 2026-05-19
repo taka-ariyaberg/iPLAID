@@ -51,4 +51,4 @@ src/plaid_core/
 
 ## Usage note
 
-This package is already bundled into the repository. For setup and operation of the full project, use the root [README.md](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/README.md).
+This package is already bundled into the repository. For setup and operation of the full project, use the root [README.md](../../README.md).

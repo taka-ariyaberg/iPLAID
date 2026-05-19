@@ -4,7 +4,7 @@ This file is kept as a short pointer for developers browsing `src/plaid_core/`.
 
 ## Recommended setup path
 
-If you are using this repository, Docker is the supported setup — follow the root [README.md](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/README.md). Docker installs all Python dependencies and MiniZinc automatically.
+If you are using this repository, Docker is the supported setup — follow the root [README.md](../../README.md). Docker installs all Python dependencies and MiniZinc automatically.
 
 For direct Python scripting outside Docker:
 

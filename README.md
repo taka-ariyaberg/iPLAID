@@ -30,10 +30,13 @@ This repository now has one supported setup path for new machines: **Docker**.
 
 You only need:
 
-- Docker
-- Docker Compose v2 (`docker compose`)
+- **Docker** (any of: Docker Desktop, Colima, or Docker Engine on Linux)
+- **Docker Compose v2** (`docker compose` — bundled with Docker Desktop and recent Colima/Engine installs)
+- **~3 GB free disk** for the built image plus build cache (first build only; ~700 MB once stable)
 
 You do **not** need to install Python, Node.js, Conda, npm, or MiniZinc on the host machine for normal iPLAID usage.
+
+**macOS users:** Colima (`brew install colima`) is a free, open-source alternative to Docker Desktop and works with iPLAID without any extra configuration. Start it with `colima start` before invoking `scripts/start.sh`.
 
 ### What the Docker image includes
 
@@ -41,8 +44,8 @@ The Docker image builds and runs:
 
 - the FastAPI backend,
 - the production frontend bundle,
-- all Python dependencies,
-- MiniZinc for the PLAID designer.
+- all Python dependencies (pinned in `requirements.lock` and `pyproject.toml`),
+- MiniZinc + Gecode, compiled from source for native ARM64 support (pinned commits in the Dockerfile).
 
 ## Quick start
 
@@ -55,6 +58,8 @@ scripts/start.sh --no-open # skip auto-opening the browser
 ```
 
 The script runs `docker compose up -d iplaid`, waits for `/api/health` to come up, and opens `http://127.0.0.1:8000` in your default browser. Set `IPLAID_PORT=8001` to use a different port.
+
+> **First build takes ~20–40 minutes** because Gecode and MiniZinc are compiled from source for native ARM64. Subsequent builds are cached and complete in seconds unless you change the pinned solver versions or a Python dependency. The first run will look idle while it builds — `docker compose logs -f iplaid` shows progress.
 
 Stop iPLAID:
 
@@ -197,10 +202,11 @@ Minimal example:
   "protocol_name": "MyExperiment",
   "layout_file": "compound_layout_example.csv",
   "meta_file": "meta_example.csv",
+  "dispenser": "idot",
   "sourceplate_type": "S.100 Plate",
   "target_plate_type": "MWP 384",
-  "working_volume_ul": 40,
-  "max_dmso_pct": 0.1,
+  "working_volume_ul": 50,
+  "max_dmso_pct": 1.0,
   "source_prep_overage_pct": 0.3,
   "min_pipette_volume_uL": 1.0,
   "dilution_solvent": "DMSO",
@@ -214,13 +220,14 @@ Important fields:
 
 | Key | Description |
 |-----|-------------|
+| `dispenser` | `idot` or `echo` |
 | `layout_file` | File name under `inputs/layouts/` for direct pipeline runs |
 | `meta_file` | File name under `inputs/meta/` for direct pipeline runs |
-| `sourceplate_type` | Must match a key in the selected dispenser's source plate specs file, for example `data/idot_source_plate_specs.json` or `data/echo_source_plate_specs.json` |
-| `target_plate_type` | Must match an entry in the selected dispenser's target-plate catalog: `data/idot_target_plate_specs.json` (iDOT) or `data/echo_target_plate_specs.json` (Echo) |
+| `sourceplate_type` | Must match a key in the selected dispenser's source plate specs file: `data/idot_source_plate_specs.json` (iDOT) or `data/echo_source_plate_specs.json` (Echo) |
+| `target_plate_type` | Must match an entry in the selected dispenser's target-plate catalog: `data/idot_target_plate_specs.json` (iDOT) or `data/echo_target_plate_specs.json` (Echo). The pipeline rejects mismatched (dispenser, target) pairs at config time. |
 | `working_volume_ul` | Assay working volume in µL |
-| `max_dmso_pct` | Default maximum solvent percentage used when no solvent-specific override is provided |
-| `solvent_caps_pct` | Optional per-solvent percentage limits, for example `{ "DMSO": 0.1, "Ethanol": 0.2 }` |
+| `max_dmso_pct` | Default maximum solvent percentage in a single destination well (`1.0` = 1 %). Standard cell-based assay tolerance. |
+| `solvent_caps_pct` | Optional per-solvent percentage limits, for example `{ "DMSO": 1.0, "Ethanol": 2.0 }` |
 
 ## Echo destination plates (Plate Type Editor setup)
 
@@ -439,8 +446,11 @@ Key files:
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
-| `docker: command not found` | Docker is not installed | Install Docker Desktop or Docker Engine + Compose |
-| `Cannot connect to the Docker daemon` | Docker is installed but not running | Start Docker and rerun `scripts/start.sh` |
+| `docker: command not found` | Docker is not installed | Install Docker Desktop, Colima (`brew install colima` on macOS), or Docker Engine + Compose on Linux |
+| `Cannot connect to the Docker daemon` | Docker is installed but the daemon is not running | Start it: `open -a Docker` (Docker Desktop), `colima start` (Colima), or `sudo systemctl start docker` (Linux), then rerun `scripts/start.sh` |
+| First build appears to hang for several minutes | Gecode + MiniZinc are being compiled from source (~20–40 min) | Stream progress with `docker compose logs -f iplaid` while it builds. Subsequent builds use the cached layer and finish in seconds. |
+| `no space left on device` during build | Less than ~3 GB free for the build cache | Free space, or prune old images: `docker system prune -a` |
+| New code does not appear after rebuild | Browser is serving a cached `index.html` referencing the old frontend bundle hash | Hard-refresh: `Cmd+Shift+R` (macOS) or `Ctrl+Shift+R` (Windows/Linux) |
 | `bind: address already in use` on port 8000 | Another process is using port 8000 | Stop the conflicting process or run `IPLAID_PORT=8001 scripts/start.sh` |
 | Designer fails unexpectedly | Container image is stale or MiniZinc runtime is unhealthy | Rebuild with `scripts/start.sh --build`; verify with `docker compose run --rm iplaid minizinc --version` |
 | Frontend loads but API calls fail | Container is not healthy yet | Check `docker compose logs -f iplaid` and verify `/api/health` |

@@ -1,5 +1,7 @@
 # Compound CSV Import Implementation Plan
 
+> **Status:** Implemented and merged. This plan is the historical execution record; the live code is in `frontend/src/components/design/CompoundCSVImportModal.tsx` and the **Upload CSV** path in `CompoundPanel`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add a "Upload CSV" button to the CompoundPanel that parses a compound list CSV, opens a preview/edit modal, and on confirmation populates the same `CompoundDef[]`/`SolventDef[]` state that manual entry uses.

@@ -2,7 +2,7 @@
 
 Python API reference for the bundled `plaid_core` package inside iPLAID.
 
-For repository setup and web-app usage, start with the root [README.md](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/README.md). This file focuses on direct Python use of the package itself.
+For repository setup and web-app usage, start with the root [README.md](../../README.md). This file focuses on direct Python use of the package itself.
 
 ## Core Classes
 

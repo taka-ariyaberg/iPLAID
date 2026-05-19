@@ -1,7 +1,16 @@
+---
+type: design-spec
+status: implemented
+date: 2026-04-26
+scope: frontend
+tags: [design, spec, iplaid, design-panel, csv-import]
+---
+
 # Design: Compound CSV Import for Design Plate Layout
 
-**Date:** 2026-04-26  
-**Branch:** imeta-csv-export (to be implemented on a new branch)  
+> **Status:** Implemented. The CSV-import path is live in `frontend/src/components/design/CompoundCSVImportModal.tsx` and reachable via the **Upload CSV** button in `CompoundPanel`. This file is kept as the historical design record.
+
+**Date:** 2026-04-26
 **Scope:** Frontend only — no backend changes required
 
 ---

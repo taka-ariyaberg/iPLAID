@@ -2,13 +2,13 @@
 
 This file documents the solver-specific setup for the bundled `plaid_core` package.
 
-If you are setting up the full iPLAID repository, use the root [README.md](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/README.md) as the primary guide.
+If you are setting up the full iPLAID repository, use the root [README.md](../../README.md) as the primary guide.
 
 ## In this repository
 
 `plaid_core` is already included under `src/plaid_core/`.
 
-For normal iPLAID usage, Docker installs everything automatically — MiniZinc included. See the root [README.md](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/README.md).
+For normal iPLAID usage, Docker installs everything automatically — MiniZinc included. See the root [README.md](../../README.md).
 
 For direct Python scripting outside Docker, install from the repo root:
 

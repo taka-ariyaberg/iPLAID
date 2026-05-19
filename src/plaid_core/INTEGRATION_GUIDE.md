@@ -4,9 +4,9 @@ This repository already includes the PLAID_Core integration.
 
 ## Current integration points
 
-- Backend bridge: [backend/app/designer.py](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/backend/app/designer.py)
-- Backend API routes: [backend/app/main.py](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/backend/app/main.py)
-- Frontend design client: [frontend/src/services/apiClient.ts](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/frontend/src/services/apiClient.ts)
+- Backend bridge: [backend/app/designer.py](../../backend/app/designer.py)
+- Backend API routes: [backend/app/main.py](../../backend/app/main.py)
+- Frontend design client: [frontend/src/services/apiClient.ts](../../frontend/src/services/apiClient.ts)
 - Frontend design UI: `frontend/src/components/design/` and `frontend/src/pages/WorkbenchPage.tsx`
 
 ## How it works here

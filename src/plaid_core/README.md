@@ -11,7 +11,7 @@ Within this repository, it powers the **Design with PLAID** workflow in the web 
 - You do not need to copy `PLAID_Core` into iPLAID manually.
 - You do need MiniZinc installed separately if you want to solve layouts.
 
-For full repo setup instructions, start with the root [README.md](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/README.md).
+For full repo setup instructions, start with the root [README.md](../../README.md).
 
 ## Requirements
 
@@ -22,7 +22,7 @@ For full repo setup instructions, start with the root [README.md](/Users/takar83
 
 ## Install inside this repo
 
-For normal iPLAID usage, Docker handles installation automatically — no manual steps needed. See the root [README.md](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/README.md).
+For normal iPLAID usage, Docker handles installation automatically — no manual steps needed. See the root [README.md](../../README.md).
 
 For direct Python scripting outside Docker:
 
@@ -98,7 +98,7 @@ The frontend `DesignPanel` uses these endpoints and returns the accepted layout 
 
 ## License
 
-The contents of `src/plaid_core/` are derived from [pharmbio/plaid](https://github.com/pharmbio/plaid) and are governed by the Apache License 2.0. See [`LICENSES/Apache-2.0.txt`](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/LICENSES/Apache-2.0.txt) for the full license text and [`NOTICE.md`](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/NOTICE.md) for attribution. The rest of the iPLAID repository is MIT-licensed; see the project [`LICENSE.md`](/Users/takar834/Documents/UU/TIMED/Tools/iPLAID/LICENSE.md).
+The contents of `src/plaid_core/` are derived from [pharmbio/plaid](https://github.com/pharmbio/plaid) and are governed by the Apache License 2.0. See [`LICENSES/Apache-2.0.txt`](../../LICENSES/Apache-2.0.txt) for the full license text and [`NOTICE.md`](../../NOTICE.md) for attribution. The rest of the iPLAID repository is MIT-licensed; see the project [`LICENSE.md`](../../LICENSE.md).
 
 ## Citation
 
