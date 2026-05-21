@@ -38,7 +38,7 @@
 
 
 # ── Stage 1: build Gecode 6.3.0 from source ──────────────────────────────────
-FROM debian:bookworm-slim@sha256:f9c6a2fd2ddbc23e336b6257a5245e31f996953ef06cd13a59fa0a1df2d5c252 AS gecode-builder
+FROM debian:bookworm-slim@sha256:0104b334637a5f19aa9c983a91b54c89887c0984081f2068983107a6f6c21eeb AS gecode-builder
 
 # No libmpfr-dev: plate-design.mzn uses `float` only as parameter data, never as
 # a solver decision variable. Building without MPFR keeps libgecodefloat.a free
@@ -67,7 +67,7 @@ RUN cmake --install /build/gecode
 
 
 # ── Stage 2: build MiniZinc 2.6.1 from source ────────────────────────────────
-FROM debian:bookworm-slim@sha256:f9c6a2fd2ddbc23e336b6257a5245e31f996953ef06cd13a59fa0a1df2d5c252 AS minizinc-builder
+FROM debian:bookworm-slim@sha256:0104b334637a5f19aa9c983a91b54c89887c0984081f2068983107a6f6c21eeb AS minizinc-builder
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
