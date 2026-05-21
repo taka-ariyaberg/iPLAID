@@ -1,6 +1,6 @@
 # iPLAID
 
-**iDOT Protocol Layout & Assay Integration Dispatcher**
+**Multi-dispenser liquid-handling protocol generator (iDOT + Echo)**
 
 iPLAID converts screening layouts into liquid-handler dispense outputs for both **iDOT** (Assay Studio) and **Echo** (acoustic) dispensers. The dispenser is selected from a dropdown in the workbench. iPLAID can:
 
@@ -19,7 +19,7 @@ This repository now has one supported setup path for new machines: **Docker**.
 
 ## What is in this repo
 
-- `src/iplaid/`: the pipeline that turns a layout + metadata into iDOT outputs.
+- `src/iplaid/`: the pipeline that turns a layout + metadata into dispenser-specific outputs (iDOT or Echo).
 - `src/plaid_core/`: the bundled plate-layout design engine used by the web designer.
 - `backend/`: FastAPI backend for the web workbench.
 - `frontend/`: React frontend that is built and served by the backend in Docker.
@@ -362,8 +362,8 @@ artifact from preparation instructions to `source_plate_summary`.
 
 ### iMETA CSV
 
-Each pipeline run now writes an iMETA CSV from the finalized protocol dispense rows.
-It has one row per actual dispense event, including solvent top-ups and solvent-control wells, so it matches the iDOT protocol rather than only the input layout.
+Each pipeline run writes an iMETA CSV from the finalized protocol dispense rows.
+It has one row per actual dispense event, including solvent top-ups and solvent-control wells, so it matches the dispense protocol rather than only the input layout.
 
 The export includes:
 
@@ -372,7 +372,7 @@ The export includes:
 - source plate and well,
 - compound and solvent identity,
 - compound stock and source-plate concentration,
-- dispensed volume rounded the same way as the iDOT protocol CSV,
+- dispensed volume rounded the same way as the iDOT protocol CSV (Echo runs apply the dispenser's own 2.5 nL increment upstream, so the value here is identical to what the Echo CSV emits),
 - working volume and calculated target concentration,
 - dispense role: `compound`, `solvent_topup`, or `solvent_control`.
 

@@ -1,5 +1,7 @@
 # Colour Palette Guide
 
+> This design system is shared with the sibling project [iCELL](https://github.com/taka-ariyaberg/iCELL); the CSS custom properties are prefixed `--icell-*` for that historical reason. The values are tuned for iPLAID's dark workbench, and the same naming is used verbatim in `frontend/src/styles/index.css`. Treat the prefix as a stable, shared token namespace rather than a project marker.
+
 ## 1. Dark base — a single shared hue family
 
 All background and surface tones share the same blue-purple hue (~230°) at near-zero saturation. Depth is created purely by lightness:

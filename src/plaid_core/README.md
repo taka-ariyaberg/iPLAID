@@ -68,8 +68,8 @@ PLAID_Core only designs well assignments. It does not know:
 
 - stock concentrations in mM,
 - solvents,
-- DMSO normalization targets,
-- iDOT export rules.
+- solvent-family carrier-volume normalization targets,
+- dispenser-specific export rules (iDOT, Echo).
 
 Those are handled by the iPLAID pipeline after a layout has been generated.
 
