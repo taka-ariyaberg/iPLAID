@@ -1,15 +1,14 @@
-"""Echo dispenser unit tests."""
+"""Tests for iplaid.dispensers.echo — helpers, build_protocol, write_protocol, validate_export."""
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-
-from iplaid.dispensers.echo import (  # noqa: E402
+from iplaid.dispensers import get_dispenser
+from iplaid.dispensers.echo import (
+    EchoDispenser,
     _liquid_name_to_sample_name,
     _pad_source_well,
     _unpad_dest_well,
@@ -46,10 +45,7 @@ def test_liquid_name_to_sample_name() -> None:
     assert _liquid_name_to_sample_name("[dmso][0.0]") == "dmso[0.0]"
 
 
-# ----- E1.3: EchoDispenser spec + load_plate_specs --------------------------
-
-from iplaid.dispensers.echo import EchoDispenser  # noqa: E402
-from iplaid.dispensers import get_dispenser  # noqa: E402
+# ---- EchoDispenser spec + registry + load_plate_specs ----------------------
 
 
 def test_echo_dispenser_spec() -> None:
@@ -75,7 +71,7 @@ def test_echo_load_plate_specs(tmp_path: Path) -> None:
     assert specs["384LDV"]["x_offset"] == 1050
 
 
-# ----- E1.4: EchoDispenser.build_protocol -----------------------------------
+# ---- EchoDispenser.build_protocol ------------------------------------------
 
 
 def test_echo_build_protocol_columns_and_format() -> None:
@@ -114,7 +110,7 @@ def test_echo_build_protocol_columns_and_format() -> None:
     assert (out["Destination Well X Offset"] == 1050).all()
 
 
-# ----- E1.5: write_protocol uses utf-8, no BOM, LF --------------------------
+# ---- EchoDispenser.write_protocol: UTF-8, no BOM, LF -----------------------
 
 
 def test_echo_write_protocol_uses_utf8_no_bom_and_lf(tmp_path: Path) -> None:
@@ -138,7 +134,7 @@ def test_echo_write_protocol_uses_utf8_no_bom_and_lf(tmp_path: Path) -> None:
     assert raw.count(b"\n") == 2  # header + 1 row
 
 
-# ----- E1.6: write_liquids round-trip + validate_export checks --------------
+# ---- EchoDispenser.write_liquids round-trip + validate_export -------------
 
 
 def test_echo_write_liquids_round_trip(tmp_path: Path) -> None:

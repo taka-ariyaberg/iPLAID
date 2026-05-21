@@ -1,17 +1,10 @@
-"""Tests for the iPLAID iMETA export module."""
-
+"""Tests for iplaid.imeta — build_imeta_dataframe."""
 from __future__ import annotations
-
-import sys
-from pathlib import Path
 
 import pandas as pd
 import pytest
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(PROJECT_ROOT))
-
-from src.iplaid.imeta import IMETA_COLUMNS, build_imeta_dataframe
+from iplaid.imeta import IMETA_COLUMNS, build_imeta_dataframe
 
 
 def _make_layout_df() -> pd.DataFrame:

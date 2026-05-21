@@ -1,16 +1,12 @@
-"""Smoke tests for /api/runs upload contracts."""
+"""Tests for /api/runs upload contract: exactly one of meta or source_layout, etc."""
 from __future__ import annotations
 
 import json
-import sys
-from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from backend.app.main import app  # noqa: E402
+from backend.app.main import app
 
 
 client = TestClient(app)

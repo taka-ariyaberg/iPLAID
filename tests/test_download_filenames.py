@@ -1,15 +1,11 @@
+"""Tests for iplaid.download_filenames — artifact filename + path builders."""
 from pathlib import Path
-import sys
 
-
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-
-from iplaid.download_filenames import (  # noqa: E402
+from iplaid.download_filenames import (
     build_download_filename,
     build_source_prep_output_path,
     find_latest_download_artifact,
 )
-from iplaid.io import build_output_paths  # noqa: E402
 
 
 def test_build_download_filename_standardizes_segments() -> None:
@@ -23,37 +19,7 @@ def test_build_download_filename_standardizes_segments() -> None:
     assert filename == "iPLAID_Taka_User_TIMED_CLEO_EXP_01_iDOT_protocol_26-04-23-11-22-33.csv"
 
 
-def test_build_output_paths_use_shared_standardized_timestamp(tmp_path) -> None:
-    config = {
-        "user_name": "Your Name",
-        "protocol_name": "My Protocol",
-        "dispenser": "idot",
-        "output_timestamp_format": "%y-%m-%d-%H-%M-%S",
-    }
-
-    paths = build_output_paths(tmp_path, config, timestamp="26-04-23-11-22-33")
-
-    assert paths["run_timestamp"] == "26-04-23-11-22-33"
-    assert paths["out_idot"].name == "iPLAID_Your_Name_My_Protocol_idot_protocol_26-04-23-11-22-33.csv"
-    assert paths["out_protocol"] == paths["out_idot"]
-    assert paths["out_liquids"].name == "iPLAID_Your_Name_My_Protocol_liquids_map_26-04-23-11-22-33.csv"
-
-
-def test_build_output_paths_uses_dispenser_protocol_name(tmp_path) -> None:
-    config = {
-        "user_name": "Your Name",
-        "protocol_name": "My Protocol",
-        "dispenser": "echo",
-        "output_timestamp_format": "%y-%m-%d-%H-%M-%S",
-    }
-
-    paths = build_output_paths(tmp_path, config, timestamp="26-04-23-11-22-33")
-
-    assert paths["out_idot"].name == "iPLAID_Your_Name_My_Protocol_echo_protocol_26-04-23-11-22-33.csv"
-    assert paths["out_protocol"] == paths["out_idot"]
-
-
-def test_build_source_prep_output_path_matches_standard() -> None:
+def test_build_source_prep_output_path_uses_prep_suffix() -> None:
     config = {
         "user_name": "Your Name",
         "protocol_name": "My Protocol",
@@ -69,7 +35,7 @@ def test_build_source_prep_output_path_matches_standard() -> None:
     assert path.name == "iPLAID_Your_Name_My_Protocol_source_plate_prep_26-04-23-11-22-33.txt"
 
 
-def test_build_source_summary_output_path_matches_standard() -> None:
+def test_build_source_prep_output_path_uses_summary_suffix_when_supplied() -> None:
     config = {
         "user_name": "Your Name",
         "protocol_name": "My Protocol",

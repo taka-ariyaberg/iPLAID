@@ -1,15 +1,12 @@
-"""Layout-only run produces the same artifacts as meta + legacy-format-layout."""
+"""Pipeline-level equivalence: meta + legacy-shape source layout ≡ layout-only run."""
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from src.iplaid.pipeline import run_pipeline_with_inputs  # noqa: E402
+from iplaid.pipeline import run_pipeline_with_inputs
 
 
 def _read_text(p: Path) -> str:
@@ -44,27 +41,7 @@ def _write_new_format_source_layout(path: Path) -> None:
     ]).to_csv(path, index=False)
 
 
-def _baseline_config() -> dict:
-    return {
-        "user_name": "tester",
-        "protocol_name": "regression",
-        "dispenser": "idot",
-        "sourceplate_type": "S.100 Plate",
-        "target_plate_type": "MWP 384",
-        "dilution_solvent": "DMSO",
-        "working_volume_ul": 50.0,
-        "max_dmso_pct": 0.5,
-        "source_prep_overage_pct": 0.1,
-        "min_pipette_volume_uL": 1.0,
-        "source_well_fill_pct": 0.8,
-        "standard_prep_volume_uL": 50,
-        "layout_file": "layout.csv",
-        "meta_file": "meta.csv",
-        "output_timestamp_format": "FROZEN-TIMESTAMP",
-    }
-
-
-def test_layout_only_matches_meta_plus_legacy_layout(tmp_path: Path) -> None:
+def test_layout_only_matches_meta_plus_legacy_layout(tmp_path: Path, baseline_config) -> None:
     legacy_dir = tmp_path / "legacy"; legacy_dir.mkdir()
     new_dir    = tmp_path / "new";    new_dir.mkdir()
     out_legacy = tmp_path / "out_legacy"; out_legacy.mkdir()
@@ -76,14 +53,12 @@ def test_layout_only_matches_meta_plus_legacy_layout(tmp_path: Path) -> None:
     new_src    = new_dir    / "new_src.csv";      _write_new_format_source_layout(new_src)
     layout2    = new_dir    / "layout.csv";       _write_min_layout(layout2)
 
-    cfg = _baseline_config()
-
     a = run_pipeline_with_inputs(
-        config=cfg, layout_path=layout_csv, meta_path=meta_csv,
+        config=baseline_config, layout_path=layout_csv, meta_path=meta_csv,
         output_dir=out_legacy, source_layout_path=old_src, include_source_prep=False,
     )
     b = run_pipeline_with_inputs(
-        config=cfg, layout_path=layout2, meta_path=None,
+        config=baseline_config, layout_path=layout2, meta_path=None,
         output_dir=out_new, source_layout_path=new_src, include_source_prep=False,
     )
 
@@ -92,7 +67,7 @@ def test_layout_only_matches_meta_plus_legacy_layout(tmp_path: Path) -> None:
         assert _read_text(a["paths"][key]) == _read_text(b["paths"][key]), key
 
 
-def test_pipeline_rejects_both_files(tmp_path: Path) -> None:
+def test_pipeline_rejects_both_files(tmp_path: Path, baseline_config) -> None:
     layout_csv = tmp_path / "layout.csv"; _write_min_layout(layout_csv)
     meta_csv   = tmp_path / "meta.csv";   _write_meta(meta_csv)
     new_src    = tmp_path / "new_src.csv"; _write_new_format_source_layout(new_src)
@@ -100,7 +75,7 @@ def test_pipeline_rejects_both_files(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="both meta_path and source_layout_path"):
         run_pipeline_with_inputs(
-            config=_baseline_config(),
+            config=baseline_config,
             layout_path=layout_csv,
             meta_path=meta_csv,
             output_dir=out_dir,
@@ -108,13 +83,13 @@ def test_pipeline_rejects_both_files(tmp_path: Path) -> None:
         )
 
 
-def test_pipeline_rejects_neither(tmp_path: Path) -> None:
+def test_pipeline_rejects_neither(tmp_path: Path, baseline_config) -> None:
     layout_csv = tmp_path / "layout.csv"; _write_min_layout(layout_csv)
     out_dir    = tmp_path / "out"; out_dir.mkdir()
 
     with pytest.raises(ValueError, match="meta_path is required"):
         run_pipeline_with_inputs(
-            config=_baseline_config(),
+            config=baseline_config,
             layout_path=layout_csv,
             meta_path=None,
             output_dir=out_dir,
@@ -154,8 +129,8 @@ def _write_multiconc_new_source_layout(path: Path) -> None:
     ]).to_csv(path, index=False)
 
 
-def test_layout_only_matches_meta_plus_legacy_multiconc(tmp_path: Path) -> None:
-    """AC2 with multi-conc per compound — exercises max(conc_mM) derivation."""
+def test_layout_only_matches_meta_plus_legacy_multiconc(tmp_path: Path, baseline_config) -> None:
+    """Multi-concentration per compound — exercises max(conc_mM) derivation."""
     legacy_dir = tmp_path / "legacy"; legacy_dir.mkdir()
     new_dir    = tmp_path / "new";    new_dir.mkdir()
     out_legacy = tmp_path / "out_legacy"; out_legacy.mkdir()
@@ -167,14 +142,12 @@ def test_layout_only_matches_meta_plus_legacy_multiconc(tmp_path: Path) -> None:
     layout2    = new_dir    / "layout.csv";  _write_multiconc_layout(layout2)
     new_src    = new_dir    / "new_src.csv"; _write_multiconc_new_source_layout(new_src)
 
-    cfg = _baseline_config()
-
     a = run_pipeline_with_inputs(
-        config=cfg, layout_path=layout_csv, meta_path=meta_csv,
+        config=baseline_config, layout_path=layout_csv, meta_path=meta_csv,
         output_dir=out_legacy, source_layout_path=old_src, include_source_prep=False,
     )
     b = run_pipeline_with_inputs(
-        config=cfg, layout_path=layout2, meta_path=None,
+        config=baseline_config, layout_path=layout2, meta_path=None,
         output_dir=out_new, source_layout_path=new_src, include_source_prep=False,
     )
 

@@ -1,14 +1,9 @@
-"""Schema-level validation for the new-format Source plate layout CSV upload."""
+"""Schema validation for /api/source-layouts/preview (backend.app.preview)."""
 from __future__ import annotations
-
-import sys
-from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from backend.app.preview import validate_source_layout_upload  # noqa: E402
+from backend.app.preview import validate_source_layout_upload
 
 
 def _to_bytes(rows: list[str]) -> bytes:

@@ -1,11 +1,8 @@
 """Cross-field validator: target_plate_type must be in the active dispenser's
 destination-plate catalog.
 
-This is the single backend chokepoint that catches a mismatched
-(dispenser, target_plate_type) combination regardless of caller — UI, CLI,
-notebook, or direct API submission. Without it, Echo would silently accept
-"MWP 384" as the Destination Plate Type and emit a CSV the machine rejects
-at import time.
+Single backend chokepoint catching a mismatched (dispenser, target_plate_type)
+regardless of caller — UI, CLI, notebook, or direct API submission.
 """
 from __future__ import annotations
 

@@ -1,12 +1,7 @@
-"""Dispenser registry and interface conformance tests."""
+"""Tests for iplaid.dispensers registry + Dispenser Protocol conformance."""
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
 import pytest
-
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from iplaid.dispensers import get_dispenser, list_dispensers
 from iplaid.dispensers.base import Dispenser, DispenserSpec, UnknownDispenserError

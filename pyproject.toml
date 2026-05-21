@@ -21,9 +21,18 @@ notebook = [
     "jupyterlab>=4,<5",
     "ipykernel>=6,<7",
 ]
+test = [
+    "pytest>=8,<9",
+    "httpx>=0.27,<1",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
 plaid_core = ["templates/*.mzn"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+addopts = "-ra --strict-markers"
