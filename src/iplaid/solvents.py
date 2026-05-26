@@ -1,6 +1,25 @@
 from __future__ import annotations
 
+import json
+from functools import lru_cache
+from pathlib import Path
 from typing import Any, Mapping
+
+_DEFAULT_CAPS_PATH = Path(__file__).resolve().parents[2] / "data" / "solvent_default_caps.json"
+
+
+@lru_cache(maxsize=1)
+def load_default_caps() -> dict[str, float]:
+    """Load the per-solvent default cap table (keys are label_key form)."""
+    raw = json.loads(_DEFAULT_CAPS_PATH.read_text(encoding="utf-8"))
+    return {str(k).strip().lower(): float(v) for k, v in raw.items()}
+
+
+def default_cap_for(solvent_name: str) -> float:
+    """Default cap % for a solvent family, normalized by label_key, with fallback."""
+    caps = load_default_caps()
+    key = label_key(solvent_name)
+    return caps.get(key, caps.get("default", 0.1))
 
 
 def clean_label(value: Any) -> str:
