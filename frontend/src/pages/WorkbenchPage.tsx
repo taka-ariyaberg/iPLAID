@@ -192,9 +192,11 @@ export function WorkbenchPage() {
   // selected solvent is local view-state only and never written into config.
   async function rebuildSolventCaps(file: File | null) {
     // Only notify when caps the user could have customized are actually being
-    // discarded — i.e. families already existed. First-time population (upload
-    // or create-metadata with nothing loaded before) happens silently.
-    const hadPriorCaps = solventFamilies.length > 0;
+    // discarded. Read the PERSISTED config (survives navigation away/back),
+    // not the ephemeral solventFamilies state which resets on remount —
+    // otherwise deleting a meta after a round-trip to the run page is silent.
+    const hadPriorCaps =
+      !!config?.solvent_caps_pct && Object.keys(config.solvent_caps_pct).length > 0;
     if (!file) {
       setSolventFamilies([]);
       setSelectedSolventKey("");
