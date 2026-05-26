@@ -118,14 +118,22 @@ class TestBuildImetaDataframe:
         assert set(df["protocol_name"]) == {"TestProtocol"}
 
     def test_compound_dispense_keeps_layout_target_and_source_details(self):
-        df = build_imeta_dataframe(_make_layout_df(), _make_dispense_rows(), _CONFIG)
+        dispense_rows = _make_dispense_rows()
+        df = build_imeta_dataframe(_make_layout_df(), dispense_rows, _CONFIG)
         row = df.loc[df["compound_name"] == "NOCODAZOLE"].iloc[0]
+
+        # Look up NOCODAZOLE's source plate/well from the same dispense_rows
+        # that fed build_imeta_dataframe, rather than hardcoding coords that
+        # depend on a specific source-well assignment algorithm.
+        nocodazole_dispense = dispense_rows.loc[
+            dispense_rows["Liquid Name"].str.startswith("[NOCODAZOLE]")
+        ].iloc[0]
 
         assert row["dispense_role"] == "compound"
         assert row["target_plate"] == "PB100001"
         assert row["target_well"] == "B02"
-        assert row["source_plate"] == "SRC_TEST"
-        assert row["source_well"] == "B1"
+        assert row["source_plate"] == nocodazole_dispense["Source Plate"]
+        assert row["source_well"] == nocodazole_dispense["Source Well"]
         assert row["solvent"] == "DMSO"
         assert row["compound_stock_concentration_mM"] == pytest.approx(100.0)
         assert row["source_plate_concentration_mM"] == pytest.approx(10.0)

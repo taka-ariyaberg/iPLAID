@@ -18,8 +18,38 @@ def _all_rows() -> pd.DataFrame:
 
 
 def test_default_auto_assigns_source_wells():
-    _, lt_export = build_liquid_table(_all_rows(), "PROTO")
-    assert lt_export["Source Well"].iloc[0] == "A1"
+    """Auto-assignment produces a non-NaN name->well mapping with each
+    compound's stocks contiguous on a single row (algorithm-property
+    assertion, not coord-specific)."""
+    import re
+
+    # Use a fixture with a multi-stock compound so we can verify the
+    # pipette-friendly property: one compound's stocks sit on a single
+    # row, in contiguous columns.
+    all_rows = pd.DataFrame({
+        "Target Plate": ["P1"] * 3,
+        "Target Well": ["A1", "A2", "A3"],
+        "Liquid Name": ["[Dasatinib][0.1]", "[Dasatinib][1.0]", "[Dasatinib][10.0]"],
+        "Volume [uL]": [0.005, 0.005, 0.005],
+    })
+
+    _, lt_export = build_liquid_table(all_rows, "PROTO")
+
+    # Every Liquid Name must be assigned a non-NaN Source Well on SRC_PROTO.
+    assert lt_export["Source Well"].notna().all()
+    assert set(lt_export["Source Plate"]) == {"SRC_PROTO"}
+
+    # All three Dasatinib stocks must share a single row, in contiguous columns.
+    wells = lt_export.loc[
+        lt_export["Liquid Name"].str.startswith("[Dasatinib]"),
+        "Source Well",
+    ].tolist()
+    rows = [re.match(r"^([A-Z]+)\d+$", w).group(1) for w in wells]
+    cols = [int(re.match(r"^[A-Z]+(\d+)$", w).group(1)) for w in wells]
+    assert len(set(rows)) == 1, f"expected one row, got {rows}"
+    assert sorted(cols) == list(range(min(cols), min(cols) + len(wells))), (
+        f"expected contiguous columns, got {cols}"
+    )
 
 
 def test_existing_layout_maps_each_liquid_to_supplied_well():
