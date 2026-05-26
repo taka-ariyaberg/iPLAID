@@ -72,3 +72,10 @@ htmlcov/
 *.tmp
 *.bak
 *.orig
+
+# ── Local dev / one-off artefacts ─────────────────────────────────────────────
+# Local docker compose overrides (per-developer bind mounts, env tweaks).
+compose.override.yml
+compose.override.yaml
+# Ad-hoc verification artefacts (e.g. saved pipeline outputs from debugging).
+_verification/
