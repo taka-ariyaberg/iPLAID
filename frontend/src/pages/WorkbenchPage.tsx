@@ -138,6 +138,7 @@ export function WorkbenchPage() {
   const [solventFamilies, setSolventFamilies] = useState<SolventFamily[]>([]);
   const [selectedSolventKey, setSelectedSolventKey] = useState<string>("");
   const [capNotice, setCapNotice] = useState<string | null>(null);
+  const [showClearMetaWarning, setShowClearMetaWarning] = useState(false);
 
   // ----- upload mode -----
   const [layoutFile, setLayoutFile] = useWorkbenchField("layoutFile");
@@ -190,18 +191,20 @@ export function WorkbenchPage() {
   // meta/source file. On swap OR delete the whole map is dropped and rebuilt
   // from the new families at their default caps (with a non-error notice). The
   // selected solvent is local view-state only and never written into config.
-  async function rebuildSolventCaps(file: File | null) {
+  async function rebuildSolventCaps(file: File | null, opts?: { silent?: boolean }) {
     // Only notify when caps the user could have customized are actually being
     // discarded. Read the PERSISTED config (survives navigation away/back),
     // not the ephemeral solventFamilies state which resets on remount —
     // otherwise deleting a meta after a round-trip to the run page is silent.
+    // `silent` suppresses the post-hoc notice when the caller already showed a
+    // pre-action confirmation (the meta-delete Proceed/Cancel dialog).
     const hadPriorCaps =
       !!config?.solvent_caps_pct && Object.keys(config.solvent_caps_pct).length > 0;
     if (!file) {
       setSolventFamilies([]);
       setSelectedSolventKey("");
       setConfig((c) => (c ? { ...c, solvent_caps_pct: null } : c));
-      if (hadPriorCaps) setCapNotice("Solvent caps were cleared because the solvent file was removed.");
+      if (hadPriorCaps && !opts?.silent) setCapNotice("Solvent caps were cleared because the solvent file was removed.");
       return;
     }
     try {
@@ -303,7 +306,16 @@ export function WorkbenchPage() {
     pendingMetaFileRef.current = null;
     setMetaInputKey((k) => k + 1);
     setConfig((c) => (c ? { ...c, meta_file: "" } : c));
-    void rebuildSolventCaps(null);
+    // silent: the destructive cap clear is announced up-front by
+    // handleClearMetaRequest's confirmation dialog, not a post-hoc notice.
+    void rebuildSolventCaps(null, { silent: true });
+  }
+
+  function handleClearMetaRequest() {
+    const hasCaps =
+      !!config?.solvent_caps_pct && Object.keys(config.solvent_caps_pct).length > 0;
+    if (hasCaps) setShowClearMetaWarning(true);
+    else clearMetaFile();
   }
 
   function dismissConflictWarning() {
@@ -666,6 +678,24 @@ export function WorkbenchPage() {
         </div>
       )}
 
+      {showClearMetaWarning && (
+        <div className="confirm-overlay" role="alertdialog" aria-label="Remove metadata file">
+          <div className="confirm-dialog">
+            <p className="confirm-dialog-msg">
+              ⚠ Removing this metadata file will clear the solvent caps you set for this run. Proceed?
+            </p>
+            <div className="confirm-dialog-btns">
+              <button type="button" className="confirm-btn is-cancel" onClick={() => setShowClearMetaWarning(false)}>
+                Cancel
+              </button>
+              <button type="button" className="confirm-btn is-danger" onClick={() => { setShowClearMetaWarning(false); clearMetaFile(); }}>
+                Remove &amp; clear caps
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="workbench-columns">
         {/* Input panel — always visible */}
         <FileUploader
@@ -678,7 +708,7 @@ export function WorkbenchPage() {
           onLayoutChange={handleLayoutChange}
           onMetaChange={handleMetaChange}
           onClearLayout={handleClearLayoutRequest}
-          onClearMeta={clearMetaFile}
+          onClearMeta={handleClearMetaRequest}
           designActive={designActive}
           onDesignToggle={handleDesignToggle}
           metaCreatorActive={metaCreatorOpen}
