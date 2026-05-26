@@ -29,9 +29,11 @@ type ConflictWarningProps = {
   message: string;
   onConfirm: () => void;
   onCancel: () => void;
+  confirmLabel?: string;
+  cancelLabel?: string;
 };
 
-function ConflictWarning({ message, onConfirm, onCancel }: ConflictWarningProps) {
+function ConflictWarning({ message, onConfirm, onCancel, confirmLabel, cancelLabel }: ConflictWarningProps) {
   return (
     <div className="conflict-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
       <div className="conflict-panel" role="alertdialog">
@@ -44,8 +46,8 @@ function ConflictWarning({ message, onConfirm, onCancel }: ConflictWarningProps)
         </div>
         <p className="conflict-message">{message}</p>
         <div className="conflict-actions">
-          <button className="conflict-btn conflict-btn-cancel" onClick={onCancel}>Keep existing</button>
-          <button className="conflict-btn conflict-btn-confirm" onClick={onConfirm}>Replace anyway</button>
+          <button className="conflict-btn conflict-btn-cancel" onClick={onCancel}>{cancelLabel ?? "Keep existing"}</button>
+          <button className="conflict-btn conflict-btn-confirm" onClick={onConfirm}>{confirmLabel ?? "Replace anyway"}</button>
         </div>
       </div>
     </div>
@@ -679,21 +681,13 @@ export function WorkbenchPage() {
       )}
 
       {showClearMetaWarning && (
-        <div className="confirm-overlay" role="alertdialog" aria-label="Remove metadata file">
-          <div className="confirm-dialog">
-            <p className="confirm-dialog-msg">
-              ⚠ Removing this metadata file will clear the solvent caps you set for this run. Proceed?
-            </p>
-            <div className="confirm-dialog-btns">
-              <button type="button" className="confirm-btn is-cancel" onClick={() => setShowClearMetaWarning(false)}>
-                Cancel
-              </button>
-              <button type="button" className="confirm-btn is-danger" onClick={() => { setShowClearMetaWarning(false); clearMetaFile(); }}>
-                Remove &amp; clear caps
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConflictWarning
+          message="Removing this metadata file will clear the solvent caps you set for this run."
+          cancelLabel="Cancel"
+          confirmLabel="Remove & clear caps"
+          onCancel={() => setShowClearMetaWarning(false)}
+          onConfirm={() => { setShowClearMetaWarning(false); clearMetaFile(); }}
+        />
       )}
 
       <div className="workbench-columns">
