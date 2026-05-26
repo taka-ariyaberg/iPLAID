@@ -25,11 +25,11 @@ from iplaid.pipeline import run_pipeline_with_inputs
 from iplaid.source_plate_layout import ExclusionWarning, ScatterWarning
 
 
-GOLDEN_DIR = Path(__file__).parent / "golden"
+SCENARIOS_DIR = Path(__file__).parent / "scenarios"
 
 
 def _run_idot_basic(tmp_path: Path) -> dict:
-    src = GOLDEN_DIR / "idot_basic"
+    src = SCENARIOS_DIR / "idot_basic"
     work = tmp_path / "warnings_idot_basic"
     work.mkdir()
     shutil.copy(src / "layout.csv", work / "layout.csv")

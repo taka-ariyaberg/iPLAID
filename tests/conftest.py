@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 
 
-GOLDEN_DIR = Path(__file__).parent / "golden"
+SCENARIOS_DIR = Path(__file__).parent / "scenarios"
 FROZEN_NOW = _datetime.datetime(2026, 1, 1, 12, 0, 0)
 
 
@@ -45,7 +45,7 @@ def load_golden(tmp_path: Path):
             ...
     """
     def _load(name: str) -> tuple[Path, dict]:
-        src = GOLDEN_DIR / name
+        src = SCENARIOS_DIR / name
         work = tmp_path / name
         work.mkdir(parents=True)
         shutil.copy(src / "layout.csv", work / "layout.csv")

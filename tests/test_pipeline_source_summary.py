@@ -17,13 +17,13 @@ from iplaid.dispensers.base import SourceLayoutError
 from iplaid.pipeline import run_pipeline_with_inputs
 
 
-GOLDEN_DIR = Path(__file__).parent / "golden"
+SCENARIOS_DIR = Path(__file__).parent / "scenarios"
 
 
 def _run_with_supplied_layout(
     fixture_name: str, supplied_layout_relpath: str, tmp_path: Path,
 ) -> dict:
-    src = GOLDEN_DIR / fixture_name
+    src = SCENARIOS_DIR / fixture_name
     work = tmp_path / f"prep_{fixture_name}"
     work.mkdir()
     shutil.copy(src / "layout.csv", work / "layout.csv")
@@ -62,7 +62,7 @@ def test_echo_uploaded_layout_produces_usage_summary(tmp_path: Path) -> None:
 
 def test_echo_without_uploaded_layout_emits_v2_placeholder(tmp_path: Path) -> None:
     """Echo + include_source_prep=True without supplied layout writes a v2 placeholder."""
-    src = GOLDEN_DIR / "echo_basic"
+    src = SCENARIOS_DIR / "echo_basic"
     work = tmp_path / "echo_placeholder"
     work.mkdir()
     shutil.copy(src / "layout.csv", work / "layout.csv")
@@ -83,7 +83,7 @@ def test_echo_without_uploaded_layout_emits_v2_placeholder(tmp_path: Path) -> No
 
 def test_uploaded_layout_rejects_wells_outside_source_plate(tmp_path: Path) -> None:
     """Wells in the uploaded layout must exist on the configured source-plate type."""
-    src = GOLDEN_DIR / "idot_basic"
+    src = SCENARIOS_DIR / "idot_basic"
     work = tmp_path / "bad_well"
     work.mkdir()
     shutil.copy(src / "layout.csv", work / "layout.csv")
