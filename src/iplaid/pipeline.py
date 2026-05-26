@@ -361,6 +361,17 @@ This run has {input_unique_pairs} unique compound/target pairs and {len(liquid_n
     """)
     print()
     
+    # Exclusion cascade: when the pipette-friendly algorithm drops a compound
+    # (Tier 3), its Liquid Names are absent from liquid_table_export. If we
+    # leave them in `all_rows`, the LEFT merge in attach_and_sort_dispense_rows
+    # produces NaN source wells → Echo crashes, iDOT emits garbage. Filter here.
+    placed_liquids = set(liquid_table_export["Liquid Name"])
+    pre_filter_count = len(all_rows)
+    all_rows = all_rows[all_rows["Liquid Name"].isin(placed_liquids)].copy()
+    dropped_dispense_rows = pre_filter_count - len(all_rows)
+    if dropped_dispense_rows > 0:
+        print(f"⚠️  Dropped {dropped_dispense_rows} dispense rows for excluded compounds.")
+
     all_rows = attach_and_sort_dispense_rows(all_rows, liquid_table, liquid_table_export)
 
     fullprotocol = disp.build_protocol(
