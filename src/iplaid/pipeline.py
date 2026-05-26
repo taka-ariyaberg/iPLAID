@@ -491,9 +491,11 @@ This run has {input_unique_pairs} unique compound/target pairs and {len(liquid_n
         paths["out_source_prep"] = None
 
     # Surface algorithm warnings (Tier 2 scatter, Tier 3 exclusion) on the run output
-    # so the FastAPI layer and frontend can render them. Default to empty lists when
-    # the source-layout planner produced no events.
-    scatter_warnings_out = [
+    # so the FastAPI layer and frontend can render them. `warnings` carries BOTH
+    # tiers (soft scatter + loud exclusion) so callers inspecting one channel see
+    # every source-plate event; `excluded_compounds` keeps the structured exclusion
+    # data the frontend needs for the diagonal-overlay on the destination plate.
+    warnings_out = [
         {
             "severity": "soft",
             "kind": "scatter",
@@ -501,6 +503,15 @@ This run has {input_unique_pairs} unique compound/target pairs and {len(liquid_n
             "wells": list(sw.wells),
         }
         for sw in liquid_table.attrs.get("scatter_warnings", [])
+    ] + [
+        {
+            "severity": "loud",
+            "kind": "exclusion",
+            "compound": ew.compound,
+            "stocks_needed": ew.stocks_needed,
+            "free_wells_remaining": ew.free_wells_remaining,
+        }
+        for ew in liquid_table.attrs.get("excluded_compounds", [])
     ]
     excluded_compounds_out = [
         {
@@ -549,7 +560,7 @@ This run has {input_unique_pairs} unique compound/target pairs and {len(liquid_n
         "source_prep_volumes": source_prep_volumes,
         "source_prep_instructions": source_prep_instructions,
         "source_layout_provided": existing_layout is not None,
-        "warnings": scatter_warnings_out,
+        "warnings": warnings_out,
         "excluded_compounds": excluded_compounds_out,
         "excluded_target_wells": excluded_target_wells_out,
     }

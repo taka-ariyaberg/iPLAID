@@ -1,0 +1,10 @@
+Liquid Name,Source Plate,Source Well
+[DMSO][0.0],SRC_IDOT_WITH_LAYOUT,A12
+[Dasatinib][0.1],SRC_IDOT_WITH_LAYOUT,H1
+[Dasatinib][1.0],SRC_IDOT_WITH_LAYOUT,H2
+[Etoposide][10.0],SRC_IDOT_WITH_LAYOUT,G1
+[Etoposide][100.0],SRC_IDOT_WITH_LAYOUT,G2
+[Nocodazole][0.1],SRC_IDOT_WITH_LAYOUT,F1
+[Nocodazole][1.0],SRC_IDOT_WITH_LAYOUT,F2
+[Tetrandrine][1.0],SRC_IDOT_WITH_LAYOUT,E1
+[Tetrandrine][10.0],SRC_IDOT_WITH_LAYOUT,E2

@@ -114,9 +114,9 @@ def test_echo_with_supplied_source_layout_byte_equal(tmp_path: Path, freeze_now)
 
 
 def test_idot_with_supplied_source_layout_byte_equal(tmp_path: Path, freeze_now) -> None:
-    """iDOT round-trip: re-feed the golden's liquids CSV as a supplied layout → byte-equal."""
+    """iDOT round-trip: re-feed the idot_basic liquids CSV as a supplied layout → byte-equal."""
     src = SCENARIOS_DIR / "idot_basic"
-    work = tmp_path / "idot_with_layout"
+    work = tmp_path / "idot_with_layout_roundtrip"
     work.mkdir()
     shutil.copy(src / "layout.csv", work / "layout.csv")
     shutil.copy(src / "meta.csv", work / "meta.csv")
@@ -129,6 +129,28 @@ def test_idot_with_supplied_source_layout_byte_equal(tmp_path: Path, freeze_now)
         output_dir=out_dir,
         include_source_prep=False,
         source_layout_path=src / "expected_liquids.csv",
+    )
+    expected = _read_bytes(src / "expected_protocol.csv")
+    assert _read_bytes(r["paths"]["out_idot"]) == expected
+
+
+def test_idot_with_layout_scenario_byte_equal(tmp_path: Path, freeze_now) -> None:
+    """idot_with_layout scenario: uploaded source_layout.csv places wells in
+    non-default positions; protocol must honor those wells exactly."""
+    src = SCENARIOS_DIR / "idot_with_layout"
+    work = tmp_path / "idot_with_layout"
+    work.mkdir()
+    shutil.copy(src / "layout.csv", work / "layout.csv")
+    shutil.copy(src / "meta.csv", work / "meta.csv")
+    cfg = json.loads((src / "config.json").read_text())
+    out_dir = work / "out"; out_dir.mkdir()
+    r = run_pipeline_with_inputs(
+        config=cfg,
+        layout_path=work / "layout.csv",
+        meta_path=work / "meta.csv",
+        output_dir=out_dir,
+        include_source_prep=False,
+        source_layout_path=src / "source_layout.csv",
     )
     expected = _read_bytes(src / "expected_protocol.csv")
     assert _read_bytes(r["paths"]["out_idot"]) == expected

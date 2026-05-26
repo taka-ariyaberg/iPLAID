@@ -67,6 +67,60 @@ def test_run_output_warning_keys_default_to_empty_lists_when_no_events(
     assert result["excluded_target_wells"] == []
 
 
+def test_tier3_exclusion_also_fires_a_loud_warning_via_scenario(tmp_path: Path) -> None:
+    """The tier3_exclusion scenario must produce BOTH an entry in
+    excluded_compounds AND a loud warning in the unified warnings list."""
+    src = SCENARIOS_DIR / "tier3_exclusion"
+    work = tmp_path / "tier3"
+    work.mkdir()
+    shutil.copy(src / "layout.csv", work / "layout.csv")
+    shutil.copy(src / "meta.csv", work / "meta.csv")
+    cfg = json.loads((src / "config.json").read_text())
+    out_dir = work / "out"; out_dir.mkdir()
+    result = run_pipeline_with_inputs(
+        config=cfg,
+        layout_path=work / "layout.csv",
+        meta_path=work / "meta.csv",
+        output_dir=out_dir,
+        include_source_prep=True,
+    )
+
+    assert len(result["excluded_compounds"]) >= 1
+    loud_warnings = [w for w in result["warnings"] if w["severity"] == "loud"]
+    assert len(loud_warnings) == len(result["excluded_compounds"])
+    for w in loud_warnings:
+        assert w["kind"] == "exclusion"
+        assert "compound" in w
+        assert "stocks_needed" in w
+        assert "free_wells_remaining" in w
+
+
+def test_tier2_scatter_fires_a_soft_warning_via_scenario(tmp_path: Path) -> None:
+    """The tier2_scatter scenario must produce a soft warning in the unified
+    warnings list (no exclusion)."""
+    src = SCENARIOS_DIR / "tier2_scatter"
+    work = tmp_path / "tier2"
+    work.mkdir()
+    shutil.copy(src / "layout.csv", work / "layout.csv")
+    shutil.copy(src / "meta.csv", work / "meta.csv")
+    cfg = json.loads((src / "config.json").read_text())
+    out_dir = work / "out"; out_dir.mkdir()
+    result = run_pipeline_with_inputs(
+        config=cfg,
+        layout_path=work / "layout.csv",
+        meta_path=work / "meta.csv",
+        output_dir=out_dir,
+        include_source_prep=True,
+    )
+
+    assert result["excluded_compounds"] == []
+    soft_warnings = [w for w in result["warnings"] if w["severity"] == "soft"]
+    assert len(soft_warnings) >= 1
+    for w in soft_warnings:
+        assert w["kind"] == "scatter"
+        assert "wells" in w
+
+
 def test_run_output_scatter_warning_shape() -> None:
     """The serialization shape for a scatter warning matches the documented schema:
     {severity, kind, compound, wells}."""

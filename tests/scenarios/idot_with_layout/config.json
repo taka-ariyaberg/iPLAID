@@ -1,0 +1,16 @@
+{
+  "user_name": "GoldenTest",
+  "protocol_name": "IDOT_WITH_LAYOUT_GOLDEN",
+  "layout_file": "layout.csv",
+  "meta_file": "meta.csv",
+  "sourceplate_type": "S.100 Plate",
+  "target_plate_type": "MWP 384",
+  "working_volume_ul": 40,
+  "max_dmso_pct": 0.1,
+  "source_prep_overage_pct": 0.30,
+  "min_pipette_volume_uL": 1.0,
+  "dilution_solvent": "DMSO",
+  "source_well_fill_pct": 0.70,
+  "standard_prep_volume_uL": 1000.0,
+  "output_timestamp_format": "FROZEN-TIMESTAMP"
+}
