@@ -83,3 +83,25 @@ def test_phase_b_fallback_when_no_same_stock_row_fits():
     result = assign_source_wells(compounds, solvents=[], geometry=PlateGeometry(rows=8, cols=12))
     assert result.placements["[X][0.05]"] == "A6"
     assert result.placements["[X][50.0]"] == "A9"
+
+
+def test_tier_2_scatter_when_no_row_fits_but_total_free_enough():
+    # 8 compounds in Phase A, each claims a row of 9 stocks → 3 trailing free cols per row.
+    # 8 rows × 3 free = 24 trailing free wells total.
+    # 9th compound has 4 stocks — no row has 4 contiguous, scatter into row-major free wells.
+    compounds = [
+        CompoundSpec(name=f"C{i:02d}", stocks_mM=tuple(float(j) for j in range(1, 10)))
+        for i in range(1, 9)
+    ]
+    compounds.append(CompoundSpec(name="Overflow", stocks_mM=(0.1, 1.0, 10.0, 100.0)))
+    result = assign_source_wells(compounds, solvents=[], geometry=PlateGeometry(rows=8, cols=12))
+
+    # Each Phase A row used cols 1-9 → first free wells in row-major order: A10, A11, A12, B10.
+    assert result.placements["[Overflow][0.1]"] == "A10"
+    assert result.placements["[Overflow][1.0]"] == "A11"
+    assert result.placements["[Overflow][10.0]"] == "A12"
+    assert result.placements["[Overflow][100.0]"] == "B10"
+
+    assert len(result.scatter_warnings) == 1
+    assert result.scatter_warnings[0].compound == "Overflow"
+    assert result.scatter_warnings[0].wells == ("A10", "A11", "A12", "B10")
