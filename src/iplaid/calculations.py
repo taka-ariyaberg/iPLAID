@@ -254,7 +254,7 @@ def assign_stock_concentrations(
         for (compound, target_conc), data in sorted(failure_summary.items()):
             fail_info = data["info"]
             wells = data["wells"]
-            print(f"\n  • {compound} @ {target_conc:.4g} µM  ({len(wells)} wells: {', '.join(sorted(wells))})")
+            print(f"\n  • {compound} @ {target_conc:.4g} µM  ({len(wells)} wells: {', '.join(sorted(str(w) for w in wells))})")
             print(f"    ├─ Available stock: {fail_info['highest_stock_mm']:.2f} mM")
             print(f"    ├─ Required stock range: {fail_info['required_range_mm'][0]:.2f} – {fail_info['required_range_mm'][1]:.2f} mM")
             print(
