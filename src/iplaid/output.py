@@ -116,13 +116,6 @@ def build_compound_and_topup_rows(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Da
     return compound_rows, topup_rows, all_rows
 
 
-def wells_96() -> list[str]:
-    """Generate list of all 96-well plate positions (A1-H12)."""
-    rows = list("ABCDEFGH")
-    cols = list(range(1, 13))
-    return [f"{r}{c}" for c in cols for r in rows]
-
-
 def build_liquid_table(
     all_rows: pd.DataFrame,
     protocol_name: str,
@@ -284,7 +277,6 @@ def attach_and_sort_dispense_rows(
 
 __all__ = [
     "build_compound_and_topup_rows",
-    "wells_96",
     "build_liquid_table",
     "attach_and_sort_dispense_rows",
     "format_protocol_volume_ul",
