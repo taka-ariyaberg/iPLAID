@@ -105,3 +105,39 @@ def test_tier_2_scatter_when_no_row_fits_but_total_free_enough():
     assert len(result.scatter_warnings) == 1
     assert result.scatter_warnings[0].compound == "Overflow"
     assert result.scatter_warnings[0].wells == ("A10", "A11", "A12", "B10")
+
+
+def test_tier_3_exclusion_when_total_free_insufficient():
+    # 8 compounds each with 12 stocks → Phase A fills the entire 96-well plate.
+    # 9th compound with 1 stock cannot fit anywhere.
+    compounds = [
+        CompoundSpec(name=f"C{i:02d}", stocks_mM=tuple(float(j) for j in range(1, 13)))
+        for i in range(1, 9)
+    ]
+    compounds.append(CompoundSpec(name="Dropped", stocks_mM=(0.1,)))
+    result = assign_source_wells(compounds, solvents=[], geometry=PlateGeometry(rows=8, cols=12))
+
+    assert "[Dropped][0.1]" not in result.placements
+    assert len(result.excluded) == 1
+    assert result.excluded[0].compound == "Dropped"
+    assert result.excluded[0].stocks_needed == 1
+    assert result.excluded[0].free_wells_remaining == 0
+
+
+def test_tier_3_exclusion_partial_when_only_some_stocks_fit():
+    # 7 compounds with 12 stocks each + 1 compound with 11 stocks → 7×12 + 11 = 95 wells used in Phase A.
+    # Phase A rows 1-7: full; Phase A row 8: 11 cols used, 1 free trailing.
+    # 9th compound has 3 stocks — total free is 1, less than 3 → Tier 3 exclusion.
+    compounds = [
+        CompoundSpec(name=f"C{i:02d}", stocks_mM=tuple(float(j) for j in range(1, 13)))
+        for i in range(1, 8)
+    ]
+    compounds.append(
+        CompoundSpec(name="C08", stocks_mM=tuple(float(j) for j in range(1, 12)))
+    )
+    compounds.append(CompoundSpec(name="Wants3", stocks_mM=(0.1, 1.0, 10.0)))
+    result = assign_source_wells(compounds, solvents=[], geometry=PlateGeometry(rows=8, cols=12))
+    assert "[Wants3][0.1]" not in result.placements
+    assert len(result.excluded) == 1
+    assert result.excluded[0].compound == "Wants3"
+    assert result.excluded[0].free_wells_remaining == 1

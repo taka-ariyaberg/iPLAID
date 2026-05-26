@@ -51,6 +51,10 @@ def _row_label(row_idx_1based: int) -> str:
     return label
 
 
+def _free_in_row(row_state: dict[int, RowState], geometry: PlateGeometry, r: int) -> int:
+    return geometry.cols - row_state[r].next_free_col + 1
+
+
 def assign_source_wells(
     compounds: list[CompoundSpec],
     solvents: list[str],
@@ -65,6 +69,7 @@ def assign_source_wells(
     )
 
     scatter_warnings: list[ScatterWarning] = []
+    excluded: list[ExclusionWarning] = []
     row_state: dict[int, RowState] = {}
 
     # Phase A: first geometry.rows compounds each claim a fresh row.
@@ -94,12 +99,16 @@ def assign_source_wells(
             # Tier 2: scatter into row-major free wells (only Phase A rows have free wells).
             free_wells = _enumerate_free_wells(geometry, row_state, reserved_wells=set())
             if len(free_wells) < n_needed:
-                # Tier 3 handled in next task.
-                raise NotImplementedError("Tier 3 exclusion not yet implemented")
+                excluded.append(ExclusionWarning(
+                    compound=cmpd.name,
+                    stocks_needed=n_needed,
+                    free_wells_remaining=len(free_wells),
+                ))
+                continue
             chosen_wells = tuple(free_wells[:n_needed])
             for well, stock in zip(chosen_wells, sorted(cmpd.stocks_mM)):
                 placements[f"[{cmpd.name}][{stock}]"] = well
-            _consume_scattered_wells(row_state, chosen_wells, geometry)
+            _consume_scattered_wells(row_state, chosen_wells)
             scatter_warnings.append(ScatterWarning(compound=cmpd.name, wells=chosen_wells))
             continue
 
@@ -108,17 +117,18 @@ def assign_source_wells(
         pool = preferred if preferred else candidates
 
         # T2 spread: pick the row with the most free space; tiebreak smallest row index.
-        def free_in_row(r: int) -> int:
-            return geometry.cols - row_state[r].next_free_col + 1
-
-        chosen = max(pool, key=lambda r: (free_in_row(r), -r))
+        chosen = max(pool, key=lambda r: (_free_in_row(row_state, geometry, r), -r))
 
         start_col = row_state[chosen].next_free_col
         for col_offset, stock in enumerate(sorted(cmpd.stocks_mM)):
             placements[f"[{cmpd.name}][{stock}]"] = f"{_row_label(chosen)}{start_col + col_offset}"
         row_state[chosen] = row_state[chosen]._replace(next_free_col=start_col + n_needed)
 
-    return AssignmentResult(placements=placements, scatter_warnings=scatter_warnings)
+    return AssignmentResult(
+        placements=placements,
+        scatter_warnings=scatter_warnings,
+        excluded=excluded,
+    )
 
 
 def _enumerate_free_wells(
@@ -158,7 +168,6 @@ def _parse_well(well: str) -> tuple[int, int]:
 def _consume_scattered_wells(
     row_state: dict[int, RowState],
     wells: tuple[str, ...],
-    geometry: PlateGeometry,
 ) -> None:
     """Advance `next_free_col` past consumed wells. Updates row_state in place.
 
@@ -171,11 +180,5 @@ def _consume_scattered_wells(
         last_col_per_row[row_idx] = max(last_col_per_row.get(row_idx, 0), col)
 
     for row_idx, last_col in last_col_per_row.items():
-        if row_idx in row_state:
-            row_state[row_idx] = row_state[row_idx]._replace(next_free_col=last_col + 1)
-        else:
-            row_state[row_idx] = RowState(
-                owner_compound="__scatter__",
-                owner_stock_count=0,
-                next_free_col=last_col + 1,
-            )
+        assert row_idx in row_state, "scatter consumed well in unclaimed row"
+        row_state[row_idx] = row_state[row_idx]._replace(next_free_col=last_col + 1)
