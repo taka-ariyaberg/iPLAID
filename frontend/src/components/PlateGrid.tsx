@@ -70,6 +70,9 @@ type PlateGridProps = {
   /** Optional extra content rendered inside each concentration block in the info panel.
    *  Called with (compound, concLabel) — return null to render nothing for that entry. */
   concBlockExtras?: (compound: string, concLabel: string) => ReactNode | null;
+  /** Optional set of composite well ids (`${plateId}:${wellId}`) that should be
+   *  rendered with a diagonal-line "skipped" overlay (e.g. excluded-compound wells). */
+  excludedWells?: Set<string>;
 };
 
 type WellRecord = {
@@ -196,6 +199,7 @@ export function PlateGrid({
   wellTooltipContent,
   showDefaultTooltip = false,
   concBlockExtras,
+  excludedWells,
 }: PlateGridProps) {
   const [selectedWellIds, setSelectedWellIds] = useState<string[]>([]);
   // key = `${compound}::${concLabel}` of the hovered concentration subgroup in the info panel
@@ -1227,6 +1231,7 @@ export function PlateGrid({
                           const isWellHovered = hoveredSingleWellId === wellId;
                           const isDimmed = highlightedWellIds.size > 0 && !highlightedWellIds.has(wellId);
                           const isHighlighted = highlightedWellIds.size > 0 && highlightedWellIds.has(wellId);
+                          const isExcluded = excludedWells?.has(wellId) ?? false;
 
                           return (
                             <button
@@ -1241,6 +1246,7 @@ export function PlateGrid({
                                 isDimmed ? "is-dimmed" : "",
                                 isHighlighted ? "is-highlighted" : "",
                                 isEditMode && !showOriginalLocal ? "is-editable" : "",
+                                isExcluded ? "is-excluded" : "",
                               ]
                                 .filter(Boolean)
                                 .join(" ")}

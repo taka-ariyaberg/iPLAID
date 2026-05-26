@@ -292,6 +292,28 @@
   transition: filter 180ms ease, border-color 180ms ease, transform 120ms ease, box-shadow 120ms ease;
 }
 
+/* Excluded-compound wells: diagonal-line "skipped" overlay (bottom-left → top-right).
+   Applied when an excluded compound was dropped from the run, so the would-be
+   dispense well will be empty in the lab. */
+.plate-well.is-excluded {
+  position: relative;
+  opacity: 0.55;
+}
+.plate-well.is-excluded::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top right,
+    transparent calc(50% - 1px),
+    rgba(239, 68, 68, 0.85) calc(50% - 1px),
+    rgba(239, 68, 68, 0.85) calc(50% + 1px),
+    transparent calc(50% + 1px)
+  );
+  pointer-events: none;
+  border-radius: 5px;
+}
+
 .plate-well-content {
   display: grid;
   gap: 0.06rem;

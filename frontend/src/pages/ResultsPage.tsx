@@ -187,6 +187,14 @@ export function ResultsPage() {
     (d) => d.id === job.config.sourceplate_type,
   );
 
+  // Wells that were skipped because their compound was excluded from the run.
+  // PlateGrid keys cells as `${plateId}:${wellId}`, so we mirror that here.
+  const excludedWells = new Set(
+    (job.excludedTargetWells ?? []).map(
+      (etw) => `${etw.target_plate}:${etw.target_well}`,
+    ),
+  );
+
   return (
     <div className="results-layout">
       <ResultsHero job={job} />
@@ -249,6 +257,7 @@ export function ResultsPage() {
         exportProjectDetails={[job.config.user_name, job.config.protocol_name]}
         exportScope="target"
         showDefaultTooltip
+        excludedWells={excludedWells}
       />
 
       <SourcePlatePanel job={job} plateDef={sourcePlateDef} />
