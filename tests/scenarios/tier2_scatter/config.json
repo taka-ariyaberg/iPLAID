@@ -1,0 +1,18 @@
+{
+  "user_name": "ScenarioTest",
+  "protocol_name": "TIER2_SCATTER_DEMO",
+  "layout_file": "layout.csv",
+  "meta_file": "meta.csv",
+  "dispenser": "idot",
+  "source_layout_file": null,
+  "sourceplate_type": "S.100 Plate",
+  "target_plate_type": "MWP 384",
+  "working_volume_ul": 50,
+  "max_dmso_pct": 0.1,
+  "source_prep_overage_pct": 0.30,
+  "min_pipette_volume_uL": 1.0,
+  "dilution_solvent": "DMSO",
+  "source_well_fill_pct": 0.70,
+  "standard_prep_volume_uL": 1000.0,
+  "output_timestamp_format": "%y-%m-%d-%H-%M-%S"
+}
