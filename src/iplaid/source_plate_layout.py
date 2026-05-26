@@ -44,7 +44,11 @@ def _row_label(row_idx_1based: int) -> str:
     return label
 
 
-def assign_source_wells(compounds, solvents, geometry):
+def assign_source_wells(
+    compounds: list[CompoundSpec],
+    solvents: list[str],
+    geometry: PlateGeometry,
+) -> AssignmentResult:
     placements: dict[str, str] = {}
 
     # Sort descending by # of stocks, alphabetical tiebreak.
