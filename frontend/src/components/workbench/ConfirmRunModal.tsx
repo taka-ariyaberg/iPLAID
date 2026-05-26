@@ -1,3 +1,4 @@
+import type { SolventFamily } from "../../types";
 import "./ConfirmRunModal.css";
 
 type ConfirmRunModalProps = {
@@ -5,6 +6,8 @@ type ConfirmRunModalProps = {
   isEditMode: boolean;
   sourceLayoutFileName?: string | null;
   sourcePlateType?: string;
+  solventFamilies: SolventFamily[];
+  solventCaps?: Record<string, number> | null;
   onConfirm: () => void;
   onClose: () => void;
 };
@@ -14,6 +17,8 @@ export function ConfirmRunModal({
   isEditMode,
   sourceLayoutFileName,
   sourcePlateType,
+  solventFamilies,
+  solventCaps,
   onConfirm,
   onClose,
 }: ConfirmRunModalProps) {
@@ -58,6 +63,25 @@ export function ConfirmRunModal({
               </p>
             )}
           </div>
+          {solventFamilies.length > 0 && (
+            <div className="confirm-solvent-caps">
+              <p className="confirm-solvent-caps-title">
+                Solvent caps (% of final well volume)
+              </p>
+              <ul>
+                {solventFamilies.map((f) => {
+                  const set = solventCaps?.[f.solventKey];
+                  const isDefault = set === undefined || set === f.defaultCapPct;
+                  const value = set ?? f.defaultCapPct;
+                  return (
+                    <li key={f.solventKey}>
+                      {f.solvent}: {value}% {isDefault ? "(default)" : "(set)"}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
         </div>
         <div className="confirm-modal-footer">
           <button type="button" className="confirm-modal-cancel" onClick={onClose}>

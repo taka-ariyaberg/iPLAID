@@ -8,6 +8,7 @@ from pathlib import Path
 import pandas as pd
 
 from src.iplaid.loaders import load_layout_csv, normalize_layout_df
+from src.iplaid.solvents import clean_label, label_key, default_cap_for
 from src.iplaid.wells import canonical_well_name
 
 
@@ -138,6 +139,42 @@ def dataframe_to_records(df, limit: int | None = None) -> list[dict]:
     if limit is not None:
         df = df.head(limit)
     return json.loads(df.to_json(orient="records"))
+
+
+def extract_solvent_families(file_name: str, file_bytes: bytes) -> list[dict]:
+    """Return canonical solvent families found in a meta or source_plate_layout CSV.
+
+    Both shapes carry a `solvent` column. Families merge by label_key so casing
+    variants collapse. Each entry: {solvent (display), solventKey, defaultCapPct}.
+    """
+    if b"\x00" in file_bytes:
+        raise ValueError("Could not parse CSV: file contains null bytes (not a text CSV).")
+    suffix = Path(file_name).suffix or ".csv"
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as handle:
+        handle.write(file_bytes)
+        temp_path = Path(handle.name)
+    try:
+        df = pd.read_csv(temp_path)
+    except Exception as exc:
+        raise ValueError(f"Could not parse CSV: {exc}") from exc
+    finally:
+        temp_path.unlink(missing_ok=True)
+
+    if "solvent" not in df.columns:
+        raise ValueError("CSV is missing required column: solvent.")
+
+    seen: dict[str, str] = {}  # key -> first clean display label
+    for raw in df["solvent"]:
+        display = clean_label(raw)
+        if not display:
+            continue
+        key = label_key(display)
+        seen.setdefault(key, display)
+
+    return [
+        {"solvent": display, "solventKey": key, "defaultCapPct": default_cap_for(display)}
+        for key, display in sorted(seen.items())
+    ]
 
 
 REQUIRED_LAYOUT_COLUMNS = ["cmpdname", "conc_mM", "solvent", "source_plate", "source_well"]

@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse, PlainTextResponse
 from .design_preflight import assess_design_preflight
 from .jobs import JobStore
 from .models import DesignConfigModel, RunConfigModel
-from .preview import build_layout_preview_from_upload, validate_source_layout_upload
+from .preview import build_layout_preview_from_upload, validate_source_layout_upload, extract_solvent_families
 
 
 app = FastAPI(title="PLAID iDOT API", version="0.1.0")
@@ -66,6 +66,16 @@ async def preview_source_layout(source_layout_file: UploadFile = File(...)) -> d
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/meta/solvents")
+async def preview_solvents(file: UploadFile = File(...)) -> dict:
+    file_bytes = await file.read()
+    try:
+        families = extract_solvent_families(file.filename or "meta.csv", file_bytes)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"families": families}
 
 
 @app.post("/api/runs")

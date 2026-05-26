@@ -14,6 +14,7 @@ import { apiClient } from "../services/apiClient";
 import type {
   LayoutPreview,
   RunConfig,
+  SolventFamily,
   TargetPlateDefinition,
 } from "../types";
 import { canonicalWellId } from "../utils/wellUtils";
@@ -28,9 +29,11 @@ type ConflictWarningProps = {
   message: string;
   onConfirm: () => void;
   onCancel: () => void;
+  confirmLabel?: string;
+  cancelLabel?: string;
 };
 
-function ConflictWarning({ message, onConfirm, onCancel }: ConflictWarningProps) {
+function ConflictWarning({ message, onConfirm, onCancel, confirmLabel, cancelLabel }: ConflictWarningProps) {
   return (
     <div className="conflict-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
       <div className="conflict-panel" role="alertdialog">
@@ -43,8 +46,8 @@ function ConflictWarning({ message, onConfirm, onCancel }: ConflictWarningProps)
         </div>
         <p className="conflict-message">{message}</p>
         <div className="conflict-actions">
-          <button className="conflict-btn conflict-btn-cancel" onClick={onCancel}>Keep existing</button>
-          <button className="conflict-btn conflict-btn-confirm" onClick={onConfirm}>Replace anyway</button>
+          <button className="conflict-btn conflict-btn-cancel" onClick={onCancel}>{cancelLabel ?? "Keep existing"}</button>
+          <button className="conflict-btn conflict-btn-confirm" onClick={onConfirm}>{confirmLabel ?? "Replace anyway"}</button>
         </div>
       </div>
     </div>
@@ -130,6 +133,14 @@ export function WorkbenchPage() {
   // Held separately from the page-level errorMessage banner so the user gets
   // a hard-to-miss popup when the format is wrong (banner can be missed).
   const [sourceLayoutWarning, setSourceLayoutWarning] = useState<string | null>(null);
+  // Per-solvent carrier caps. `solventFamilies` and `selectedSolventKey` are
+  // local view-state only — never written into config. Only the derived
+  // solvent_caps_pct map (built in rebuildSolventCaps / handleSolventCapChange)
+  // travels in config.
+  const [solventFamilies, setSolventFamilies] = useState<SolventFamily[]>([]);
+  const [selectedSolventKey, setSelectedSolventKey] = useState<string>("");
+  const [capNotice, setCapNotice] = useState<string | null>(null);
+  const [showClearMetaWarning, setShowClearMetaWarning] = useState(false);
 
   // ----- upload mode -----
   const [layoutFile, setLayoutFile] = useWorkbenchField("layoutFile");
@@ -176,6 +187,51 @@ export function WorkbenchPage() {
     setMetaCreatorRows(rows.map((row) => ({ ...row })));
     setConfig((c) => (c ? { ...c, meta_file: file.name } : c));
     setMetaCreatorOpen(false);
+  }
+
+  // Rebuilds the per-solvent cap map from the solvent families in the staged
+  // meta/source file. On swap OR delete the whole map is dropped and rebuilt
+  // from the new families at their default caps (with a non-error notice). The
+  // selected solvent is local view-state only and never written into config.
+  async function rebuildSolventCaps(file: File | null, opts?: { silent?: boolean }) {
+    // Only notify when caps the user could have customized are actually being
+    // discarded. Read the PERSISTED config (survives navigation away/back),
+    // not the ephemeral solventFamilies state which resets on remount —
+    // otherwise deleting a meta after a round-trip to the run page is silent.
+    // `silent` suppresses the post-hoc notice when the caller already showed a
+    // pre-action confirmation (the meta-delete Proceed/Cancel dialog).
+    const hadPriorCaps =
+      !!config?.solvent_caps_pct && Object.keys(config.solvent_caps_pct).length > 0;
+    if (!file) {
+      setSolventFamilies([]);
+      setSelectedSolventKey("");
+      setConfig((c) => (c ? { ...c, solvent_caps_pct: null } : c));
+      if (hadPriorCaps && !opts?.silent) setCapNotice("Solvent caps were cleared because the solvent file was removed.");
+      return;
+    }
+    try {
+      const families = await apiClient.fetchSolventFamilies(file);
+      setSolventFamilies(families);
+      setSelectedSolventKey(families[0]?.solventKey ?? "");
+      const caps: Record<string, number> = {};
+      families.forEach((f) => { caps[f.solventKey] = f.defaultCapPct; });
+      setConfig((c) => (c ? { ...c, solvent_caps_pct: caps } : c));
+      if (hadPriorCaps) setCapNotice("Solvent caps were reset to defaults because the solvent file changed.");
+    } catch {
+      setSolventFamilies([]);
+      setSelectedSolventKey("");
+      setConfig((c) => (c ? { ...c, solvent_caps_pct: null } : c));
+      setCapNotice("Could not read solvent families from this file; falling back to the single Max-solvent-% cap.");
+    }
+  }
+
+  function handleSolventCapChange(solventKey: string, pct: number) {
+    setConfig((c) => {
+      if (!c) return c;
+      const next = { ...(c.solvent_caps_pct ?? {}) };
+      next[solventKey] = pct;
+      return { ...c, solvent_caps_pct: next };
+    });
   }
 
   // Bootstrap
@@ -252,6 +308,16 @@ export function WorkbenchPage() {
     pendingMetaFileRef.current = null;
     setMetaInputKey((k) => k + 1);
     setConfig((c) => (c ? { ...c, meta_file: "" } : c));
+    // silent: the destructive cap clear is announced up-front by
+    // handleClearMetaRequest's confirmation dialog, not a post-hoc notice.
+    void rebuildSolventCaps(null, { silent: true });
+  }
+
+  function handleClearMetaRequest() {
+    const hasCaps =
+      !!config?.solvent_caps_pct && Object.keys(config.solvent_caps_pct).length > 0;
+    if (hasCaps) setShowClearMetaWarning(true);
+    else clearMetaFile();
   }
 
   function dismissConflictWarning() {
@@ -302,6 +368,7 @@ export function WorkbenchPage() {
     setMetaFile(file);
     setMetaSource("upload");
     setConfig((c) => (c ? { ...c, meta_file: file.name } : c));
+    void rebuildSolventCaps(file);
   }
 
   function applyMetaFromUpload(file: File) {
@@ -339,11 +406,13 @@ export function WorkbenchPage() {
           setSourceLayoutFile(null);
           setConfig((c) => (c ? { ...c, source_layout_file: null } : c));
           handleMetaFile(pending.file, pending.rows);
+          void rebuildSolventCaps(pending.file);
         },
       });
       return;
     }
     handleMetaFile(file, rows);
+    void rebuildSolventCaps(file);
   }
 
   async function applySourceLayoutUpload(file: File | null) {
@@ -370,17 +439,20 @@ export function WorkbenchPage() {
     if (file === null) {
       setSourceLayoutFile(null);
       setConfig((c) => (c ? { ...c, source_layout_file: null } : c));
+      void rebuildSolventCaps(null);
       return;
     }
     try {
       await apiClient.previewSourceLayout(file);
       setSourceLayoutFile(file);
       setConfig((c) => (c ? { ...c, source_layout_file: file.name } : c));
+      void rebuildSolventCaps(file);
     } catch (err) {
       // Validation failed — pop a modal warning instead of silently rejecting.
       // Leave previous state cleared so the upload zone does NOT go green.
       setSourceLayoutFile(null);
       setConfig((c) => (c ? { ...c, source_layout_file: null } : c));
+      void rebuildSolventCaps(null);
       setSourceLayoutWarning(
         err instanceof Error ? err.message : "Failed to validate source plate layout."
       );
@@ -438,6 +510,7 @@ export function WorkbenchPage() {
 
   function handleConfigChange(field: keyof RunConfig, value: string) {
     if (field === "dispenser" || field === "sourceplate_type") {
+      if (sourceLayoutFile) void rebuildSolventCaps(null);
       setSourceLayoutFile(null);
     }
     if (field === "dispenser" && bootstrap) {
@@ -576,6 +649,19 @@ export function WorkbenchPage() {
 
       {errorMessage && <section className="status-banner is-error">{errorMessage}</section>}
 
+      {capNotice && (
+        <div className="confirm-overlay" role="alertdialog" aria-label="Solvent caps notice">
+          <div className="confirm-dialog">
+            <p className="confirm-dialog-msg">{capNotice}</p>
+            <div className="confirm-dialog-btns">
+              <button type="button" className="confirm-btn is-cancel" onClick={() => setCapNotice(null)}>
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showClearLayoutWarning && (
         <div className="confirm-overlay">
           <div className="confirm-dialog">
@@ -594,6 +680,16 @@ export function WorkbenchPage() {
         </div>
       )}
 
+      {showClearMetaWarning && (
+        <ConflictWarning
+          message="Removing this metadata file will clear the solvent caps you set for this run."
+          cancelLabel="Cancel"
+          confirmLabel="Remove & clear caps"
+          onCancel={() => setShowClearMetaWarning(false)}
+          onConfirm={() => { setShowClearMetaWarning(false); clearMetaFile(); }}
+        />
+      )}
+
       <div className="workbench-columns">
         {/* Input panel — always visible */}
         <FileUploader
@@ -606,7 +702,7 @@ export function WorkbenchPage() {
           onLayoutChange={handleLayoutChange}
           onMetaChange={handleMetaChange}
           onClearLayout={handleClearLayoutRequest}
-          onClearMeta={clearMetaFile}
+          onClearMeta={handleClearMetaRequest}
           designActive={designActive}
           onDesignToggle={handleDesignToggle}
           metaCreatorActive={metaCreatorOpen}
@@ -675,6 +771,10 @@ export function WorkbenchPage() {
             onProcess={() => { if (layoutFile && (metaFile || sourceLayoutFile) && config && preview) setShowConfirmRun(true); }}
             sourceLayoutFile={sourceLayoutFile}
             onSourceLayoutFileChange={(f) => void applySourceLayoutUpload(f)}
+            solventFamilies={solventFamilies}
+            selectedSolventKey={selectedSolventKey}
+            onSelectedSolventChange={setSelectedSolventKey}
+            onSolventCapChange={handleSolventCapChange}
           />
         )}
       </div>
@@ -685,6 +785,8 @@ export function WorkbenchPage() {
           isEditMode={isEditMode}
           sourceLayoutFileName={sourceLayoutFile?.name ?? config?.source_layout_file ?? null}
           sourcePlateType={config?.sourceplate_type}
+          solventFamilies={solventFamilies}
+          solventCaps={config?.solvent_caps_pct}
           onConfirm={handleConfirmRun}
           onClose={() => setShowConfirmRun(false)}
         />
