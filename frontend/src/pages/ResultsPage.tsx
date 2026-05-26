@@ -6,6 +6,7 @@ import { ResultsHero } from "../components/results/ResultsHero";
 import { SourcePlatePanel } from "../components/results/SourcePlatePanel";
 import { apiClient } from "../services/apiClient";
 import type { BootstrapResponse, JobRecord, PreflightAssessment } from "../types";
+import { canonicalWellId } from "../utils/wellUtils";
 import "../styles/ResultsPage.css";
 
 function formatPct(value: number): string {
@@ -188,10 +189,13 @@ export function ResultsPage() {
   );
 
   // Wells that were skipped because their compound was excluded from the run.
-  // PlateGrid keys cells as `${plateId}:${wellId}`, so we mirror that here.
+  // PlateGrid keys cells as `${plateId}:${formatWellId(rowLabel, column)}` which
+  // is the zero-padded canonical form (e.g. "plate_1:A01", "plate_1:D04",
+  // "plate_1:D17"). The backend emits raw target_well strings that may be
+  // unpadded (e.g. "D4", "A1"), so canonicalize before building the lookup set.
   const excludedWells = new Set(
     (job.excludedTargetWells ?? []).map(
-      (etw) => `${etw.target_plate}:${etw.target_well}`,
+      (etw) => `${etw.target_plate}:${canonicalWellId(etw.target_well)}`,
     ),
   );
 
