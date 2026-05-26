@@ -51,8 +51,21 @@ def _row_label(row_idx_1based: int) -> str:
     return label
 
 
-def _free_in_row(row_state: dict[int, RowState], geometry: PlateGeometry, r: int) -> int:
-    return geometry.cols - row_state[r].next_free_col + 1
+def _contiguous_free_from(
+    row_state: dict[int, RowState],
+    geometry: PlateGeometry,
+    r: int,
+    reserved_set: set[str],
+) -> int:
+    """Count consecutive non-reserved free cols starting at row r's next_free_col."""
+    label = _row_label(r)
+    next_col = row_state[r].next_free_col
+    count = 0
+    for col in range(next_col, geometry.cols + 1):
+        if f"{label}{col}" in reserved_set:
+            break
+        count += 1
+    return count
 
 
 def assign_source_wells(
@@ -61,6 +74,17 @@ def assign_source_wells(
     geometry: PlateGeometry,
 ) -> AssignmentResult:
     placements: dict[str, str] = {}
+
+    # Step 1 — reserve solvent wells at bottom-right, walking inward column-major.
+    reserved_wells: list[str] = []
+    for col in range(geometry.cols, 0, -1):
+        for row_idx in range(geometry.rows, 0, -1):
+            if len(reserved_wells) >= len(solvents):
+                break
+            reserved_wells.append(f"{_row_label(row_idx)}{col}")
+        if len(reserved_wells) >= len(solvents):
+            break
+    reserved_set = set(reserved_wells)
 
     # Sort descending by # of stocks, alphabetical tiebreak.
     sorted_compounds = sorted(
@@ -90,14 +114,14 @@ def assign_source_wells(
     for cmpd in phase_b:
         n_needed = len(cmpd.stocks_mM)
 
-        # Candidates: rows with ≥ n_needed trailing free cols.
+        # Candidates: rows with ≥ n_needed contiguous non-reserved free cols.
         candidates = [
             r for r in row_state
-            if (geometry.cols - row_state[r].next_free_col + 1) >= n_needed
+            if _contiguous_free_from(row_state, geometry, r, reserved_set) >= n_needed
         ]
         if not candidates:
-            # Tier 2: scatter into row-major free wells (only Phase A rows have free wells).
-            free_wells = _enumerate_free_wells(geometry, row_state, reserved_wells=set())
+            # Tier 2: scatter into row-major non-reserved free wells.
+            free_wells = _enumerate_free_wells(geometry, row_state, reserved_wells=reserved_set)
             if len(free_wells) < n_needed:
                 excluded.append(ExclusionWarning(
                     compound=cmpd.name,
@@ -116,13 +140,21 @@ def assign_source_wells(
         preferred = [r for r in candidates if row_state[r].owner_stock_count == n_needed]
         pool = preferred if preferred else candidates
 
-        # T2 spread: pick the row with the most free space; tiebreak smallest row index.
-        chosen = max(pool, key=lambda r: (_free_in_row(row_state, geometry, r), -r))
+        # T2 spread: pick the row with the most contiguous non-reserved free space;
+        # tiebreak smallest row index.
+        chosen = max(
+            pool,
+            key=lambda r: (_contiguous_free_from(row_state, geometry, r, reserved_set), -r),
+        )
 
         start_col = row_state[chosen].next_free_col
         for col_offset, stock in enumerate(sorted(cmpd.stocks_mM)):
             placements[f"[{cmpd.name}][{stock}]"] = f"{_row_label(chosen)}{start_col + col_offset}"
         row_state[chosen] = row_state[chosen]._replace(next_free_col=start_col + n_needed)
+
+    # Step 7 — place solvents into their reserved wells, in input order.
+    for solvent_name, well in zip(solvents, reserved_wells):
+        placements[f"[{solvent_name}][0.0]"] = well
 
     return AssignmentResult(
         placements=placements,
