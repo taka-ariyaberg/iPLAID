@@ -14,6 +14,7 @@ import { apiClient } from "../services/apiClient";
 import type {
   LayoutPreview,
   RunConfig,
+  SolventFamily,
   TargetPlateDefinition,
 } from "../types";
 import { canonicalWellId } from "../utils/wellUtils";
@@ -130,6 +131,13 @@ export function WorkbenchPage() {
   // Held separately from the page-level errorMessage banner so the user gets
   // a hard-to-miss popup when the format is wrong (banner can be missed).
   const [sourceLayoutWarning, setSourceLayoutWarning] = useState<string | null>(null);
+  // Per-solvent carrier caps. `solventFamilies` and `selectedSolventKey` are
+  // local view-state only — never written into config. Only the derived
+  // solvent_caps_pct map (built in rebuildSolventCaps / handleSolventCapChange)
+  // travels in config.
+  const [solventFamilies, setSolventFamilies] = useState<SolventFamily[]>([]);
+  const [selectedSolventKey, setSelectedSolventKey] = useState<string>("");
+  const [capNotice, setCapNotice] = useState<string | null>(null);
 
   // ----- upload mode -----
   const [layoutFile, setLayoutFile] = useWorkbenchField("layoutFile");
@@ -176,6 +184,43 @@ export function WorkbenchPage() {
     setMetaCreatorRows(rows.map((row) => ({ ...row })));
     setConfig((c) => (c ? { ...c, meta_file: file.name } : c));
     setMetaCreatorOpen(false);
+  }
+
+  // Rebuilds the per-solvent cap map from the solvent families in the staged
+  // meta/source file. On swap OR delete the whole map is dropped and rebuilt
+  // from the new families at their default caps (with a non-error notice). The
+  // selected solvent is local view-state only and never written into config.
+  async function rebuildSolventCaps(file: File | null, reason: "removed" | "changed") {
+    if (!file) {
+      setSolventFamilies([]);
+      setSelectedSolventKey("");
+      setConfig((c) => (c ? { ...c, solvent_caps_pct: null } : c));
+      setCapNotice("Solvent caps were cleared because the solvent file was removed.");
+      return;
+    }
+    try {
+      const families = await apiClient.fetchSolventFamilies(file);
+      setSolventFamilies(families);
+      setSelectedSolventKey(families[0]?.solventKey ?? "");
+      const caps: Record<string, number> = {};
+      families.forEach((f) => { caps[f.solventKey] = f.defaultCapPct; });
+      setConfig((c) => (c ? { ...c, solvent_caps_pct: caps } : c));
+      setCapNotice("Solvent caps were reset to defaults for the new solvent file.");
+    } catch {
+      setSolventFamilies([]);
+      setSelectedSolventKey("");
+      setConfig((c) => (c ? { ...c, solvent_caps_pct: null } : c));
+      setCapNotice("Could not read solvent families; falling back to the single Max-solvent-% cap.");
+    }
+  }
+
+  function handleSolventCapChange(solventKey: string, pct: number) {
+    setConfig((c) => {
+      if (!c) return c;
+      const next = { ...(c.solvent_caps_pct ?? {}) };
+      next[solventKey] = pct;
+      return { ...c, solvent_caps_pct: next };
+    });
   }
 
   // Bootstrap
@@ -252,6 +297,7 @@ export function WorkbenchPage() {
     pendingMetaFileRef.current = null;
     setMetaInputKey((k) => k + 1);
     setConfig((c) => (c ? { ...c, meta_file: "" } : c));
+    void rebuildSolventCaps(null, "removed");
   }
 
   function dismissConflictWarning() {
@@ -302,6 +348,7 @@ export function WorkbenchPage() {
     setMetaFile(file);
     setMetaSource("upload");
     setConfig((c) => (c ? { ...c, meta_file: file.name } : c));
+    void rebuildSolventCaps(file, "changed");
   }
 
   function applyMetaFromUpload(file: File) {
@@ -339,11 +386,13 @@ export function WorkbenchPage() {
           setSourceLayoutFile(null);
           setConfig((c) => (c ? { ...c, source_layout_file: null } : c));
           handleMetaFile(pending.file, pending.rows);
+          void rebuildSolventCaps(pending.file, "changed");
         },
       });
       return;
     }
     handleMetaFile(file, rows);
+    void rebuildSolventCaps(file, "changed");
   }
 
   async function applySourceLayoutUpload(file: File | null) {
@@ -370,17 +419,20 @@ export function WorkbenchPage() {
     if (file === null) {
       setSourceLayoutFile(null);
       setConfig((c) => (c ? { ...c, source_layout_file: null } : c));
+      void rebuildSolventCaps(null, "removed");
       return;
     }
     try {
       await apiClient.previewSourceLayout(file);
       setSourceLayoutFile(file);
       setConfig((c) => (c ? { ...c, source_layout_file: file.name } : c));
+      void rebuildSolventCaps(file, "changed");
     } catch (err) {
       // Validation failed — pop a modal warning instead of silently rejecting.
       // Leave previous state cleared so the upload zone does NOT go green.
       setSourceLayoutFile(null);
       setConfig((c) => (c ? { ...c, source_layout_file: null } : c));
+      void rebuildSolventCaps(null, "removed");
       setSourceLayoutWarning(
         err instanceof Error ? err.message : "Failed to validate source plate layout."
       );
@@ -576,6 +628,15 @@ export function WorkbenchPage() {
 
       {errorMessage && <section className="status-banner is-error">{errorMessage}</section>}
 
+      {capNotice && (
+        <section className="status-banner is-warning config-cap-notice" role="status">
+          <span>{capNotice}</span>
+          <button type="button" onClick={() => setCapNotice(null)} aria-label="Dismiss">
+            ×
+          </button>
+        </section>
+      )}
+
       {showClearLayoutWarning && (
         <div className="confirm-overlay">
           <div className="confirm-dialog">
@@ -675,6 +736,10 @@ export function WorkbenchPage() {
             onProcess={() => { if (layoutFile && (metaFile || sourceLayoutFile) && config && preview) setShowConfirmRun(true); }}
             sourceLayoutFile={sourceLayoutFile}
             onSourceLayoutFileChange={(f) => void applySourceLayoutUpload(f)}
+            solventFamilies={solventFamilies}
+            selectedSolventKey={selectedSolventKey}
+            onSelectedSolventChange={setSelectedSolventKey}
+            onSolventCapChange={handleSolventCapChange}
           />
         )}
       </div>

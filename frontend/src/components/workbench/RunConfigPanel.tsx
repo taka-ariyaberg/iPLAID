@@ -1,4 +1,4 @@
-import type { BootstrapResponse, RunConfig } from "../../types";
+import type { BootstrapResponse, RunConfig, SolventFamily } from "../../types";
 import { ConfigDropdown } from "./ConfigDropdown";
 import { SpinInput } from "./SpinInput";
 import "./RunConfigPanel.css";
@@ -21,6 +21,10 @@ type RunConfigPanelProps = {
   onProcess: () => void;
   sourceLayoutFile?: File | null;
   onSourceLayoutFileChange?: (file: File | null) => void;
+  solventFamilies: SolventFamily[];
+  selectedSolventKey: string;
+  onSelectedSolventChange: (key: string) => void;
+  onSolventCapChange: (solventKey: string, pct: number) => void;
 };
 
 type NumericFieldProps = {
@@ -57,6 +61,10 @@ export function RunConfigPanel({
   onProcess,
   sourceLayoutFile,
   onSourceLayoutFileChange,
+  solventFamilies,
+  selectedSolventKey,
+  onSelectedSolventChange,
+  onSolventCapChange,
 }: RunConfigPanelProps) {
   return (
     <section className="workbench-config panel-surface">
@@ -165,13 +173,15 @@ export function RunConfigPanel({
           </div>
         )}
 
-        <label>
-          <span>Dilution solvent</span>
-          <input
-            value={config.dilution_solvent}
-            onChange={(e) => onConfigChange("dilution_solvent", e.target.value)}
+        <div className="config-form-field">
+          <span>Solvent</span>
+          <ConfigDropdown
+            ariaLabel="Solvent"
+            value={selectedSolventKey}
+            options={solventFamilies.map((f) => ({ value: f.solventKey, label: f.solvent }))}
+            onChange={onSelectedSolventChange}
           />
-        </label>
+        </div>
 
         <NumericField
           label="Working volume (uL)"
@@ -182,14 +192,21 @@ export function RunConfigPanel({
           onConfigChange={onConfigChange}
         />
 
-        <NumericField
-          label="Max solvent (%)"
-          field="max_dmso_pct"
-          value={config.max_dmso_pct}
-          min={0}
-          step={0.01}
-          onConfigChange={onConfigChange}
-        />
+        <label>
+          <span>Max solvent (%)</span>
+          <SpinInput
+            value={
+              selectedSolventKey && config.solvent_caps_pct
+                ? config.solvent_caps_pct[selectedSolventKey] ?? config.max_dmso_pct
+                : config.max_dmso_pct
+            }
+            min={0}
+            step={0.01}
+            className="design-num-input"
+            onChange={(v) => selectedSolventKey && onSolventCapChange(selectedSolventKey, v)}
+            onCommit={(v) => selectedSolventKey && onSolventCapChange(selectedSolventKey, v)}
+          />
+        </label>
 
         <NumericField
           label="Prep overage (%)"
