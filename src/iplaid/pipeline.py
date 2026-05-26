@@ -453,6 +453,18 @@ This run has {input_unique_pairs} unique compound/target pairs and {len(liquid_n
             f.write(source_prep_instructions)
         paths["out_source_prep"] = prep_outfile
     elif include_source_prep:
+        scatter_warnings_data = [
+            {"compound": sw.compound, "wells": sw.wells}
+            for sw in liquid_table.attrs.get("scatter_warnings", [])
+        ]
+        excluded_data = [
+            {
+                "compound": ew.compound,
+                "stocks_needed": ew.stocks_needed,
+                "free_wells_remaining": ew.free_wells_remaining,
+            }
+            for ew in liquid_table.attrs.get("excluded_compounds", [])
+        ]
         source_prep_volumes, source_prep_instructions = source_plate_prep.generate_source_plate_prep_instructions(
             Path(paths["project_root"]) / "outputs" / "results",
             cfg,
@@ -462,6 +474,8 @@ This run has {input_unique_pairs} unique compound/target pairs and {len(liquid_n
             cfg["layout_file"],
             idot_csv_path=paths["out_idot"],
             liquids_csv_path=paths["out_liquids"],
+            scatter_warnings=scatter_warnings_data,
+            excluded=excluded_data,
         )
         
         prep_outfile = build_source_prep_output_path(

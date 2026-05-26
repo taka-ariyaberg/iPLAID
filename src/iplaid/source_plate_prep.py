@@ -347,6 +347,40 @@ def _format_dilution_series(
     return lines
 
 
+def format_prep_warnings_header(
+    *,
+    scatter_warnings: list[dict],
+    excluded: list[dict],
+) -> str:
+    """Return a header section for the prep text file, or empty string if no warnings.
+
+    Args:
+        scatter_warnings: list of {"compound": str, "wells": tuple[str, ...]} dicts.
+        excluded: list of {"compound": str, "stocks_needed": int, "free_wells_remaining": int} dicts.
+    """
+    if not scatter_warnings and not excluded:
+        return ""
+    lines: list[str] = ["=" * 72]
+    if excluded:
+        lines.append("⚠️  EXCLUDED COMPOUNDS — could not fit on the source plate:")
+        for ew in excluded:
+            lines.append(
+                f"   • {ew['compound']}: needed {ew['stocks_needed']} stocks, "
+                f"{ew['free_wells_remaining']} free wells remaining."
+            )
+            lines.append("     Target wells for this compound will be EMPTY (no dispense).")
+    if scatter_warnings:
+        if excluded:
+            lines.append("")
+        lines.append("ℹ️  NON-CONTIGUOUS PLACEMENTS — same-row rule relaxed for these compounds:")
+        for sw in scatter_warnings:
+            wells_str = ", ".join(sw["wells"])
+            lines.append(f"   • {sw['compound']}: stocks placed at {wells_str}")
+    lines.append("=" * 72)
+    lines.append("")
+    return "\n".join(lines)
+
+
 def generate_source_plate_prep_instructions(
     output_dir: Path,
     config: Dict,
@@ -355,7 +389,9 @@ def generate_source_plate_prep_instructions(
     protocol_name: str,
     layout_file: str,
     idot_csv_path: Optional[Path] = None,
-    liquids_csv_path: Optional[Path] = None
+    liquids_csv_path: Optional[Path] = None,
+    scatter_warnings: Optional[list[dict]] = None,
+    excluded: Optional[list[dict]] = None,
 ) -> Tuple[Dict, str]:
     """
     Generate source plate preparation instructions from iDOT outputs.
@@ -429,7 +465,14 @@ def generate_source_plate_prep_instructions(
         config['source_well_fill_pct'],
         well_capacity
     )
-    
+
+    # Prepend Tier 2/3 warnings header (empty string if no warnings).
+    header = format_prep_warnings_header(
+        scatter_warnings=scatter_warnings or [],
+        excluded=excluded or [],
+    )
+    instructions = header + instructions
+
     return volumes_per_compound, instructions
 
 

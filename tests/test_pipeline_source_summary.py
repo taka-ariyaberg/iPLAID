@@ -105,3 +105,29 @@ def test_uploaded_layout_rejects_wells_outside_source_plate(tmp_path: Path) -> N
             include_source_prep=True,
             source_layout_path=bad_layout,
         )
+
+
+def test_source_prep_text_includes_tier3_exclusion_header():
+    from iplaid.source_plate_prep import format_prep_warnings_header
+
+    excluded = [{"compound": "Veliparib", "stocks_needed": 3, "free_wells_remaining": 1}]
+    scatter = []
+    header = format_prep_warnings_header(scatter_warnings=scatter, excluded=excluded)
+    assert "EXCLUDED COMPOUNDS" in header
+    assert "Veliparib" in header
+    assert "3 stocks" in header
+
+
+def test_source_prep_text_includes_tier2_scatter_header():
+    from iplaid.source_plate_prep import format_prep_warnings_header
+
+    scatter = [{"compound": "Overflow", "wells": ("A10", "A11", "A12", "B10")}]
+    header = format_prep_warnings_header(scatter_warnings=scatter, excluded=[])
+    assert "NON-CONTIGUOUS PLACEMENTS" in header
+    assert "Overflow" in header
+    assert "A10" in header
+
+
+def test_source_prep_text_no_header_when_no_warnings():
+    from iplaid.source_plate_prep import format_prep_warnings_header
+    assert format_prep_warnings_header(scatter_warnings=[], excluded=[]) == ""
