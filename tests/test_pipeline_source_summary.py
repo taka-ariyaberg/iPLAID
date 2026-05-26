@@ -113,9 +113,10 @@ def test_source_prep_text_includes_tier3_exclusion_header():
     excluded = [{"compound": "Veliparib", "stocks_needed": 3, "free_wells_remaining": 1}]
     scatter = []
     header = format_prep_warnings_header(scatter_warnings=scatter, excluded=excluded)
-    assert "EXCLUDED COMPOUNDS" in header
+    assert "dropped" in header
+    assert "source plate is full" in header
     assert "Veliparib" in header
-    assert "3 stocks" in header
+    assert "needed 3 wells" in header
 
 
 def test_source_prep_text_includes_tier2_scatter_header():
@@ -123,7 +124,8 @@ def test_source_prep_text_includes_tier2_scatter_header():
 
     scatter = [{"compound": "Overflow", "wells": ("A10", "A11", "A12", "B10")}]
     header = format_prep_warnings_header(scatter_warnings=scatter, excluded=[])
-    assert "NON-CONTIGUOUS PLACEMENTS" in header
+    assert "didn't fit the standard layout" in header
+    assert "scattered wells" in header
     assert "Overflow" in header
     assert "A10" in header
 

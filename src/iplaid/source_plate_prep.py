@@ -362,20 +362,31 @@ def format_prep_warnings_header(
         return ""
     lines: list[str] = ["=" * 72]
     if excluded:
-        lines.append("⚠️  EXCLUDED COMPOUNDS — could not fit on the source plate:")
+        lines.append(
+            "NOTE: these compounds were dropped — the source plate is full. They are"
+        )
+        lines.append(
+            "NOT in this protocol; their destination wells will stay empty."
+        )
+        lines.append("")
         for ew in excluded:
             lines.append(
-                f"   • {ew['compound']}: needed {ew['stocks_needed']} stocks, "
-                f"{ew['free_wells_remaining']} free wells remaining."
+                f"   • {ew['compound']}  (needed {ew['stocks_needed']} wells, "
+                f"only {ew['free_wells_remaining']} free)"
             )
-            lines.append("     Target wells for this compound will be EMPTY (no dispense).")
     if scatter_warnings:
         if excluded:
             lines.append("")
-        lines.append("ℹ️  NON-CONTIGUOUS PLACEMENTS — same-row rule relaxed for these compounds:")
+        lines.append(
+            "NOTE: these compounds didn't fit the standard layout — their stocks are"
+        )
+        lines.append(
+            "in scattered wells. Fill each well below individually."
+        )
+        lines.append("")
         for sw in scatter_warnings:
             wells_str = ", ".join(sw["wells"])
-            lines.append(f"   • {sw['compound']}: stocks placed at {wells_str}")
+            lines.append(f"   • {sw['compound']}: {wells_str}")
     lines.append("=" * 72)
     lines.append("")
     return "\n".join(lines)
