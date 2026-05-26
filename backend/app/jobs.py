@@ -313,6 +313,9 @@ class JobStore:
                         .to_dict()
                     ),
                     "stockSummary": dataframe_to_records(result["stock_summary"], limit=24),
+                    "warnings": result.get("warnings", []),
+                    "excludedCompounds": result.get("excluded_compounds", []),
+                    "excludedTargetWells": result.get("excluded_target_wells", []),
                     "error": None,
                 },
             )

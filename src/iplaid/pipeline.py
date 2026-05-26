@@ -489,6 +489,39 @@ This run has {input_unique_pairs} unique compound/target pairs and {len(liquid_n
     else:
         paths["out_source_prep"] = None
 
+    # Surface algorithm warnings (Tier 2 scatter, Tier 3 exclusion) on the run output
+    # so the FastAPI layer and frontend can render them. Default to empty lists when
+    # the source-layout planner produced no events.
+    scatter_warnings_out = [
+        {
+            "severity": "soft",
+            "kind": "scatter",
+            "compound": sw.compound,
+            "wells": list(sw.wells),
+        }
+        for sw in liquid_table.attrs.get("scatter_warnings", [])
+    ]
+    excluded_compounds_out = [
+        {
+            "compound": ew.compound,
+            "stocks_needed": ew.stocks_needed,
+            "free_wells_remaining": ew.free_wells_remaining,
+        }
+        for ew in liquid_table.attrs.get("excluded_compounds", [])
+    ]
+    excluded_names_set = {
+        ew.compound for ew in liquid_table.attrs.get("excluded_compounds", [])
+    }
+    if excluded_names_set:
+        excluded_target_wells_out = (
+            df.loc[df["cmpdname"].isin(excluded_names_set), ["Target Plate", "Target Well"]]
+              .drop_duplicates()
+              .rename(columns={"Target Plate": "target_plate", "Target Well": "target_well"})
+              .to_dict("records")
+        )
+    else:
+        excluded_target_wells_out = []
+
     return {
         "project_root": root,
         "config": cfg,
@@ -515,4 +548,7 @@ This run has {input_unique_pairs} unique compound/target pairs and {len(liquid_n
         "source_prep_volumes": source_prep_volumes,
         "source_prep_instructions": source_prep_instructions,
         "source_layout_provided": existing_layout is not None,
+        "warnings": scatter_warnings_out,
+        "excluded_compounds": excluded_compounds_out,
+        "excluded_target_wells": excluded_target_wells_out,
     }
