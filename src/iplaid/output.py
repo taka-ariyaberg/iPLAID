@@ -121,12 +121,14 @@ def build_liquid_table(
     protocol_name: str,
     *,
     existing_layout: pd.DataFrame | None = None,
+    source_specs: dict | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Build liquid table with source well assignments.
 
-    If existing_layout is None: auto-assign wells in deterministic order
-    (current behavior; A1..H12 of a 96-well plate).
+    If existing_layout is None: auto-assign wells using the pipette-friendly
+    algorithm, sized to the dispenser's source plate (rows/cols read from
+    source_specs).
 
     If existing_layout is provided: validate completeness and map source
     wells from it. Raises SourceLayoutError if any required Liquid Name
@@ -168,10 +170,16 @@ def build_liquid_table(
             for name, stocks in compounds_by_name.items()
         ]
 
-        # Source-plate geometry. iPLAID's supported source plates are all 96-well
-        # (iDOT S.60 / S.100 / S.200; Echo 384LDV is not yet supported as a source).
-        # Hardcoded to match today's behavior.
-        geometry = PlateGeometry(rows=8, cols=12)
+        # Source-plate geometry comes from the dispenser's plate spec.
+        # iDOT plates are 8x12 (96-well). Echo plates are 16x24 (384-well) or
+        # 32x48 (1536-well). Fall back to 8x12 if no spec is provided (for
+        # callers that haven't been updated yet — log/test contexts).
+        if source_specs is not None:
+            rows = int(source_specs.get("rows") or 8)
+            cols = int(source_specs.get("cols") or 12)
+        else:
+            rows, cols = 8, 12
+        geometry = PlateGeometry(rows=rows, cols=cols)
 
         result = assign_source_wells(compounds_list, solvent_names, geometry)
 

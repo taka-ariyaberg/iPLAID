@@ -320,6 +320,7 @@ def _run_pipeline_with_resolved_inputs(
         all_rows,
         str(cfg["protocol_name"]),
         existing_layout=existing_layout,
+        source_specs=source_specs,
     )
     
     # Diagnostic: Report final liquid table
