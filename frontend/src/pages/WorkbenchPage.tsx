@@ -190,7 +190,7 @@ export function WorkbenchPage() {
   // meta/source file. On swap OR delete the whole map is dropped and rebuilt
   // from the new families at their default caps (with a non-error notice). The
   // selected solvent is local view-state only and never written into config.
-  async function rebuildSolventCaps(file: File | null, reason: "removed" | "changed") {
+  async function rebuildSolventCaps(file: File | null) {
     if (!file) {
       setSolventFamilies([]);
       setSelectedSolventKey("");
@@ -297,7 +297,7 @@ export function WorkbenchPage() {
     pendingMetaFileRef.current = null;
     setMetaInputKey((k) => k + 1);
     setConfig((c) => (c ? { ...c, meta_file: "" } : c));
-    void rebuildSolventCaps(null, "removed");
+    void rebuildSolventCaps(null);
   }
 
   function dismissConflictWarning() {
@@ -348,7 +348,7 @@ export function WorkbenchPage() {
     setMetaFile(file);
     setMetaSource("upload");
     setConfig((c) => (c ? { ...c, meta_file: file.name } : c));
-    void rebuildSolventCaps(file, "changed");
+    void rebuildSolventCaps(file);
   }
 
   function applyMetaFromUpload(file: File) {
@@ -386,13 +386,13 @@ export function WorkbenchPage() {
           setSourceLayoutFile(null);
           setConfig((c) => (c ? { ...c, source_layout_file: null } : c));
           handleMetaFile(pending.file, pending.rows);
-          void rebuildSolventCaps(pending.file, "changed");
+          void rebuildSolventCaps(pending.file);
         },
       });
       return;
     }
     handleMetaFile(file, rows);
-    void rebuildSolventCaps(file, "changed");
+    void rebuildSolventCaps(file);
   }
 
   async function applySourceLayoutUpload(file: File | null) {
@@ -419,20 +419,20 @@ export function WorkbenchPage() {
     if (file === null) {
       setSourceLayoutFile(null);
       setConfig((c) => (c ? { ...c, source_layout_file: null } : c));
-      void rebuildSolventCaps(null, "removed");
+      void rebuildSolventCaps(null);
       return;
     }
     try {
       await apiClient.previewSourceLayout(file);
       setSourceLayoutFile(file);
       setConfig((c) => (c ? { ...c, source_layout_file: file.name } : c));
-      void rebuildSolventCaps(file, "changed");
+      void rebuildSolventCaps(file);
     } catch (err) {
       // Validation failed — pop a modal warning instead of silently rejecting.
       // Leave previous state cleared so the upload zone does NOT go green.
       setSourceLayoutFile(null);
       setConfig((c) => (c ? { ...c, source_layout_file: null } : c));
-      void rebuildSolventCaps(null, "removed");
+      void rebuildSolventCaps(null);
       setSourceLayoutWarning(
         err instanceof Error ? err.message : "Failed to validate source plate layout."
       );
@@ -490,6 +490,7 @@ export function WorkbenchPage() {
 
   function handleConfigChange(field: keyof RunConfig, value: string) {
     if (field === "dispenser" || field === "sourceplate_type") {
+      if (sourceLayoutFile) void rebuildSolventCaps(null);
       setSourceLayoutFile(null);
     }
     if (field === "dispenser" && bootstrap) {
