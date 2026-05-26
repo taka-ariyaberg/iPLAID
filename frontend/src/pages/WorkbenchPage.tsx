@@ -191,11 +191,15 @@ export function WorkbenchPage() {
   // from the new families at their default caps (with a non-error notice). The
   // selected solvent is local view-state only and never written into config.
   async function rebuildSolventCaps(file: File | null) {
+    // Only notify when caps the user could have customized are actually being
+    // discarded — i.e. families already existed. First-time population (upload
+    // or create-metadata with nothing loaded before) happens silently.
+    const hadPriorCaps = solventFamilies.length > 0;
     if (!file) {
       setSolventFamilies([]);
       setSelectedSolventKey("");
       setConfig((c) => (c ? { ...c, solvent_caps_pct: null } : c));
-      setCapNotice("Solvent caps were cleared because the solvent file was removed.");
+      if (hadPriorCaps) setCapNotice("Solvent caps were cleared because the solvent file was removed.");
       return;
     }
     try {
@@ -205,12 +209,12 @@ export function WorkbenchPage() {
       const caps: Record<string, number> = {};
       families.forEach((f) => { caps[f.solventKey] = f.defaultCapPct; });
       setConfig((c) => (c ? { ...c, solvent_caps_pct: caps } : c));
-      setCapNotice("Solvent caps were reset to defaults for the new solvent file.");
+      if (hadPriorCaps) setCapNotice("Solvent caps were reset to defaults because the solvent file changed.");
     } catch {
       setSolventFamilies([]);
       setSelectedSolventKey("");
       setConfig((c) => (c ? { ...c, solvent_caps_pct: null } : c));
-      setCapNotice("Could not read solvent families; falling back to the single Max-solvent-% cap.");
+      setCapNotice("Could not read solvent families from this file; falling back to the single Max-solvent-% cap.");
     }
   }
 
@@ -630,12 +634,16 @@ export function WorkbenchPage() {
       {errorMessage && <section className="status-banner is-error">{errorMessage}</section>}
 
       {capNotice && (
-        <section className="status-banner is-warning config-cap-notice" role="status">
-          <span>{capNotice}</span>
-          <button type="button" onClick={() => setCapNotice(null)} aria-label="Dismiss">
-            ×
-          </button>
-        </section>
+        <div className="confirm-overlay" role="alertdialog" aria-label="Solvent caps notice">
+          <div className="confirm-dialog">
+            <p className="confirm-dialog-msg">{capNotice}</p>
+            <div className="confirm-dialog-btns">
+              <button type="button" className="confirm-btn is-cancel" onClick={() => setCapNotice(null)}>
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {showClearLayoutWarning && (
