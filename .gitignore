@@ -79,3 +79,5 @@ compose.override.yml
 compose.override.yaml
 # Ad-hoc verification artefacts (e.g. saved pipeline outputs from debugging).
 _verification/
+# Per-experiment input drops (raw vendor files + preprocessed iPLAID feeders).
+inputs/incoming/
