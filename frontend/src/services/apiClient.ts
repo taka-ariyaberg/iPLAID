@@ -1,4 +1,4 @@
-import type { BootstrapResponse, DesignConfig, DesignJob, JobRecord, LayoutPreview, RunConfig, ValidationResult } from "../types";
+import type { BootstrapResponse, DesignConfig, DesignJob, JobRecord, LayoutPreview, RunConfig, SolventFamily, ValidationResult } from "../types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
@@ -52,6 +52,16 @@ export const apiClient = {
       method: "POST",
       body: formData,
     });
+  },
+
+  async fetchSolventFamilies(file: File): Promise<SolventFamily[]> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await request<{ families: SolventFamily[] }>("/api/meta/solvents", {
+      method: "POST",
+      body: formData,
+    });
+    return response.families;
   },
 
   async createRun(params: {

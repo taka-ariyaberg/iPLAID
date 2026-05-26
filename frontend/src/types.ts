@@ -116,6 +116,12 @@ export type RunConfig = {
   output_timestamp_format: string;
 };
 
+export type SolventFamily = {
+  solvent: string;      // canonical display label
+  solventKey: string;   // label_key form (merge key)
+  defaultCapPct: number;
+};
+
 export type SolventSummary = {
   solvent: string;
   solventKey: string;
