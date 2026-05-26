@@ -194,6 +194,35 @@ export function ResultsPage() {
       {errorMessage && (
         <section className="status-banner is-error">{errorMessage}</section>
       )}
+      {job.excludedCompounds && job.excludedCompounds.length > 0 && (
+        <section className="status-banner is-error">
+          ⚠️ The following compounds could not fit on the source plate and were excluded
+          from the run. Their target wells will be empty (no dispense):
+          <ul>
+            {job.excludedCompounds.map((ec) => (
+              <li key={ec.compound}>
+                <strong>{ec.compound}</strong> — needed {ec.stocks_needed} stocks,
+                {" "}{ec.free_wells_remaining} free wells remaining.
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {job.warnings && job.warnings.some((w) => w.kind === "scatter") && (
+        <section className="status-banner is-warning">
+          ℹ️ Non-contiguous placements — the same-row rule was relaxed for these compounds
+          due to space constraints:
+          <ul>
+            {job.warnings
+              .filter((w) => w.kind === "scatter")
+              .map((w) => (
+                <li key={w.compound}>
+                  <strong>{w.compound}</strong> placed at: {w.wells?.join(", ")}
+                </li>
+              ))}
+          </ul>
+        </section>
+      )}
       {hasPreflightNotes && preflightAssessment && (
         <PreflightPanel
           assessment={preflightAssessment}

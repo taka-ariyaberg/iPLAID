@@ -225,6 +225,24 @@ export type JobError = {
   preflight?: PreflightAssessment | null;
 };
 
+export type RunWarning = {
+  severity: "soft" | "loud";
+  kind: "scatter" | "exclusion";
+  compound: string;
+  wells?: string[];
+};
+
+export type ExcludedCompound = {
+  compound: string;
+  stocks_needed: number;
+  free_wells_remaining: number;
+};
+
+export type ExcludedTargetWell = {
+  target_plate: string;
+  target_well: string;
+};
+
 export type JobRecord = {
   jobId: string;
   status: RunStatus;
@@ -241,6 +259,9 @@ export type JobRecord = {
   liquidsPreview: Array<Record<string, string | number | boolean>>;
   stockSummary: Array<Record<string, string | number | boolean>>;
   sourceWellTargetMap?: Record<string, string[]>;
+  warnings?: RunWarning[];
+  excludedCompounds?: ExcludedCompound[];
+  excludedTargetWells?: ExcludedTargetWell[];
   error: JobError | null;
 };
 

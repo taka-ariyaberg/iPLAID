@@ -140,6 +140,21 @@ th {
   border-color: rgba(255, 59, 85, 0.28);
 }
 
+.status-banner.is-warning {
+  color: #fde68a;
+  background: rgba(250, 204, 21, 0.08);
+  border-color: rgba(250, 204, 21, 0.28);
+}
+
+.status-banner ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.status-banner ul li {
+  margin-top: 0.2rem;
+}
+
 .primary-action,
 .secondary-action {
   display: inline-flex;
