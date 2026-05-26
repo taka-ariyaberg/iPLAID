@@ -70,8 +70,33 @@ def assign_source_wells(
             placements[f"[{cmpd.name}][{stock}]"] = f"{_row_label(row_idx)}{col_offset + 1}"
         row_state[row_idx] = (cmpd.name, len(cmpd.stocks_mM), len(cmpd.stocks_mM) + 1)
 
-    # Phase B + Tiers 2/3 handled in later tasks.
-    if phase_b:
-        raise NotImplementedError("Phase B not yet implemented")
+    # Phase B: pack overflow.
+    for cmpd in phase_b:
+        n_needed = len(cmpd.stocks_mM)
+
+        # Candidates: rows with ≥ n_needed trailing free cols.
+        candidates = [
+            row_idx for row_idx, (_, _, next_col) in row_state.items()
+            if (geometry.cols - next_col + 1) >= n_needed
+        ]
+        if not candidates:
+            # Tier 2 / Tier 3 handled in next tasks. For now, raise to keep behavior visible.
+            raise NotImplementedError("Tier 2 scatter not yet implemented")
+
+        # Preferred: candidates whose owner has the same stock count.
+        preferred = [r for r in candidates if row_state[r][1] == n_needed]
+        pool = preferred if preferred else candidates
+
+        # T2 spread: pick the row with the most free space; tiebreak smallest row index.
+        def free_in_row(r: int) -> int:
+            return geometry.cols - row_state[r][2] + 1
+
+        chosen = max(pool, key=lambda r: (free_in_row(r), -r))
+
+        start_col = row_state[chosen][2]
+        for col_offset, stock in enumerate(sorted(cmpd.stocks_mM)):
+            placements[f"[{cmpd.name}][{stock}]"] = f"{_row_label(chosen)}{start_col + col_offset}"
+        owner, owner_stocks, _ = row_state[chosen]
+        row_state[chosen] = (owner, owner_stocks, start_col + n_needed)
 
     return AssignmentResult(placements=placements)
