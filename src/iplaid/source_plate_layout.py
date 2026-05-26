@@ -44,16 +44,30 @@ def _row_label(row_idx_1based: int) -> str:
     return label
 
 
-def assign_source_wells(
-    compounds: list[CompoundSpec],
-    solvents: list[str],
-    geometry: PlateGeometry,
-) -> AssignmentResult:
-    # Minimal: place every compound's stocks starting at A1 row-major.
-    # Will be replaced in subsequent tasks.
+def assign_source_wells(compounds, solvents, geometry):
     placements: dict[str, str] = {}
-    for cmpd in compounds:
-        for i, stock in enumerate(sorted(cmpd.stocks_mM)):
-            liquid_name = f"[{cmpd.name}][{stock}]"
-            placements[liquid_name] = f"{_row_label(1)}{i + 1}"
+
+    # Sort descending by # of stocks, alphabetical tiebreak.
+    sorted_compounds = sorted(
+        compounds,
+        key=lambda c: (-len(c.stocks_mM), c.name),
+    )
+
+    # row_state[row_idx] = (owner_compound_name, owner_stock_count, next_free_col_1based)
+    row_state: dict[int, tuple[str, int, int]] = {}
+
+    # Phase A: first geometry.rows compounds each claim a fresh row.
+    phase_a = sorted_compounds[: geometry.rows]
+    phase_b = sorted_compounds[geometry.rows :]
+
+    for row_idx_0, cmpd in enumerate(phase_a):
+        row_idx = row_idx_0 + 1
+        for col_offset, stock in enumerate(sorted(cmpd.stocks_mM)):
+            placements[f"[{cmpd.name}][{stock}]"] = f"{_row_label(row_idx)}{col_offset + 1}"
+        row_state[row_idx] = (cmpd.name, len(cmpd.stocks_mM), len(cmpd.stocks_mM) + 1)
+
+    # Phase B + Tiers 2/3 handled in later tasks.
+    if phase_b:
+        raise NotImplementedError("Phase B not yet implemented")
+
     return AssignmentResult(placements=placements)
