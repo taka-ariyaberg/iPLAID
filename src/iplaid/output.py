@@ -156,14 +156,45 @@ def build_liquid_table(
     ).reset_index(drop=True)
 
     if existing_layout is None:
-        # Auto-assign (existing behavior).
+        from .source_plate_layout import assign_source_wells, CompoundSpec, PlateGeometry
+
+        # Group the sorted liquid_table rows into CompoundSpec + solvent inputs.
+        # Solvent controls (is_control_liquid=True) become the solvents list;
+        # non-control rows are compounds with positive stock_mM.
+        compounds_by_name: dict[str, list[float]] = {}
+        solvent_names: list[str] = []
+        for _, row in liquid_table.iterrows():
+            if bool(row["is_control_liquid"]):
+                name = str(row["compound"])
+                if name not in solvent_names:
+                    solvent_names.append(name)
+            else:
+                compounds_by_name.setdefault(str(row["compound"]), []).append(float(row["stock_mM"]))
+        compounds_list = [
+            CompoundSpec(name=name, stocks_mM=tuple(stocks))
+            for name, stocks in compounds_by_name.items()
+        ]
+
+        # Source-plate geometry. iPLAID's supported source plates are all 96-well
+        # (iDOT S.60 / S.100 / S.200; Echo 384LDV is not yet supported as a source).
+        # Hardcoded to match today's behavior.
+        geometry = PlateGeometry(rows=8, cols=12)
+
+        result = assign_source_wells(compounds_list, solvent_names, geometry)
+
         liquid_table["Source Plate"] = f"SRC_{protocol_name}"
-        avail = wells_96()
-        if len(liquid_table) > len(avail):
-            raise ValueError(
-                f"Too many unique liquids ({len(liquid_table)}) for one source plate ({len(avail)} wells)."
-            )
-        liquid_table["Source Well"] = avail[:len(liquid_table)]
+        liquid_table["Source Well"] = liquid_table["Liquid Name"].map(result.placements)
+
+        # Drop excluded compounds from the liquid_table so downstream code sees only placed liquids.
+        excluded_compound_names = {ew.compound for ew in result.excluded}
+        if excluded_compound_names:
+            liquid_table = liquid_table[
+                ~liquid_table["compound"].isin(excluded_compound_names)
+            ].reset_index(drop=True)
+
+        # Stash warnings on the table's `.attrs` so the pipeline can carry them forward.
+        liquid_table.attrs["scatter_warnings"] = list(result.scatter_warnings)
+        liquid_table.attrs["excluded_compounds"] = list(result.excluded)
     else:
         # Validate the supplied layout and map wells from it.
         layout = existing_layout.copy()
