@@ -750,6 +750,8 @@ export function WorkbenchPage() {
           isEditMode={isEditMode}
           sourceLayoutFileName={sourceLayoutFile?.name ?? config?.source_layout_file ?? null}
           sourcePlateType={config?.sourceplate_type}
+          solventFamilies={solventFamilies}
+          solventCaps={config?.solvent_caps_pct}
           onConfirm={handleConfirmRun}
           onClose={() => setShowConfirmRun(false)}
         />
