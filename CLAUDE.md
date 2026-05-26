@@ -66,8 +66,10 @@ scripts/stop.sh            # stop + remove containers (volumes preserved)
 | `frontend/src/components/workbench/ConfigDropdown.tsx` | Custom div/button dropdown used for Dispenser + Source plate type (replaces native `<select>`) |
 | `compose.yml` | Docker Compose config |
 | `src/iplaid/imeta.py` | iMETA CSV export from finalized protocol dispense rows |
-| `data/idot_source_plate_specs.json`, `data/echo_source_plate_specs.json` | Per-dispenser source-plate catalogs loaded via `Dispenser.load_plate_specs(project_root)` and exposed in the bootstrap as `source_plate_definitions_by_dispenser` |
+| `src/iplaid/source_plate_layout.py` | Pipette-friendly source-plate well-assignment algorithm. `assign_source_wells(compounds, solvents, geometry) -> AssignmentResult` lays each compound's stocks contiguously on a row in ascending concentration, reserves solvents at the bottom-right, with 3-tier fallback (Phase B same-# clustering → Tier 2 scatter → Tier 3 exclusion). Called only from `output.py:build_liquid_table` when `existing_layout is None` |
+| `data/idot_source_plate_specs.json`, `data/echo_source_plate_specs.json` | Per-dispenser source-plate catalogs loaded via `Dispenser.load_plate_specs(project_root)` and exposed in the bootstrap as `source_plate_definitions_by_dispenser`. Geometry (rows/cols) is threaded into the source-plate algorithm via `build_liquid_table(..., source_specs=...)` |
 | `data/idot_target_plate_specs.json`, `data/echo_target_plate_specs.json` | Per-dispenser destination-plate catalogs (path on each `DispenserSpec.target_plate_specs_path`); exposed in the bootstrap as `target_plate_definitions_by_dispenser`. Cross-field validated against `cfg["target_plate_type"]` in `_validate_target_plate_against_catalog` (pipeline.py) — single chokepoint for UI/CLI/API |
+| `tests/scenarios/` | End-to-end pipeline fixtures (inputs + expected outputs). Subdirs: `idot_basic`, `idot_with_layout`, `echo_basic`, `echo_with_layout`, `tier2_scatter`, `tier3_exclusion`. Each has `layout.csv`, `meta.csv`, `config.json`, optional `source_layout.csv`, and `expected_*.csv` files locked by `tests/test_pipeline_golden.py`. The `tier2_*`/`tier3_*` scenarios are also uploadable in the UI for visual smoke tests |
 
 ---
 
@@ -79,6 +81,8 @@ scripts/stop.sh            # stop + remove containers (volumes preserved)
 - Dispenser dispatch happens in `pipeline.py` via `get_dispenser(cfg["dispenser"])`; **never** add iDOT- or Echo-specific code outside `src/iplaid/dispensers/{idot,echo}.py` — the shared pipeline must stay dispenser-agnostic
 - The optional **Source plate layout** CSV upload runs schema validation at `/api/source-layouts/preview` *before* state goes green; geometry/completeness checks against the chosen plate type still fire later in `output.py`. Don't move geometry checks to the preview endpoint — it doesn't know the run's plate type
 - The Dispenser and Source-plate-type fields use the custom `ConfigDropdown` component, not native `<select>` — native dropdowns render as a macOS popover panel which doesn't match the dark UI
+- Source-plate algorithm warnings flow on `liquid_table.attrs["scatter_warnings"]` / `["excluded_compounds"]` (pandas sideband), then onto `result["warnings"]` (unified soft+loud list) and `result["excluded_compounds"]` / `result["excluded_target_wells"]` for the frontend. The pipeline filters `all_rows` by liquid-name membership BEFORE the source-well merge in `attach_and_sort_dispense_rows` so Tier 3 exclusions never leak NaN into the protocol — don't move that filter
+- Frontend bundle is baked into the Docker image at build time; the `compose.override.yml` (gitignored) only bind-mounts Python. **Rebuild after any frontend change**: `scripts/start.sh --build`, then hard-refresh the browser
 
 ---
 

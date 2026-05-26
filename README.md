@@ -206,7 +206,7 @@ Minimal example:
   "sourceplate_type": "S.100 Plate",
   "target_plate_type": "MWP 384",
   "working_volume_ul": 50,
-  "max_dmso_pct": 1.0,
+  "max_dmso_pct": 0.1,
   "source_prep_overage_pct": 0.3,
   "min_pipette_volume_uL": 1.0,
   "dilution_solvent": "DMSO",
@@ -226,7 +226,7 @@ Important fields:
 | `sourceplate_type` | Must match a key in the selected dispenser's source plate specs file: `data/idot_source_plate_specs.json` (iDOT) or `data/echo_source_plate_specs.json` (Echo) |
 | `target_plate_type` | Must match an entry in the selected dispenser's target-plate catalog: `data/idot_target_plate_specs.json` (iDOT) or `data/echo_target_plate_specs.json` (Echo). The pipeline rejects mismatched (dispenser, target) pairs at config time. |
 | `working_volume_ul` | Assay working volume in µL |
-| `max_dmso_pct` | Default maximum solvent percentage in a single destination well (`1.0` = 1 %). Standard cell-based assay tolerance. |
+| `max_dmso_pct` | Default maximum solvent percentage in a single destination well (`0.1` = 0.1 %). Standard cell-based assay tolerance. |
 | `solvent_caps_pct` | Optional per-solvent percentage limits, for example `{ "DMSO": 1.0, "Ethanol": 2.0 }` |
 
 ## Echo destination plates (Plate Type Editor setup)
@@ -424,6 +424,7 @@ iPLAID/
 │   ├── iplaid/
 │   └── plaid_core/
 ├── tests/
+│   └── scenarios/   # input CSVs + expected outputs per pipeline scenario
 ├── .dockerignore
 ├── Dockerfile
 ├── compose.yml
@@ -438,9 +439,11 @@ Key files:
 - `scripts/start.sh`, `scripts/stop.sh`: launcher / shutdown wrappers around `docker compose` for the web app
 - `scripts/run_pipeline.py`: direct pipeline runner inside the container
 - `src/iplaid/imeta.py`: iMETA CSV export builder
+- `src/iplaid/source_plate_layout.py`: pipette-friendly source-plate well-assignment algorithm (compounds row-by-row, ascending concentrations across columns, solvents reserved bottom-right; falls back to scatter or exclusion when the plate is over-packed)
 - `notebooks/iPLAID.ipynb`: interactive pipeline notebook
 - `backend/app/main.py`: API routes and frontend serving
 - `frontend/src/services/apiClient.ts`: frontend API wiring
+- `tests/scenarios/{idot,echo}_{basic,with_layout}/`, `tests/scenarios/tier2_scatter/`, `tests/scenarios/tier3_exclusion/`: input fixtures + expected outputs for the six end-to-end pipeline scenarios
 
 ## Troubleshooting
 
