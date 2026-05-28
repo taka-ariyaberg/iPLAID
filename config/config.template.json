@@ -9,6 +9,7 @@
   "target_plate_type": "MWP 384",
   "working_volume_ul": 50,
   "max_dmso_pct": 0.1,
+  "solvent_caps_pct": null,
   "source_prep_overage_pct": 0.30,
   "min_pipette_volume_uL": 1.0,
   "dilution_solvent": "DMSO",

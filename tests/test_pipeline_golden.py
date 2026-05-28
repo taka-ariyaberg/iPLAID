@@ -89,6 +89,26 @@ def test_echo_basic_byte_equal(tmp_path: Path, freeze_now) -> None:
     assert _read_bytes(result["paths"]["out_idot"]) == expected
 
 
+def test_echo_basic_source_prep_byte_equal(tmp_path: Path, freeze_now) -> None:
+    """Echo source-prep TXT matches the echo_basic golden byte-for-byte."""
+    src = SCENARIOS_DIR / "echo_basic"
+    work = tmp_path / "echo_prep"
+    work.mkdir()
+    shutil.copy(src / "layout.csv", work / "layout.csv")
+    shutil.copy(src / "meta.csv",   work / "meta.csv")
+    cfg = json.loads((src / "config.json").read_text())
+    out_dir = work / "out"; out_dir.mkdir()
+    r = run_pipeline_with_inputs(
+        config=cfg,
+        layout_path=work / "layout.csv",
+        meta_path=work / "meta.csv",
+        output_dir=out_dir,
+        include_source_prep=True,
+    )
+    expected = _read_bytes(src / "expected_source_prep.txt")
+    assert _read_bytes(r["paths"]["out_source_prep"]) == expected
+
+
 # ---- Supplied source-plate-layout goldens -----------------------------------
 
 
