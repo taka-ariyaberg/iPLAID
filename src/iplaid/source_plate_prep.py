@@ -349,29 +349,44 @@ def _format_single_prep(
     
     # Calculate actual volume needed
     actual_needed = calculate_actual_needed_volume(dispense_vol, dead_volume, overage_pct)
-    
+
     # Calculate what to prepare
     dilution = calculate_dilution_to_prepare(concentration, stock_concentration, prep_volume, solvent)
-    
-    # Calculate fill volume
-    fill_volume = calculate_fill_volume(well_capacity, fill_pct)
-    
+
+    # Compute fill volume that satisfies the run. The configured fill
+    # (capacity × fill_pct) is a default; the true minimum is `actual_needed`.
+    # Use the larger of the two so the well never runs dry, but never exceed
+    # physical well capacity — if it would, surface a clear warning.
+    configured_fill = calculate_fill_volume(well_capacity, fill_pct)
+    fill_volume = max(configured_fill, actual_needed)
+    exceeds_capacity = fill_volume > well_capacity
+    if exceeds_capacity:
+        fill_volume = well_capacity
+    excess = fill_volume - actual_needed
+
     lines.append(f"\nTarget concentration: {concentration} mM")
     lines.append(f"Actual volume needed: {actual_needed:.2f} µL (dispense: {dispense_vol:.2f} µL + overage: {dispense_vol * overage_pct:.2f} µL + dead volume: {dead_volume:.2f} µL)")
     lines.append("")
-    
+
     if dilution['is_pure_solvent']:
         lines.append(f"PREPARATION (1.0 mL):")
         lines.append(f"  {dilution['description']}")
     else:
         lines.append(f"PREPARATION (1.0 mL):")
         lines.append(f"  {dilution['description']}")
-    
+
     lines.append("")
     lines.append(f"SOURCE WELL ASSIGNMENT:")
-    lines.append(f"  Fill source well {source_well} with {fill_volume:.0f} µL")
-    lines.append(f"  (only {actual_needed:.2f} µL will be used, {fill_volume - actual_needed:.2f} µL excess for storage)")
-    
+    lines.append(f"  Fill source well {source_well} with {fill_volume:.2f} µL")
+    if exceeds_capacity:
+        lines.append(
+            f"  ⚠ Required volume ({actual_needed:.2f} µL) exceeds well capacity "
+            f"({well_capacity:.2f} µL). Split across multiple source wells or "
+            f"reduce overage / number of dispenses."
+        )
+    else:
+        lines.append(f"  ({actual_needed:.2f} µL will be used, {excess:.2f} µL excess for storage)")
+
     return lines
 
 
@@ -382,25 +397,39 @@ def _format_dilution_series(
 ) -> List[str]:
     """Format preparation for multiple concentrations as a series."""
     lines = []
-    
-    fill_volume = calculate_fill_volume(well_capacity, fill_pct)
-    
+
+    configured_fill = calculate_fill_volume(well_capacity, fill_pct)
+
     lines.append(f"\nMultiple concentrations - Dilution Series:")
     lines.append("")
-    
+
     for i, prep in enumerate(preparations, 1):
         concentration = prep['concentration_mM']
         dispense_vol = prep['dispense_volume_uL']
         source_well = prep['source_well']
-        
+
         actual_needed = calculate_actual_needed_volume(dispense_vol, dead_volume, overage_pct)
-        
+
+        # Per-stock fill: at least actual_needed (so the well doesn't run dry),
+        # never exceeding well capacity. Warn if capacity is insufficient.
+        fill_volume = max(configured_fill, actual_needed)
+        exceeds_capacity = fill_volume > well_capacity
+        if exceeds_capacity:
+            fill_volume = well_capacity
+        excess = fill_volume - actual_needed
+
         dilution = calculate_dilution_to_prepare(concentration, stock_concentration, prep_volume, solvent)
-        
+
         lines.append(f"STEP {i}: Prepare {concentration} mM")
         lines.append(f"  Recipe: {dilution['description']}")
-        lines.append(f"  → Fill source well {source_well} with {fill_volume:.0f} µL")
-        lines.append(f"     (need {actual_needed:.2f} µL, excess {fill_volume - actual_needed:.2f} µL)")
+        lines.append(f"  → Fill source well {source_well} with {fill_volume:.2f} µL")
+        if exceeds_capacity:
+            lines.append(
+                f"     ⚠ Required volume ({actual_needed:.2f} µL) exceeds well capacity "
+                f"({well_capacity:.2f} µL). Split across multiple source wells or reduce overage."
+            )
+        else:
+            lines.append(f"     (need {actual_needed:.2f} µL, excess {excess:.2f} µL)")
         lines.append("")
     
     lines.append(f"RECOMMENDATION: Prepare highest concentration first, then dilute down")
