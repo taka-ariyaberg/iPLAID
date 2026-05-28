@@ -65,3 +65,59 @@ def test_aggregator_ignores_dispense_rows_with_unknown_liquid_name():
     )
     result = aggregate_dispenses_per_stock(rows, _sample_liquid_table())
     assert ("Mystery", 5.0) not in result
+
+
+import json
+import tempfile
+from pathlib import Path
+
+from src.iplaid.source_plate_prep import generate_source_plate_prep_instructions
+
+
+def _write_specs(tmpdir: Path, sourceplate_type: str = "S.100 Plate") -> Path:
+    specs_path = tmpdir / "specs.json"
+    specs_path.write_text(json.dumps({
+        sourceplate_type: {
+            "wells": 96, "rows": 8, "cols": 12,
+            "dead_volume_uL_aq_lt": 1.0,
+            "effective_reservoir_uL": 80.0,
+        }
+    }))
+    return specs_path
+
+
+def _write_meta(tmpdir: Path) -> Path:
+    meta_path = tmpdir / "meta.csv"
+    meta_path.write_text(
+        "cmpdname,highest_stock_mM,solvent\n"
+        "DrugA,100,DMSO\n"
+        "DrugB,100,DMSO\n"
+        "DMSO,0,DMSO\n"
+    )
+    return meta_path
+
+
+def test_generate_instructions_in_memory_path_produces_txt():
+    with tempfile.TemporaryDirectory() as tmp:
+        tmpdir = Path(tmp)
+        cfg = {
+            "user_name": "u",
+            "sourceplate_type": "S.100 Plate",
+            "source_prep_overage_pct": 0.30,
+            "standard_prep_volume_uL": 1000.0,
+            "source_well_fill_pct": 0.70,
+        }
+        _, txt = generate_source_plate_prep_instructions(
+            output_dir=tmpdir,
+            config=cfg,
+            meta_path=_write_meta(tmpdir),
+            plate_specs_path=_write_specs(tmpdir),
+            protocol_name="t",
+            layout_file="x.csv",
+            all_rows=_sample_all_rows(),
+            liquid_table=_sample_liquid_table(),
+        )
+    assert "SOURCE PLATE PREPARATION INSTRUCTIONS" in txt
+    assert "DrugA" in txt
+    assert "DrugB" in txt
+    assert "COMPOUND: DMSO" not in txt

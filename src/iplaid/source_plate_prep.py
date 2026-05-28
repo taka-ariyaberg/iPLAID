@@ -458,69 +458,74 @@ def generate_source_plate_prep_instructions(
     liquids_csv_path: Optional[Path] = None,
     scatter_warnings: Optional[list[dict]] = None,
     excluded: Optional[list[dict]] = None,
+    all_rows: Optional[pd.DataFrame] = None,
+    liquid_table: Optional[pd.DataFrame] = None,
 ) -> Tuple[Dict, str]:
-    """
-    Generate source plate preparation instructions from iDOT outputs.
-    
-    Args:
-        output_dir: Output directory
-        config: Configuration dictionary
-        meta_path: Path to compound metadata file
-        plate_specs_path: Path to plate specifications file
-        protocol_name: Protocol name
-        layout_file: Layout file name
-        idot_csv_path: Optional explicit path to iDOT protocol CSV (auto-detected if None)
-        liquids_csv_path: Optional explicit path to liquids CSV (auto-detected if None)
-    
-    Returns:
-        Tuple of (prep_volumes_dict, instructions_text)
-    """
-    # Use provided paths or auto-detect based on naming convention
-    if idot_csv_path is None or liquids_csv_path is None:
-        project_details = build_project_details(
-            config.get("user_name", "user"),
-            protocol_name,
-        )
-        if idot_csv_path is None:
-            idot_csv_path = find_latest_download_artifact(
-                output_dir,
-                artifact="idot_protocol",
-                extension=".csv",
-                project_details=project_details,
-            )
-        if liquids_csv_path is None:
-            liquids_csv_path = find_latest_download_artifact(
-                output_dir,
-                artifact="liquids_map",
-                extension=".csv",
-                project_details=project_details,
-            )
+    """Generate source plate preparation instructions.
 
-        layout_base = Path(layout_file).stem
-        if idot_csv_path is None:
-            idot_csv_path = output_dir / f"IDOT_{protocol_name}__{layout_base}.csv"
-        if liquids_csv_path is None:
-            liquids_csv_path = output_dir / f"iDOT_liquids_{protocol_name}__{layout_base}.csv"
-    
-    idot_csv = idot_csv_path
-    liquids_csv = liquids_csv_path
-    
-    if not idot_csv.exists():
-        raise FileNotFoundError(f"iDOT protocol file not found: {idot_csv}")
-    if not liquids_csv.exists():
-        raise FileNotFoundError(f"Liquids mapping file not found: {liquids_csv}")
-    
-    # Load all necessary data
+    Two data sources are supported (mutually exclusive in practice):
+
+    - **In-memory (preferred, dispenser-agnostic):** pass `all_rows` and
+      `liquid_table`. Aggregation reads from these in-memory dataframes and
+      makes no assumption about the dispenser's CSV shape. Used by the
+      pipeline for both iDOT and Echo runs.
+    - **Legacy CSV (back-compat for notebook/CLI):** pass `idot_csv_path` and
+      `liquids_csv_path` (or leave them None to auto-detect from `output_dir`).
+      Reads volumes back from the iDOT-shaped protocol CSV. Only works for
+      iDOT-format CSVs.
+
+    Steps 2 and 3 (`group_compounds_by_name`, `generate_instructions`) are
+    dispenser-agnostic and produce the same TXT format regardless of data source.
+
+    Returns:
+        Tuple of (prep_volumes_dict, instructions_text).
+    """
+    # --- Step 1: per-(compound, concentration) volume aggregation ---
+    if all_rows is not None and liquid_table is not None:
+        # In-memory path — no CSV round-trip.
+        volumes_per_compound = aggregate_dispenses_per_stock(all_rows, liquid_table)
+    else:
+        # Legacy CSV path — auto-detect file paths if not provided.
+        if idot_csv_path is None or liquids_csv_path is None:
+            project_details = build_project_details(
+                config.get("user_name", "user"),
+                protocol_name,
+            )
+            if idot_csv_path is None:
+                idot_csv_path = find_latest_download_artifact(
+                    output_dir,
+                    artifact="idot_protocol",
+                    extension=".csv",
+                    project_details=project_details,
+                )
+            if liquids_csv_path is None:
+                liquids_csv_path = find_latest_download_artifact(
+                    output_dir,
+                    artifact="liquids_map",
+                    extension=".csv",
+                    project_details=project_details,
+                )
+            layout_base = Path(layout_file).stem
+            if idot_csv_path is None:
+                idot_csv_path = output_dir / f"IDOT_{protocol_name}__{layout_base}.csv"
+            if liquids_csv_path is None:
+                liquids_csv_path = output_dir / f"iDOT_liquids_{protocol_name}__{layout_base}.csv"
+        idot_csv = idot_csv_path
+        liquids_csv = liquids_csv_path
+        if not idot_csv.exists():
+            raise FileNotFoundError(f"iDOT protocol file not found: {idot_csv}")
+        if not liquids_csv.exists():
+            raise FileNotFoundError(f"Liquids mapping file not found: {liquids_csv}")
+        volumes_per_compound = sum_volumes_per_compound(idot_csv, liquids_csv)
+
+    # --- Common shared logic (unchanged from the previous version) ---
     meta = load_meta_file(meta_path)
     dead_volume = load_dead_volume(plate_specs_path, config['sourceplate_type'])
     well_capacity = get_well_capacity(plate_specs_path, config['sourceplate_type'])
-    
-    # Calculate volumes
-    volumes_per_compound = sum_volumes_per_compound(idot_csv, liquids_csv)
-    
+
     # Group by compound name
     grouped_compounds = group_compounds_by_name(volumes_per_compound)
-    
+
     # Generate instructions
     instructions = generate_instructions(
         grouped_compounds,
