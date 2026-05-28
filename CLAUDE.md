@@ -83,6 +83,7 @@ scripts/stop.sh            # stop + remove containers (volumes preserved)
 - The Dispenser and Source-plate-type fields use the custom `ConfigDropdown` component, not native `<select>` — native dropdowns render as a macOS popover panel which doesn't match the dark UI
 - Source-plate algorithm warnings flow on `liquid_table.attrs["scatter_warnings"]` / `["excluded_compounds"]` (pandas sideband), then onto `result["warnings"]` (unified soft+loud list) and `result["excluded_compounds"]` / `result["excluded_target_wells"]` for the frontend. The pipeline filters `all_rows` by liquid-name membership BEFORE the source-well merge in `attach_and_sort_dispense_rows` so Tier 3 exclusions never leak NaN into the protocol — don't move that filter
 - Frontend bundle is baked into the Docker image at build time; the `compose.override.yml` (gitignored) only bind-mounts Python. **Rebuild after any frontend change**: `scripts/start.sh --build`, then hard-refresh the browser
+- Per-solvent carrier caps in CLI/notebook runs: add `solvent_caps_pct` to `config/config.json` as a map of `{solvent_key: max_pct}` (e.g. `{"dmso": 0.1, "water": 5.0}`) for runs with multiple solvent families. When `null` (default), iPLAID applies the legacy single `max_dmso_pct` to every family. The web workbench writes this map automatically; the CLI/notebook path requires editing the JSON.
 
 ---
 
