@@ -3,7 +3,7 @@ SOURCE PLATE PREPARATION INSTRUCTIONS
 ==========================================================================================
 
 Standard preparation: 1.0 mL per concentration
-Source well fill level: 70% of 12 µL capacity = 8 µL per well
+Source well fill level: 70% of 80 µL capacity = 56 µL per well
 
 
 ==========================================================================================
@@ -11,14 +11,14 @@ COMPOUND: DMSO
 ==========================================================================================
 
 Target concentration: 0.0 mM
-Actual volume needed: 5.96 µL (dispense: 2.27 µL + overage: 0.68 µL + dead volume: 3.00 µL)
+Actual volume needed: 3.37 µL (dispense: 1.82 µL + overage: 0.55 µL + dead volume: 1.00 µL)
 
 PREPARATION (1.0 mL):
   Use pure DMSO
 
 SOURCE WELL ASSIGNMENT:
-  Fill source well P24 with 8 µL
-  (only 5.96 µL will be used, 2.44 µL excess for storage)
+  Fill source well H12 with 56 µL
+  (only 3.37 µL will be used, 52.63 µL excess for storage)
 
 ==========================================================================================
 COMPOUND: Dasatinib
@@ -28,13 +28,13 @@ Multiple concentrations - Dilution Series:
 
 STEP 1: Prepare 0.1 mM
   Recipe: Take 1.00 µL of stock (100 mM) + 999.00 µL DMSO
-  → Fill source well A1 with 8 µL
-     (need 3.46 µL, excess 4.94 µL)
+  → Fill source well A1 with 56 µL
+     (need 1.36 µL, excess 54.64 µL)
 
 STEP 2: Prepare 1.0 mM
   Recipe: Take 10.00 µL of stock (100 mM) + 990.00 µL DMSO
-  → Fill source well A2 with 8 µL
-     (need 3.59 µL, excess 4.81 µL)
+  → Fill source well A2 with 56 µL
+     (need 1.47 µL, excess 54.53 µL)
 
 RECOMMENDATION: Prepare highest concentration first, then dilute down
 (e.g., prepare 1.0 mM, dilute to get lower concentrations)
@@ -47,13 +47,13 @@ Multiple concentrations - Dilution Series:
 
 STEP 1: Prepare 10.0 mM
   Recipe: Take 100.00 µL of stock (100 mM) + 900.00 µL DMSO
-  → Fill source well B1 with 8 µL
-     (need 3.59 µL, excess 4.81 µL)
+  → Fill source well B1 with 56 µL
+     (need 1.47 µL, excess 54.53 µL)
 
 STEP 2: Prepare 100.0 mM
   Recipe: Take 1000.00 µL of stock (100 mM) + 0.00 µL DMSO
-  → Fill source well B2 with 8 µL
-     (need 3.14 µL, excess 5.26 µL)
+  → Fill source well B2 with 56 µL
+     (need 1.11 µL, excess 54.89 µL)
 
 RECOMMENDATION: Prepare highest concentration first, then dilute down
 (e.g., prepare 100.0 mM, dilute to get lower concentrations)
@@ -66,13 +66,13 @@ Multiple concentrations - Dilution Series:
 
 STEP 1: Prepare 0.1 mM
   Recipe: Take 1.00 µL of stock (100 mM) + 999.00 µL DMSO
-  → Fill source well C1 with 8 µL
-     (need 3.46 µL, excess 4.94 µL)
+  → Fill source well C1 with 56 µL
+     (need 1.36 µL, excess 54.64 µL)
 
 STEP 2: Prepare 1.0 mM
   Recipe: Take 10.00 µL of stock (100 mM) + 990.00 µL DMSO
-  → Fill source well C2 with 8 µL
-     (need 3.59 µL, excess 4.81 µL)
+  → Fill source well C2 with 56 µL
+     (need 1.47 µL, excess 54.53 µL)
 
 RECOMMENDATION: Prepare highest concentration first, then dilute down
 (e.g., prepare 1.0 mM, dilute to get lower concentrations)
@@ -85,13 +85,13 @@ Multiple concentrations - Dilution Series:
 
 STEP 1: Prepare 1.0 mM
   Recipe: Take 10.00 µL of stock (100 mM) + 990.00 µL DMSO
-  → Fill source well D1 with 8 µL
-     (need 3.46 µL, excess 4.94 µL)
+  → Fill source well D1 with 56 µL
+     (need 1.36 µL, excess 54.64 µL)
 
 STEP 2: Prepare 10.0 mM
   Recipe: Take 100.00 µL of stock (100 mM) + 900.00 µL DMSO
-  → Fill source well D2 with 8 µL
-     (need 3.59 µL, excess 4.81 µL)
+  → Fill source well D2 with 56 µL
+     (need 1.47 µL, excess 54.53 µL)
 
 RECOMMENDATION: Prepare highest concentration first, then dilute down
 (e.g., prepare 10.0 mM, dilute to get lower concentrations)

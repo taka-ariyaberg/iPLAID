@@ -109,6 +109,29 @@ def test_echo_basic_source_prep_byte_equal(tmp_path: Path, freeze_now) -> None:
     assert _read_bytes(r["paths"]["out_source_prep"]) == expected
 
 
+def test_idot_basic_source_prep_byte_equal(tmp_path: Path, freeze_now) -> None:
+    """iDOT source-prep TXT matches the idot_basic golden byte-for-byte.
+    Locks the pure-solvent ("Use pure DMSO") block so it can never go missing
+    again — the previous regression that silently filtered solvent-control
+    entries had no golden to catch it."""
+    src = SCENARIOS_DIR / "idot_basic"
+    work = tmp_path / "idot_prep"
+    work.mkdir()
+    shutil.copy(src / "layout.csv", work / "layout.csv")
+    shutil.copy(src / "meta.csv",   work / "meta.csv")
+    cfg = json.loads((src / "config.json").read_text())
+    out_dir = work / "out"; out_dir.mkdir()
+    r = run_pipeline_with_inputs(
+        config=cfg,
+        layout_path=work / "layout.csv",
+        meta_path=work / "meta.csv",
+        output_dir=out_dir,
+        include_source_prep=True,
+    )
+    expected = _read_bytes(src / "expected_source_prep.txt")
+    assert _read_bytes(r["paths"]["out_source_prep"]) == expected
+
+
 # ---- Supplied source-plate-layout goldens -----------------------------------
 
 

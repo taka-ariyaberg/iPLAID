@@ -156,8 +156,11 @@ def aggregate_dispenses_per_stock(
     volume per (compound, stock_concentration_mM) from the pipeline's canonical
     dispense dataframes — no dispenser-specific CSV parsing.
 
-    Solvent-topup liquids (concentration == 0) are filtered out: they are
-    carrier dispenses, not compound stocks needing preparation.
+    Solvent-control entries (concentration == 0, e.g. [DMSO][0.0]) ARE
+    included so the user gets a "Use pure <solvent>" block telling them which
+    source well to pre-fill with pure carrier. Downstream
+    `generate_instructions` already handles stock_concentration == 0 via its
+    pure-solvent branch — matching the legacy CSV path's behavior.
 
     Args:
         all_rows: Post-rounding, post-exclusion dispense rows. Must carry
@@ -178,8 +181,6 @@ def aggregate_dispenses_per_stock(
         liquid_name = str(row['Liquid Name']).strip()
         source_well = str(row['Source Well']).strip()
         compound, concentration = parse_liquid_name(liquid_name)
-        if concentration <= 0:
-            continue
         liquid_to_info[liquid_name] = {
             'compound': compound,
             'concentration': concentration,

@@ -1,6 +1,7 @@
 """Unit tests for aggregate_dispenses_per_stock — the in-memory replacement
 for sum_volumes_per_compound. Verifies shape parity with the legacy CSV-based
-aggregator and the solvent-topup filter."""
+aggregator, including inclusion of solvent-control entries so the prep TXT
+emits a "Use pure <solvent>" block for them."""
 
 import json
 import tempfile
@@ -39,7 +40,9 @@ def _sample_all_rows() -> pd.DataFrame:
 
 def test_aggregator_returns_compound_concentration_keys():
     result = aggregate_dispenses_per_stock(_sample_all_rows(), _sample_liquid_table())
-    assert set(result.keys()) == {("DrugA", 10.0), ("DrugA", 1.0), ("DrugB", 10.0)}
+    # Includes the DMSO solvent-control entry so the TXT can render a
+    # "Use pure DMSO" block for its source well.
+    assert set(result.keys()) == {("DrugA", 10.0), ("DrugA", 1.0), ("DrugB", 10.0), ("DMSO", 0.0)}
 
 
 def test_aggregator_sums_volumes_per_stock():
@@ -47,6 +50,7 @@ def test_aggregator_sums_volumes_per_stock():
     assert result[("DrugA", 10.0)]["dispense_volume_uL"] == 0.080
     assert result[("DrugA", 1.0)]["dispense_volume_uL"] == 0.012
     assert result[("DrugB", 10.0)]["dispense_volume_uL"] == 0.030
+    assert result[("DMSO", 0.0)]["dispense_volume_uL"] == 0.060
 
 
 def test_aggregator_attaches_source_wells_from_liquid_table():
@@ -54,12 +58,14 @@ def test_aggregator_attaches_source_wells_from_liquid_table():
     assert result[("DrugA", 10.0)]["source_well"] == "A1"
     assert result[("DrugA", 1.0)]["source_well"] == "A2"
     assert result[("DrugB", 10.0)]["source_well"] == "B1"
+    assert result[("DMSO", 0.0)]["source_well"] == "H12"
 
 
-def test_aggregator_filters_solvent_topup_liquids():
+def test_aggregator_includes_solvent_control_entries():
+    """Solvent-control liquids (e.g. [DMSO][0.0]) must be present so the prep
+    TXT lists which source well needs pure solvent."""
     result = aggregate_dispenses_per_stock(_sample_all_rows(), _sample_liquid_table())
-    assert ("DMSO", 0.0) not in result
-    assert all(conc != 0.0 for (_, conc) in result.keys())
+    assert ("DMSO", 0.0) in result
 
 
 def test_aggregator_ignores_dispense_rows_with_unknown_liquid_name():
@@ -120,4 +126,5 @@ def test_generate_instructions_in_memory_path_produces_txt():
     assert "SOURCE PLATE PREPARATION INSTRUCTIONS" in txt
     assert "DrugA" in txt
     assert "DrugB" in txt
-    assert "COMPOUND: DMSO" not in txt
+    # Pure-solvent block tells the user which well needs pure DMSO.
+    assert "COMPOUND: DMSO" in txt
