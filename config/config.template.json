@@ -14,6 +14,6 @@
   "min_pipette_volume_uL": 1.0,
   "dilution_solvent": "DMSO",
   "source_well_fill_pct": 0.70,
-  "standard_prep_volume_uL": 1000.0,
+  "standard_prep_volume_uL": 100.0,
   "output_timestamp_format": "%y-%m-%d-%H-%M-%S"
 }
