@@ -138,7 +138,62 @@ def sum_volumes_per_compound(idot_csv_path: Path, liquids_csv_path: Path) -> Dic
                     'source_well': source_well
                 }
             volumes[key]['dispense_volume_uL'] += volume_ul
-    
+
+    return volumes
+
+
+def aggregate_dispenses_per_stock(
+    all_rows: pd.DataFrame,
+    liquid_table: pd.DataFrame,
+) -> Dict[Tuple[str, float], Dict]:
+    """In-memory replacement for sum_volumes_per_compound. Aggregates dispense
+    volume per (compound, stock_concentration_mM) from the pipeline's canonical
+    dispense dataframes — no dispenser-specific CSV parsing.
+
+    Solvent-topup liquids (concentration == 0) are filtered out: they are
+    carrier dispenses, not compound stocks needing preparation.
+
+    Args:
+        all_rows: Post-rounding, post-exclusion dispense rows. Must carry
+            'Liquid Name' (format "[cmpdname][stock_mM]") and 'Volume [uL]'.
+        liquid_table: Mapping of unique Liquid Name -> Source Plate / Source Well.
+            Must carry 'Liquid Name' and 'Source Well'.
+
+    Returns:
+        Dict[(compound_name, stock_concentration_mM)] -> {
+            'dispense_volume_uL': float (total across all dispense rows for this stock),
+            'source_well': str,
+        }
+        Shape is identical to sum_volumes_per_compound, so downstream
+        group_compounds_by_name and generate_instructions work unchanged.
+    """
+    liquid_to_info: Dict[str, Dict] = {}
+    for _, row in liquid_table.iterrows():
+        liquid_name = str(row['Liquid Name']).strip()
+        source_well = str(row['Source Well']).strip()
+        compound, concentration = parse_liquid_name(liquid_name)
+        if concentration == 0:
+            continue
+        liquid_to_info[liquid_name] = {
+            'compound': compound,
+            'concentration': concentration,
+            'source_well': source_well,
+        }
+
+    volumes: Dict[Tuple[str, float], Dict] = {}
+    for _, row in all_rows.iterrows():
+        liquid_name = str(row['Liquid Name']).strip()
+        info = liquid_to_info.get(liquid_name)
+        if info is None:
+            continue
+        key = (info['compound'], info['concentration'])
+        if key not in volumes:
+            volumes[key] = {
+                'dispense_volume_uL': 0.0,
+                'source_well': info['source_well'],
+            }
+        volumes[key]['dispense_volume_uL'] += float(row['Volume [uL]'])
+
     return volumes
 
 
