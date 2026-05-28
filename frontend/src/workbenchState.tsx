@@ -14,6 +14,7 @@ import type {
   DesignJob,
   LayoutPreview,
   RunConfig,
+  SolventFamily,
 } from "./types";
 
 type WorkbenchState = {
@@ -43,6 +44,12 @@ type WorkbenchState = {
   designIsGenerating: boolean;
   metaCreatorOpen: boolean;
   metaCreatorRows: MetaCompoundRow[];
+  // Per-solvent cap view-state. Persisted alongside config so the Solvent
+  // dropdown survives a navigation round-trip (run -> results -> back to
+  // workbench). Still never written into config_json — only the
+  // solvent_caps_pct map travels in config.
+  solventFamilies: SolventFamily[];
+  selectedSolventKey: string;
 };
 
 const initialWorkbenchState: WorkbenchState = {
@@ -72,6 +79,8 @@ const initialWorkbenchState: WorkbenchState = {
   designIsGenerating: false,
   metaCreatorOpen: false,
   metaCreatorRows: [],
+  solventFamilies: [],
+  selectedSolventKey: "",
 };
 
 type WorkbenchStateContextValue = {

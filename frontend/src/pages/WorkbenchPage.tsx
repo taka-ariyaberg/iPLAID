@@ -14,7 +14,6 @@ import { apiClient } from "../services/apiClient";
 import type {
   LayoutPreview,
   RunConfig,
-  SolventFamily,
   TargetPlateDefinition,
 } from "../types";
 import { canonicalWellId } from "../utils/wellUtils";
@@ -134,11 +133,13 @@ export function WorkbenchPage() {
   // a hard-to-miss popup when the format is wrong (banner can be missed).
   const [sourceLayoutWarning, setSourceLayoutWarning] = useState<string | null>(null);
   // Per-solvent carrier caps. `solventFamilies` and `selectedSolventKey` are
-  // local view-state only — never written into config. Only the derived
-  // solvent_caps_pct map (built in rebuildSolventCaps / handleSolventCapChange)
-  // travels in config.
-  const [solventFamilies, setSolventFamilies] = useState<SolventFamily[]>([]);
-  const [selectedSolventKey, setSelectedSolventKey] = useState<string>("");
+  // workbench-session view-state — persisted via useWorkbenchField so the
+  // Solvent dropdown survives a run -> results -> back-to-workbench round-
+  // trip. Never written into config_json — only the derived solvent_caps_pct
+  // map (built in rebuildSolventCaps / handleSolventCapChange) travels in
+  // config.
+  const [solventFamilies, setSolventFamilies] = useWorkbenchField("solventFamilies");
+  const [selectedSolventKey, setSelectedSolventKey] = useWorkbenchField("selectedSolventKey");
   const [capNotice, setCapNotice] = useState<string | null>(null);
   const [showClearMetaWarning, setShowClearMetaWarning] = useState(false);
 
