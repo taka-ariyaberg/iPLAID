@@ -62,17 +62,23 @@ def load_meta_file(meta_path: Path) -> Dict[str, Dict[str, any]]:
 def load_dead_volume(plate_specs_path: Path, sourceplate_type: str) -> float:
     """
     Load dead volume for the sourceplate type.
-    
+
     Returns:
         Dead volume in µL
     """
     with open(plate_specs_path) as f:
         specs = json.load(f)
-    
+
     if sourceplate_type not in specs:
         raise ValueError(f"Unknown sourceplate_type: {sourceplate_type}")
-    
-    return specs[sourceplate_type]['dead_volume_uL_aq_lt']
+
+    dead_volume = specs[sourceplate_type].get('dead_volume_uL_aq_lt')
+    if dead_volume is None:
+        raise ValueError(
+            f"Dead volume not configured for source plate type {sourceplate_type!r}. "
+            f"Populate 'dead_volume_uL_aq_lt' for this entry in {plate_specs_path}."
+        )
+    return float(dead_volume)
 
 
 def get_well_capacity(plate_specs_path: Path, sourceplate_type: str) -> float:
