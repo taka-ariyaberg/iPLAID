@@ -178,7 +178,7 @@ def aggregate_dispenses_per_stock(
         liquid_name = str(row['Liquid Name']).strip()
         source_well = str(row['Source Well']).strip()
         compound, concentration = parse_liquid_name(liquid_name)
-        if concentration == 0:
+        if concentration <= 0:
             continue
         liquid_to_info[liquid_name] = {
             'compound': compound,

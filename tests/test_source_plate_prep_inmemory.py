@@ -2,9 +2,16 @@
 for sum_volumes_per_compound. Verifies shape parity with the legacy CSV-based
 aggregator and the solvent-topup filter."""
 
+import json
+import tempfile
+from pathlib import Path
+
 import pandas as pd
 
-from src.iplaid.source_plate_prep import aggregate_dispenses_per_stock
+from src.iplaid.source_plate_prep import (
+    aggregate_dispenses_per_stock,
+    generate_source_plate_prep_instructions,
+)
 
 
 def _sample_liquid_table() -> pd.DataFrame:
@@ -65,13 +72,6 @@ def test_aggregator_ignores_dispense_rows_with_unknown_liquid_name():
     )
     result = aggregate_dispenses_per_stock(rows, _sample_liquid_table())
     assert ("Mystery", 5.0) not in result
-
-
-import json
-import tempfile
-from pathlib import Path
-
-from src.iplaid.source_plate_prep import generate_source_plate_prep_instructions
 
 
 def _write_specs(tmpdir: Path, sourceplate_type: str = "S.100 Plate") -> Path:
